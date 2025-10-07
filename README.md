@@ -1,1 +1,3 @@
-# Chronora-Flutter
+# chronora_flutter
+
+A new Flutter project.
