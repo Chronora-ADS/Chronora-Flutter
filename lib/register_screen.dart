@@ -1,8 +1,6 @@
 // lib/register_screen.dart
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:chronora_flutter/app_colors.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -13,7 +11,6 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -22,30 +19,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscureConfirmPassword = true;
   bool _agreedToTerms = false;
 
-  final String backendBaseUrl = 'http://10.0.2.2:8080';
-
-  bool _isValidEmail(String email) {
-    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-    return emailRegex.hasMatch(email);
-  }
-
   bool _isStrongPassword(String password) {
     return password.length >= 6;
   }
 
-  Future<void> _register() async {
-    final name = _nameController.text.trim();
+  Future<void> _signUp() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
 
-    if (name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Preencha todos os campos')));
-      return;
-    }
-
-    if (!_isValidEmail(email)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('E-mail inválido')));
       return;
     }
 
@@ -67,47 +51,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final url = Uri.parse('$backendBaseUrl/api/auth/register');
-      final res = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'name': name, 'email': email, 'password': password}),
+      final response = await Supabase.instance.client.auth.signUp(
+        email: email,
+        password: password,
       );
 
-      if (res.statusCode == 201 || res.statusCode == 200) {
-        final body = jsonDecode(res.body);
-        final token = body['token'] as String?;
-        final userId = body['userId'];
-        final userEmail = body['email'];
-        final userName = body['name'];
-
-        if (token != null) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('auth_token', token);
-          await prefs.setString('user_email', userEmail ?? '');
-          await prefs.setString('user_name', userName ?? '');
-          await prefs.setInt('user_id', (userId is int) ? userId : int.parse(userId.toString()));
-
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Conta criada com sucesso!')));
-          if (!mounted) return;
-          Navigator.pushReplacementNamed(context, '/home');
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Resposta inválida do servidor')));
-        }
+      if (response.session == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Falha ao criar conta')),
+        );
       } else {
-        String message = 'Erro ao criar conta';
-        try {
-          final body = jsonDecode(res.body);
-          if (body is Map && body.containsKey('message')) {
-            message = body['message'];
-          } else if (body is String) {
-            message = body;
-          }
-        } catch (_) {}
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Conta criada! Verifique seu e-mail para confirmar.')),
+        );
+        if (!mounted) return;
+        Navigator.pop(context); // Volta para login
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro de conexão: $e')));
+    } on Exception catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro: ${e.toString()}')),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -115,7 +78,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
-    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -127,7 +89,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Fundo com imagem
           Positioned.fill(
             child: Image.asset(
               'assets/background_login.png',
@@ -135,7 +96,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
 
-          // Logo Chronora no topo
           Padding(
             padding: const EdgeInsets.only(top: 40, left: 20),
             child: Row(
@@ -154,7 +114,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
 
-          // Container centralizado
           Center(
             child: Container(
               width: 320,
@@ -184,19 +143,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Nome
-                    TextField(
-                      controller: _nameController,
-                      enabled: !_isLoading,
-                      decoration: InputDecoration(
-                        labelText: 'Nome Completo',
-                        prefixIcon: const Icon(Icons.person_outline),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // E-mail
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -209,7 +155,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Senha
                     TextField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
@@ -227,7 +172,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Confirmar Senha
                     TextField(
                       controller: _confirmPasswordController,
                       obscureText: _obscureConfirmPassword,
@@ -244,7 +188,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Checkbox de termos
                     Row(
                       children: [
                         Checkbox(
@@ -266,11 +209,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Botão Registrar
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _register,
+                        onPressed: _isLoading ? null : _signUp,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryLightYellow,
                           foregroundColor: Colors.black,
@@ -284,7 +226,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Link para login
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -292,11 +233,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         TextButton(
                           onPressed: _isLoading
                               ? null
-                              : () => Navigator.pushReplacementNamed(context, '/login'),
-                          child: const Text(
-                            'Faça login',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
+                              : () => Navigator.pop(context),
+                          child: const Text('Faça login', style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),

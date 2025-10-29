@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// Suas telas e cores
 import 'package:chronora_flutter/login_screen.dart';
 import 'package:chronora_flutter/app_colors.dart';
 import 'package:chronora_flutter/home_screen.dart';
@@ -11,7 +10,6 @@ import 'package:chronora_flutter/register_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 🔑 Inicialize com as credenciais do SEU projeto no Supabase
   await Supabase.initialize(
     url: 'https://ggmujtkhkvlujdynkbkm.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdnbXVqdGtoa3ZsdWpkeW5rYmttIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2OTQ1MDQsImV4cCI6MjA3NzI3MDUwNH0.wchwPiPBUIh0qB94lPXxeXMnUzdDu6fMOwrnry-ffZE',
@@ -27,6 +25,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Chronora',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primaryColor: AppColors.primaryLightYellow,
         scaffoldBackgroundColor: AppColors.black,
@@ -49,12 +48,29 @@ class MyApp extends StatelessWidget {
           }),
         ).copyWith(secondary: AppColors.blue),
       ),
-      initialRoute: '/login',
-      routes: {
-        '/login': (context) => const LoginScreen(),
-        '/home': (context) => const HomeScreen(),
-        '/register': (context) => const RegisterScreen(),
-      },
+      home: const AuthGate(),
+    );
+  }
+}
+
+// Widget de controle de autenticação
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: StreamBuilder(
+        stream: Supabase.instance.client.auth.onAuthStateChange,
+        builder: (context, snapshot) {
+          final session = Supabase.instance.client.auth.currentSession;
+          if (session != null) {
+            return const HomeScreen();
+          } else {
+            return const LoginScreen();
+          }
+        },
+      ),
     );
   }
 }

@@ -1,9 +1,8 @@
 // lib/login_screen.dart
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:chronora_flutter/app_colors.dart';
+import 'package:chronora_flutter/register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,15 +16,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscure = true;
-  bool _rememberMe = false;
 
-  final String backendBaseUrl = 'http://10.0.2.2:8080'; // Emulador Android
-
-  Future<void> _login() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
-
-    if (email.isEmpty || password.isEmpty) {
+  Future<void> _signIn() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Preencha todos os campos')),
       );
@@ -35,50 +28,20 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final url = Uri.parse('$backendBaseUrl/api/auth/login');
-      final res = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
+      final response = await Supabase.instance.client.auth.signInWithPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
       );
 
-      if (res.statusCode == 200) {
-        final body = jsonDecode(res.body);
-        final token = body['token'] as String?;
-        final userId = body['userId'];
-        final userEmail = body['email'];
-        final name = body['name'];
-
-        if (token != null) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('auth_token', token);
-          await prefs.setString('user_email', userEmail ?? '');
-          await prefs.setString('user_name', name ?? '');
-          await prefs.setInt('user_id', (userId is int) ? userId : int.parse(userId.toString()));
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login realizado com sucesso')),
-          );
-          if (!mounted) return;
-          Navigator.pushReplacementNamed(context, '/home');
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Resposta inválida do servidor')),
-          );
-        }
-      } else {
-        String message = 'Erro ao autenticar';
-        try {
-          final body = jsonDecode(res.body);
-          if (body is Map && body.containsKey('message')) {
-            message = body['message'];
-          }
-        } catch (_) {}
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      if (response.session == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro ao autenticar. Verifique suas credenciais.')),
+        );
       }
-    } catch (e) {
+      // Se sucesso, o AuthGate redireciona automaticamente
+    } on Exception catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro de conexão: $e')),
+        SnackBar(content: Text('Erro: ${e.toString()}')),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -110,7 +73,6 @@ class _LoginScreenState extends State<LoginScreen> {
             padding: const EdgeInsets.only(top: 40, left: 20),
             child: Row(
               children: [
-                // 🔁 Use ícone se não tiver a logo real
                 Icon(Icons.hourglass_bottom, color: Colors.black, size: 36),
                 const SizedBox(width: 8),
                 Text(
@@ -154,21 +116,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Campo E-mail
                   TextField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
                       labelText: 'E-mail',
                       prefixIcon: const Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                   const SizedBox(height: 16),
 
-                  // Campo Senha
                   TextField(
                     controller: _passwordController,
                     obscureText: _obscure,
@@ -179,32 +137,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
                         onPressed: () => setState(() => _obscure = !_obscure),
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                   const SizedBox(height: 20),
 
-                  // Checkbox + "Esqueceu a senha?"
-                  Row(
-                    children: [
-                      Checkbox(
-                        value: _rememberMe,
-                        onChanged: (value) => setState(() => _rememberMe = value ?? false),
-                        activeColor: AppColors.primaryLightYellow,
-                      ),
-                      const Expanded(child: Text('Lembre-se de mim')),
-                      TextButton(
-                        onPressed: () {
-                          // Navegar para recuperação de senha
-                        },
-                        child: Text(
-                          'Esqueceu a senha?',
-                          style: TextStyle(color: AppColors.blue),
-                        ),
-                      ),
-                    ],
+                  // Esqueceu a senha?
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        // Implementar depois
+                      },
+                      child: Text('Esqueceu a senha?', style: TextStyle(color: AppColors.blue)),
+                    ),
                   ),
                   const SizedBox(height: 24),
 
@@ -212,14 +158,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _isLoading ? null : _login,
+                      onPressed: _isLoading ? null : _signIn,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryLightYellow,
                         foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       child: _isLoading
                           ? const CircularProgressIndicator(color: Colors.black)
@@ -234,14 +178,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: OutlinedButton(
                       onPressed: _isLoading
                           ? null
-                          : () => Navigator.pushNamed(context, '/register'),
+                          : () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen())),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primaryLightYellow,
                         side: BorderSide(color: AppColors.primaryLightYellow, width: 2),
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       child: const Text('Criar conta', style: TextStyle(fontSize: 18)),
                     ),
