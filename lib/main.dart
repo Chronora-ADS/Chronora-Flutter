@@ -1,20 +1,50 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
+import 'package:chronora_flutter/login_screen.dart';
+import 'package:chronora_flutter/app_colors.dart';
+import 'package:chronora_flutter/home_screen.dart';
+import 'package:chronora_flutter/register_screen.dart'; 
 
 void main() {
-  runApp(const MainApp());
+  runApp(const MyApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
-
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Hello World!'),
+    return MaterialApp(
+      title: 'Auth Demo',
+      theme: ThemeData(
+        primaryColor: AppColors.primaryLightYellow,
+        scaffoldBackgroundColor: AppColors.black,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: AppColors.primaryDarkerYellow,
+          foregroundColor: AppColors.white,
         ),
+        colorScheme: ColorScheme.fromSwatch(
+          primarySwatch: MaterialColor(AppColors.primaryLightYellow.value, const <int, Color>{
+            50: Color(0xFFFFF8E1),
+            100: Color(0xFFFFECB3),
+            200: Color(0xFFFFE082),
+            300: Color(0xFFFFD54F),
+            400: Color(0xFFFFCA28),
+            500: AppColors.primaryLightYellow,
+            600: Color(0xFFFFB300),
+            700: Color(0xFFFFA000),
+            800: Color(0xFFFF8F00),
+            900: Color(0xFFFF6F00),
+          }),
+        ).copyWith(secondary: AppColors.blue),
       ),
+      initialRoute: '/login',
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/home': (context) => const HomeScreen(),
+        '/register': (context) => const RegisterScreen(), // NOVA ROTA
+      },
     );
   }
 }
+
+// Lembre-se de substituir 'your_app' no import pelo nome do seu package.
