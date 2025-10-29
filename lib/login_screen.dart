@@ -16,6 +16,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscure = true;
+  bool _rememberMe = false;
 
   Future<void> _signIn() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
@@ -38,7 +39,6 @@ class _LoginScreenState extends State<LoginScreen> {
           const SnackBar(content: Text('Erro ao autenticar. Verifique suas credenciais.')),
         );
       }
-      // Se sucesso, o AuthGate redireciona automaticamente
     } on Exception catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro: ${e.toString()}')),
@@ -68,127 +68,161 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
 
-          // Logo Chronora no canto superior esquerdo
+          // Logo Chronora real no canto superior esquerdo
           Padding(
             padding: const EdgeInsets.only(top: 40, left: 20),
-            child: Row(
-              children: [
-                Icon(Icons.hourglass_bottom, color: Colors.black, size: 36),
-                const SizedBox(width: 8),
-                Text(
-                  'Chronora',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-              ],
+            child: Image.asset(
+              'assets/logo_chronora.png',
+              width: 180,
+              height: 60,
+              fit: BoxFit.contain,
             ),
           ),
 
-          // Container centralizado
+          // Container centralizado com scroll
           Center(
-            child: Container(
-              width: 320,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Bem vindo!',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
+            child: SingleChildScrollView( // ✅ Adicionado para evitar overflow
+              padding: const EdgeInsets.symmetric(horizontal: 20), // Espaço lateral
+              child: Container(
+                width: 320,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                      labelText: 'E-mail',
-                      prefixIcon: const Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: _obscure,
-                    decoration: InputDecoration(
-                      labelText: 'Senha',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
-                        onPressed: () => setState(() => _obscure = !_obscure),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Bem vindo!',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
                       ),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                  ),
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 24),
 
-                  // Esqueceu a senha?
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {
-                        // Implementar depois
-                      },
-                      child: Text('Esqueceu a senha?', style: TextStyle(color: AppColors.blue)),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Botão Entrar
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _signIn,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryLightYellow,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        labelText: 'E-mail',
+                        prefixIcon: const Icon(Icons.email_outlined),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: _isLoading
-                          ? const CircularProgressIndicator(color: Colors.black)
-                          : const Text('Entrar', style: TextStyle(fontSize: 18)),
                     ),
-                  ),
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 16),
 
-                  // Botão Criar conta
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: _isLoading
-                          ? null
-                          : () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen())),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primaryLightYellow,
-                        side: BorderSide(color: AppColors.primaryLightYellow, width: 2),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: _obscure,
+                      decoration: InputDecoration(
+                        labelText: 'Senha',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
+                          onPressed: () => setState(() => _obscure = !_obscure),
+                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text('Criar conta', style: TextStyle(fontSize: 18)),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+
+                    // Linha com "Lembre de mim" e "Esqueceu a senha?"
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            setState(() {
+                              _rememberMe = !_rememberMe;
+                            });
+                          },
+                          focusColor: Colors.transparent,
+                          hoverColor: Colors.transparent,
+                          splashColor: Colors.transparent,
+                          child: Row(
+                            children: [
+                              Checkbox(
+                                value: _rememberMe,
+                                onChanged: (bool? value) {
+                                  setState(() {
+                                    _rememberMe = value ?? false;
+                                  });
+                                },
+                                checkColor: Colors.black,
+                                activeColor: AppColors.primaryLightYellow,
+                              ),
+                              const Text(
+                                'Lembre de mim',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            // Implementar depois
+                          },
+                          child: Text(
+                            'Esqueceu a senha?',
+                            style: TextStyle(color: AppColors.blue),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Botão Entrar
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _signIn,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryLightYellow,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: _isLoading
+                            ? const CircularProgressIndicator(color: Colors.black)
+                            : const Text('Entrar', style: TextStyle(fontSize: 18)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Botão Criar conta
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: _isLoading
+                            ? null
+                            : () => Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                              ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primaryLightYellow,
+                          side: BorderSide(color: AppColors.primaryLightYellow, width: 2),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Criar conta', style: TextStyle(fontSize: 18)),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
