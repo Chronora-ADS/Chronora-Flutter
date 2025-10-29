@@ -1,20 +1,32 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+// Suas telas e cores
 import 'package:chronora_flutter/login_screen.dart';
 import 'package:chronora_flutter/app_colors.dart';
 import 'package:chronora_flutter/home_screen.dart';
-import 'package:chronora_flutter/register_screen.dart'; 
+import 'package:chronora_flutter/register_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 🔑 Inicialize com as credenciais do SEU projeto no Supabase
+  await Supabase.initialize(
+    url: 'https://ggmujtkhkvlujdynkbkm.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdnbXVqdGtoa3ZsdWpkeW5rYmttIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2OTQ1MDQsImV4cCI6MjA3NzI3MDUwNH0.wchwPiPBUIh0qB94lPXxeXMnUzdDu6fMOwrnry-ffZE',
+  );
+
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Auth Demo',
+      title: 'Chronora',
       theme: ThemeData(
         primaryColor: AppColors.primaryLightYellow,
         scaffoldBackgroundColor: AppColors.black,
@@ -41,10 +53,8 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
-        '/register': (context) => const RegisterScreen(), // NOVA ROTA
+        '/register': (context) => const RegisterScreen(),
       },
     );
   }
 }
-
-// Lembre-se de substituir 'your_app' no import pelo nome do seu package.
