@@ -1,11 +1,11 @@
 // lib/main.dart
+import 'package:chronora_flutter/home_screen.dart';
+import 'package:chronora_flutter/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:chronora_flutter/login_screen.dart';
 import 'package:chronora_flutter/app_colors.dart';
-import 'package:chronora_flutter/home_screen.dart';
-import 'package:chronora_flutter/register_screen.dart';
+import 'package:chronora_flutter/app_routes.dart'; // 👈 importado
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,11 +49,11 @@ class MyApp extends StatelessWidget {
         ).copyWith(secondary: AppColors.blue),
       ),
       home: const AuthGate(),
+      routes: AppRoutes.routes, // 👈 rotas nomeadas registradas
     );
   }
 }
 
-// Widget de controle de autenticação
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 

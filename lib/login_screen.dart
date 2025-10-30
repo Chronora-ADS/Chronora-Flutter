@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:chronora_flutter/app_colors.dart';
-import 'package:chronora_flutter/register_screen.dart';
+import 'package:chronora_flutter/app_routes.dart'; // 👈 importado
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -60,15 +60,12 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Fundo com imagem
           Positioned.fill(
             child: Image.asset(
               'assets/background_login.png',
               fit: BoxFit.cover,
             ),
           ),
-
-          // Logo Chronora real no canto superior esquerdo
           Padding(
             padding: const EdgeInsets.only(top: 40, left: 20),
             child: Image.asset(
@@ -78,11 +75,9 @@ class _LoginScreenState extends State<LoginScreen> {
               fit: BoxFit.contain,
             ),
           ),
-
-          // Container centralizado com scroll
           Center(
-            child: SingleChildScrollView( // ✅ Adicionado para evitar overflow
-              padding: const EdgeInsets.symmetric(horizontal: 20), // Espaço lateral
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Container(
                 width: 320,
                 padding: const EdgeInsets.all(24),
@@ -109,7 +104,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -120,7 +114,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     TextField(
                       controller: _passwordController,
                       obscureText: _obscure,
@@ -135,38 +128,26 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-
-                    // Linha com "Lembre de mim" e "Esqueceu a senha?"
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         InkWell(
                           onTap: () {
-                            setState(() {
-                              _rememberMe = !_rememberMe;
-                            });
+                            setState(() => _rememberMe = !_rememberMe);
                           },
-                          focusColor: Colors.transparent,
-                          hoverColor: Colors.transparent,
-                          splashColor: Colors.transparent,
                           child: Row(
                             children: [
                               Checkbox(
                                 value: _rememberMe,
                                 onChanged: (bool? value) {
-                                  setState(() {
-                                    _rememberMe = value ?? false;
-                                  });
+                                  setState(() => _rememberMe = value ?? false);
                                 },
                                 checkColor: Colors.black,
                                 activeColor: AppColors.primaryLightYellow,
                               ),
                               const Text(
                                 'Lembre de mim',
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                ),
+                                style: TextStyle(color: Colors.black, fontSize: 14),
                               ),
                             ],
                           ),
@@ -183,8 +164,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
-
-                    // Botão Entrar
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -201,17 +180,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
-                    // Botão Criar conta
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
                         onPressed: _isLoading
                             ? null
-                            : () => Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                              ),
+                            : () => Navigator.pushNamed(context, AppRoutes.signup), // 👈 navegação nomeada
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.primaryLightYellow,
                           side: BorderSide(color: AppColors.primaryLightYellow, width: 2),

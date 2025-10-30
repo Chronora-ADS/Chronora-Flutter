@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:chronora_flutter/app_colors.dart';
+import 'package:chronora_flutter/app_routes.dart'; // 👈 importado
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -65,7 +66,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SnackBar(content: Text('Conta criada! Verifique seu e-mail para confirmar.')),
         );
         if (!mounted) return;
-        Navigator.pop(context); // Volta para login
+        Navigator.pop(context); // ou: Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
       }
     } on Exception catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -95,7 +96,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               fit: BoxFit.cover,
             ),
           ),
-
           Padding(
             padding: const EdgeInsets.only(top: 40, left: 20),
             child: Row(
@@ -113,7 +113,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ],
             ),
           ),
-
           Center(
             child: Container(
               width: 320,
@@ -142,7 +141,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -154,7 +152,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     TextField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
@@ -171,7 +168,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     TextField(
                       controller: _confirmPasswordController,
                       obscureText: _obscureConfirmPassword,
@@ -187,7 +183,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-
                     Row(
                       children: [
                         Checkbox(
@@ -208,7 +203,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
-
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -225,7 +219,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -233,7 +226,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         TextButton(
                           onPressed: _isLoading
                               ? null
-                              : () => Navigator.pop(context),
+                              : () => Navigator.pop(context), // ou: Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false),
                           child: const Text('Faça login', style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       ],
