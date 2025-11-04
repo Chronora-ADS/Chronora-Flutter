@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
-import 'features/auth/pages/login_page.dart';
+
+import 'app/routes.dart';
 
 void main() {
-    runApp(const MyApp());
+    runApp(const ChronoraFlutter());
 }
 
-class MyApp extends StatelessWidget {
-    const MyApp({super.key});
+class ChronoraFlutter extends StatelessWidget {
+    const ChronoraFlutter({super.key});
+
     @override
     Widget build(BuildContext context) {
         return MaterialApp(
-            title: 'Chronora',
-            theme: ThemeData(
-                primarySwatch: Colors.amber,
-                fontFamily: 'Roboto',
-                scaffoldBackgroundColor: const Color(0xFF0B0C0C),
-            ),
-            home: const LoginPage(),
-            debugShowCheckedModeBanner: false,
+        title: 'Chronora',
+        theme: ThemeData(
+            primarySwatch: Colors.amber,
+            fontFamily: 'Roboto',
+            scaffoldBackgroundColor: const Color(0xFF0B0C0C),
+        ),
+        initialRoute: AppRoutes.login,
+        routes: AppRoutes.routes,
+        debugShowCheckedModeBanner: false,
         );
     }
 }
