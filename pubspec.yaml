@@ -1,23 +1,26 @@
-name: chronora_flutter
-description: "Aplicativo Chronora com autenticação Supabase"
+name: chronora
+description: Front-end Chronora com Flutter e conectado ao Back-end Spring Boot
+
 publish_to: 'none'
-version: 0.1.0
+
+version: 1.0.0+1
 
 environment:
-  sdk: ^3.9.0
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  supabase_flutter: ^2.10.3
+  http: ^1.1.0
+  file_picker: ^9.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^3.0.0
 
 flutter:
   uses-material-design: true
+
   assets:
-    - assets/background_login.png
-    - assets/logo_chronora.png
+    - assets/img/
