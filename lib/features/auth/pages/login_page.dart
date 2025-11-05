@@ -1,5 +1,7 @@
+import 'package:chronora/app/routes.dart';
 import 'package:chronora/features/auth/pages/account_creation_page.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../shared/widgets/background_widget.dart';
 import '../widgets/auth_text_field.dart';
 import '../../../core/constants/app_colors.dart';
@@ -18,6 +20,16 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
+  Future<void> _saveToken(String token) async {
+  try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('auth_token', token);
+      print('Token salvo com sucesso!');
+    } catch (e) {
+      print('Erro ao salvar token: $e');
+    }
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -33,15 +45,14 @@ class _LoginPageState extends State<LoginPage> {
 
       if (response.statusCode == 200) {
         final token = response.body;
-        // Aqui você pode armazenar o token se quiser
-        // await AuthService.saveToken(token);
+        
+        await _saveToken(token);
         
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login realizado com sucesso!')),
         );
         
-        // Navegar para a página principal
-        // Navigator.pushReplacementNamed(context, '/main');
+        Navigator.pushReplacementNamed(context, AppRoutes.main);
         print('Token recebido: $token');
       } else {
         final error = response.body;

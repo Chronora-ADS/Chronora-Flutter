@@ -1,5 +1,6 @@
 import 'package:chronora/features/auth/pages/account_creation_page.dart';
 import 'package:chronora/features/auth/pages/login_page.dart';
+import 'package:chronora/features/auth/pages/main_page.dart';
 import 'package:flutter/material.dart';
 
 class AppRoutes {
@@ -12,7 +13,7 @@ class AppRoutes {
     return {
       login: (context) => const LoginPage(),
       accountCreation: (context) => const AccountCreationPage(),
-      // main: (context) => const MainPage(), // Adicionar depois
+      main: (context) => const MainPage(),
       // serviceCreation: (context) => const ServiceCreationPage(), // Adicionar depois
     };
   }
