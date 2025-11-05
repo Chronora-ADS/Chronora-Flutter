@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:chronora/features/auth/pages/account_creation_page.dart';
 import 'package:flutter/material.dart';
 import '../../../../shared/widgets/background_widget.dart';

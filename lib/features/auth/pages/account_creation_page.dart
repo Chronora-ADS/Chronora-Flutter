@@ -9,7 +9,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/services/api_service.dart';
 
 class AccountCreationPage extends StatefulWidget {
-  const AccountCreationPage({Key? key}) : super(key: key);
+  const AccountCreationPage({super.key});
 
   @override
   _AccountCreationPageState createState() => _AccountCreationPageState();
@@ -193,7 +193,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
+                  const Text(
                     'Bem vindo!',
                     style: TextStyle(
                       fontSize: 24,
@@ -248,7 +248,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                     child: OutlinedButton(
                       onPressed: _pickFile,
                       style: OutlinedButton.styleFrom(
-                        side: BorderSide(
+                        side: const BorderSide(
                           color: AppColors.amareloUmPoucoEscuro,
                           width: 3,
                         ),
@@ -263,7 +263,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(
+                          const Expanded(
                             child: Text(
                               'Documento com foto',
                               style: TextStyle(
@@ -320,7 +320,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
-                          : Text(
+                          : const Text(
                               'Criar Conta',
                               style: TextStyle(
                                 fontSize: 22,
@@ -343,7 +343,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                               Navigator.pop(context);
                             },
                       style: OutlinedButton.styleFrom(
-                        side: BorderSide(
+                        side: const BorderSide(
                           color: AppColors.amareloUmPoucoEscuro,
                           width: 3,
                         ),
