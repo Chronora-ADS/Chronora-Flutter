@@ -1,6 +1,6 @@
 import 'package:chronora/features/auth/pages/account_creation_page.dart';
 import 'package:chronora/features/auth/pages/login_page.dart';
-import 'package:chronora/features/auth/pages/main_page.dart';
+import 'package:chronora/features/main/main_page.dart';
 import 'package:flutter/material.dart';
 
 class AppRoutes {
