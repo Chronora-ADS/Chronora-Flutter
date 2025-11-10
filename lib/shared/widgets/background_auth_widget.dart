@@ -5,7 +5,8 @@ class BackgroundWidget extends StatelessWidget {
   final Widget child;
   final bool showLogo;
 
-  const BackgroundWidget({super.key, required this.child, this.showLogo = true});
+  const BackgroundWidget(
+      {super.key, required this.child, this.showLogo = true});
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +20,7 @@ class BackgroundWidget extends StatelessWidget {
               Positioned(
                 left: 0,
                 top: 0,
-                child: Container(
+                child: SizedBox(
                   width: constraints.maxWidth * 0.8,
                   child: Stack(
                     children: [
@@ -28,7 +29,7 @@ class BackgroundWidget extends StatelessWidget {
                         width: constraints.maxWidth * 0.8,
                         fit: BoxFit.cover,
                       ),
-                      
+
                       // Logo POSICIONADA DENTRO DO TRIÂNGULO
                       if (showLogo)
                         Positioned(
@@ -36,7 +37,8 @@ class BackgroundWidget extends StatelessWidget {
                           top: constraints.maxHeight * 0.03,
                           child: Container(
                             constraints: BoxConstraints(
-                              maxWidth: constraints.maxWidth * 0.6, // Limita a largura máxima
+                              maxWidth: constraints.maxWidth *
+                                  0.6, // Limita a largura máxima
                             ),
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
@@ -54,7 +56,8 @@ class BackgroundWidget extends StatelessWidget {
                                   child: Text(
                                     'Chronora',
                                     style: TextStyle(
-                                      fontSize: _getResponsiveFontSize(constraints),
+                                      fontSize:
+                                          _getResponsiveFontSize(constraints),
                                       fontWeight: FontWeight.bold,
                                       color: AppColors.preto,
                                     ),
@@ -103,7 +106,7 @@ class BackgroundWidget extends StatelessWidget {
 
   double _getResponsiveFontSize(BoxConstraints constraints) {
     final double width = constraints.maxWidth;
-    
+
     if (width < 350) return 16;
     if (width < 400) return 18;
     return 20;

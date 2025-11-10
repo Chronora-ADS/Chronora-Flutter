@@ -16,14 +16,19 @@ class MainPage extends StatefulWidget {
 }
 
 class _MainPageState extends State<MainPage> {
-  final List<String> categorias = ["Pintura", "Mecânica", "Engenharia", "Elétrica"];
+  final List<String> categorias = [
+    "Pintura",
+    "Mecânica",
+    "Engenharia",
+    "Elétrica"
+  ];
   double tempoValue = 5.0;
   String avaliacaoValue = "0";
   String ordenacaoValue = "0";
   String categoriaValue = "";
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _categoriaController = TextEditingController();
-  
+
   List<Service> services = [];
   bool isLoading = true;
   String errorMessage = '';
@@ -41,7 +46,8 @@ class _MainPageState extends State<MainPage> {
       if (token == null) {
         setState(() {
           isLoading = false;
-          errorMessage = "Você precisa estar logado para visualizar os serviços.";
+          errorMessage =
+              "Você precisa estar logado para visualizar os serviços.";
         });
         return;
       }
@@ -80,23 +86,23 @@ class _MainPageState extends State<MainPage> {
         children: [
           // Header Fixo
           _buildHeader(),
-          
+
           Expanded(
             child: SingleChildScrollView(
               child: Column(
                 children: [
                   const SizedBox(height: 40), // Reduzido de 60
-                  
+
                   // Make Request Section
                   _buildMakeRequestSection(),
-                  
+
                   const SizedBox(height: 30), // Reduzido de 40
-                  
+
                   // Filters
                   _buildFiltersSection(),
-                  
+
                   const SizedBox(height: 16), // Reduzido de 20
-                  
+
                   // Services Grid
                   _buildServicesGrid(),
                 ],
@@ -134,7 +140,7 @@ class _MainPageState extends State<MainPage> {
               ),
             ],
           ),
-          
+
           // Search Bar
           SizedBox(
             width: MediaQuery.of(context).size.width * 0.4,
@@ -149,15 +155,17 @@ class _MainPageState extends State<MainPage> {
                   borderRadius: BorderRadius.circular(8), // Reduzido de 10
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), // Vertical reduzido
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 10), // Vertical reduzido
                 suffixIcon: Padding(
                   padding: const EdgeInsets.all(6.0), // Reduzido de 8
-                  child: Image.asset('assets/img/Search.png', width: 18), // Reduzido de 20
+                  child: Image.asset('assets/img/Search.png',
+                      width: 18), // Reduzido de 20
                 ),
               ),
             ),
           ),
-          
+
           // Navbar Buttons
           Row(
             children: [
@@ -165,16 +173,19 @@ class _MainPageState extends State<MainPage> {
                 onPressed: () {
                   Navigator.pushNamed(context, '/service-creation');
                 },
-                icon: Image.asset('assets/img/Plus.png', width: 22), // Reduzido de 24
+                icon: Image.asset('assets/img/Plus.png',
+                    width: 22), // Reduzido de 24
                 padding: const EdgeInsets.all(6), // Adicionado padding reduzido
               ),
               const SizedBox(width: 6), // Reduzido de 8
               // Chronos
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3), // Reduzido
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 6, vertical: 3), // Reduzido
                 child: Row(
                   children: [
-                    Image.asset('assets/img/Coin.png', width: 18), // Reduzido de 20
+                    Image.asset('assets/img/Coin.png',
+                        width: 18), // Reduzido de 20
                     const SizedBox(width: 3), // Reduzido de 4
                     const Text(
                       '123',
@@ -189,17 +200,20 @@ class _MainPageState extends State<MainPage> {
               const SizedBox(width: 6), // Reduzido de 8
               IconButton(
                 onPressed: () {},
-                icon: Image.asset('assets/img/Briefcase.png', width: 22), // Reduzido de 24
+                icon: Image.asset('assets/img/Briefcase.png',
+                    width: 22), // Reduzido de 24
                 padding: const EdgeInsets.all(6),
               ),
               IconButton(
                 onPressed: () {},
-                icon: Image.asset('assets/img/Profile.png', width: 22), // Reduzido de 24
+                icon: Image.asset('assets/img/Profile.png',
+                    width: 22), // Reduzido de 24
                 padding: const EdgeInsets.all(6),
               ),
               IconButton(
                 onPressed: () {},
-                icon: Image.asset('assets/img/Settings.png', width: 22), // Reduzido de 24
+                icon: Image.asset('assets/img/Settings.png',
+                    width: 22), // Reduzido de 24
                 padding: const EdgeInsets.all(6),
               ),
             ],
@@ -230,7 +244,8 @@ class _MainPageState extends State<MainPage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.branco,
               foregroundColor: AppColors.preto,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10), // Reduzido
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 32, vertical: 10), // Reduzido
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16), // Reduzido de 20
               ),
@@ -256,7 +271,8 @@ class _MainPageState extends State<MainPage> {
             ),
           ),
           const SizedBox(height: 16), // Reduzido de 20
-          Image.asset('assets/img/White Lines.png', width: 80), // Reduzido de 100
+          Image.asset('assets/img/White Lines.png',
+              width: 80), // Reduzido de 100
         ],
       ),
     );
@@ -280,11 +296,26 @@ class _MainPageState extends State<MainPage> {
                 DropdownButtonFormField<String>(
                   initialValue: avaliacaoValue,
                   items: const [
-                    DropdownMenuItem(value: "0", child: Text("0 - 1 estrelas", style: TextStyle(fontSize: 12))),
-                    DropdownMenuItem(value: "1", child: Text("1 - 2 estrelas", style: TextStyle(fontSize: 12))),
-                    DropdownMenuItem(value: "2", child: Text("2 - 3 estrelas", style: TextStyle(fontSize: 12))),
-                    DropdownMenuItem(value: "3", child: Text("3 - 4 estrelas", style: TextStyle(fontSize: 12))),
-                    DropdownMenuItem(value: "4", child: Text("4 - 5 estrelas", style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(
+                        value: "0",
+                        child: Text("0 - 1 estrelas",
+                            style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(
+                        value: "1",
+                        child: Text("1 - 2 estrelas",
+                            style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(
+                        value: "2",
+                        child: Text("2 - 3 estrelas",
+                            style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(
+                        value: "3",
+                        child: Text("3 - 4 estrelas",
+                            style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(
+                        value: "4",
+                        child: Text("4 - 5 estrelas",
+                            style: TextStyle(fontSize: 12))),
                   ],
                   onChanged: (value) {
                     setState(() {
@@ -298,17 +329,19 @@ class _MainPageState extends State<MainPage> {
                       borderRadius: BorderRadius.circular(12), // Reduzido de 20
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // Reduzido
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8), // Reduzido
                   ),
                   style: const TextStyle(fontSize: 12), // Fonte menor
                 ),
               ),
-              
+
               // Tempo Slider
               _buildFilterItem(
                 'Tempo',
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12), // Reduzido
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12), // Reduzido
                   decoration: BoxDecoration(
                     color: AppColors.branco,
                     borderRadius: BorderRadius.circular(12), // Reduzido de 20
@@ -329,15 +362,20 @@ class _MainPageState extends State<MainPage> {
                       ),
                       Positioned(
                         bottom: 20, // Ajustado
-                        left: (tempoValue - 5) / 95 * (MediaQuery.of(context).size.width * 0.7 / 4 - 24),
+                        left: (tempoValue - 5) /
+                            95 *
+                            (MediaQuery.of(context).size.width * 0.7 / 4 - 24),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // Reduzido
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2), // Reduzido
                           decoration: BoxDecoration(
                             color: AppColors.preto,
                             borderRadius: BorderRadius.circular(3), // Reduzido
                           ),
                           child: Text(
-                            tempoValue == 5 ? "0-5" : "${tempoValue.toInt() - 5}-${tempoValue.toInt()}",
+                            tempoValue == 5
+                                ? "0-5"
+                                : "${tempoValue.toInt() - 5}-${tempoValue.toInt()}",
                             style: const TextStyle(
                               color: AppColors.branco,
                               fontSize: 10, // Reduzido
@@ -349,7 +387,7 @@ class _MainPageState extends State<MainPage> {
                   ),
                 ),
               ),
-              
+
               // Categorias
               _buildFilterItem(
                 'Categorias',
@@ -364,23 +402,39 @@ class _MainPageState extends State<MainPage> {
                       borderRadius: BorderRadius.circular(12), // Reduzido de 20
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), // Reduzido
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10), // Reduzido
                   ),
                   style: const TextStyle(fontSize: 12), // Fonte menor
                 ),
               ),
-              
+
               // Ordenação
               _buildFilterItem(
                 'Ordenação',
                 DropdownButtonFormField<String>(
                   initialValue: ordenacaoValue,
                   items: const [
-                    DropdownMenuItem(value: "0", child: Text("Mais recentes", style: TextStyle(fontSize: 12))),
-                    DropdownMenuItem(value: "1", child: Text("Mais antigos", style: TextStyle(fontSize: 12))),
-                    DropdownMenuItem(value: "2", child: Text("Melhores avaliados", style: TextStyle(fontSize: 12))),
-                    DropdownMenuItem(value: "3", child: Text("Maior tempo", style: TextStyle(fontSize: 12))),
-                    DropdownMenuItem(value: "4", child: Text("Menor tempo", style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(
+                        value: "0",
+                        child: Text("Mais recentes",
+                            style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(
+                        value: "1",
+                        child: Text("Mais antigos",
+                            style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(
+                        value: "2",
+                        child: Text("Melhores avaliados",
+                            style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(
+                        value: "3",
+                        child: Text("Maior tempo",
+                            style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(
+                        value: "4",
+                        child: Text("Menor tempo",
+                            style: TextStyle(fontSize: 12))),
                   ],
                   onChanged: (value) {
                     setState(() {
@@ -394,7 +448,8 @@ class _MainPageState extends State<MainPage> {
                       borderRadius: BorderRadius.circular(12), // Reduzido de 20
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // Reduzido
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8), // Reduzido
                   ),
                   style: const TextStyle(fontSize: 12), // Fonte menor
                 ),
@@ -448,12 +503,12 @@ class _MainPageState extends State<MainPage> {
     }
 
     if (services.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40),
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
         child: Center(
           child: Text(
             'Nenhum serviço encontrado.',
-            style: const TextStyle(color: AppColors.branco),
+            style: TextStyle(color: AppColors.branco),
           ),
         ),
       );
