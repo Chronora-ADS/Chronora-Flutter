@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import '../../../shared/widgets/background_auth_widget.dart';
+import '../../../../shared/widgets/background_widget.dart';
 import '../widgets/auth_text_field.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/api_service.dart';
@@ -175,15 +175,14 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
     return BackgroundWidget(
       child: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16), // Padding adicional
           child: Container(
-            width: MediaQuery.of(context).size.width * 0.9, // Alterado de 0.3 para 0.9
+            width: MediaQuery.of(context).size.width * 0.3,
             constraints: BoxConstraints(
               maxWidth: 400,
               minHeight: MediaQuery.of(context).size.height * 0.7,
             ),
-            margin: const EdgeInsets.all(16), // Reduzido de 20 para 16
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20), // Horizontal reduzido
+            margin: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
             decoration: BoxDecoration(
               color: AppColors.branco,
               borderRadius: BorderRadius.circular(40),
@@ -201,57 +200,51 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                       fontWeight: FontWeight.bold,
                       color: AppColors.preto,
                     ),
-                    textAlign: TextAlign.center, // Adicionado
                   ),
-                  const SizedBox(height: 20), // Reduzido de 30
+                  const SizedBox(height: 30),
                   
                   AuthTextField(
                     hintText: 'Nome completo',
                     controller: _nameController,
-                    validator: _validateName, // Adicionado validator
                   ),
                   
-                  const SizedBox(height: 12), // Reduzido de 16
+                  const SizedBox(height: 16),
                   
                   AuthTextField(
                     hintText: 'E-mail',
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    validator: _validateEmail, // Adicionado validator
                   ),
                   
-                  const SizedBox(height: 12), // Reduzido de 16
+                  const SizedBox(height: 16),
                   
                   AuthTextField(
-                    hintText: 'Número de celular',
+                    hintText: 'Número de celular (com DDD)',
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
-                    validator: _validatePhone, // Adicionado validator
                   ),
                   
-                  const SizedBox(height: 12), // Reduzido de 16
+                  const SizedBox(height: 16),
                   
                   AuthTextField(
                     hintText: 'Senha',
                     controller: _passwordController,
                     obscureText: true,
-                    validator: _validatePassword, // Adicionado validator
                   ),
                   
-                  const SizedBox(height: 12), // Reduzido de 16
+                  const SizedBox(height: 16),
                   
                   AuthTextField(
                     hintText: 'Confirmar Senha',
                     controller: _confirmPasswordController,
                     obscureText: true,
-                    validator: _validateConfirmPassword,
                   ),
                   
                   const SizedBox(height: 20),
                   
-                  // Botão para anexar documento - ALTURA REDUZIDA
+                  // Botão para anexar documento
                   SizedBox(
-                    width: double.infinity,
+                    width: MediaQuery.of(context).size.width * 0.79 * 0.3,
                     child: OutlinedButton(
                       onPressed: _pickFile,
                       style: OutlinedButton.styleFrom(
@@ -260,8 +253,8 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                           width: 3,
                         ),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 16, // Reduzido de 20
-                          vertical: 10, // Reduzido de 12
+                          horizontal: 20,
+                          vertical: 12,
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(4),
@@ -270,22 +263,22 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(
+                          const Expanded(
                             child: Text(
                               'Documento com foto',
                               style: TextStyle(
-                                fontSize: _getResponsiveFontSize(context),
+                                fontSize: 22,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.amareloUmPoucoEscuro,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 8), // Reduzido de 10
+                          const SizedBox(width: 10),
                           Image.asset(
                             'assets/img/Import.png',
-                            width: 32, // Reduzido de 40
-                            height: 32, // Reduzido de 40
+                            width: 40,
+                            height: 40,
                           ),
                         ],
                       ),
@@ -293,7 +286,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                   ),
                   
                   if (_fileName != null) ...{
-                    const SizedBox(height: 8), // Reduzido de 10
+                    const SizedBox(height: 10),
                     Text(
                       _fileName!,
                       style: const TextStyle(
@@ -301,21 +294,19 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                         color: Colors.grey,
                       ),
                       textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 2,
                     ),
                   },
                   
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 30),
                   
-                  // Botão de criar conta - ALTURA REDUZIDA
+                  // Botão de criar conta
                   SizedBox(
-                    width: double.infinity,
+                    width: MediaQuery.of(context).size.width * 0.79 * 0.3,
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _submitForm,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.amareloUmPoucoEscuro,
-                        padding: const EdgeInsets.symmetric(vertical: 10), // Reduzido de 16
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(4),
                         ),
@@ -329,10 +320,10 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
-                          : Text(
+                          : const Text(
                               'Criar Conta',
                               style: TextStyle(
-                                fontSize: _getResponsiveFontSize(context),
+                                fontSize: 22,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.branco,
                               ),
@@ -340,11 +331,11 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                     ),
                   ),
                   
-                  const SizedBox(height: 12), // Aumentado de 8 para 12
+                  const SizedBox(height: 16),
                   
-                  // Botão de voltar para login - ALTURA REDUZIDA
+                  // Botão de voltar para login
                   SizedBox(
-                    width: double.infinity,
+                    width: MediaQuery.of(context).size.width * 0.79 * 0.3,
                     child: OutlinedButton(
                       onPressed: _isLoading
                           ? null
@@ -356,15 +347,15 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                           color: AppColors.amareloUmPoucoEscuro,
                           width: 3,
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 10), // Reduzido de 16
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
-                      child: Text(
+                      child: const Text(
                         'Voltar para Login',
                         style: TextStyle(
-                          fontSize: _getResponsiveFontSize(context), // Fonte responsiva
+                          fontSize: 22,
                           fontWeight: FontWeight.bold,
                           color: AppColors.amareloUmPoucoEscuro,
                         ),
@@ -378,15 +369,6 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
         ),
       ),
     );
-  }
-
-  // Função para tamanho de fonte responsivo
-  double _getResponsiveFontSize(BuildContext context) {
-    final double width = MediaQuery.of(context).size.width;
-    
-    if (width < 350) return 18;
-    if (width < 400) return 20;
-    return 22;
   }
 
   @override
