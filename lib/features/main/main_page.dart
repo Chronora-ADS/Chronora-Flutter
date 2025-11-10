@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:chronora/core/models/service_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
@@ -86,17 +85,17 @@ class _MainPageState extends State<MainPage> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  const SizedBox(height: 60),
+                  const SizedBox(height: 40), // Reduzido de 60
                   
                   // Make Request Section
                   _buildMakeRequestSection(),
                   
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 30), // Reduzido de 40
                   
                   // Filters
                   _buildFiltersSection(),
                   
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16), // Reduzido de 20
                   
                   // Services Grid
                   _buildServicesGrid(),
@@ -111,8 +110,8 @@ class _MainPageState extends State<MainPage> {
 
   Widget _buildHeader() {
     return Container(
-      height: 70,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      height: 60, // Reduzido de 70
+      padding: const EdgeInsets.symmetric(horizontal: 16), // Reduzido de 20
       color: AppColors.amareloClaro,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -122,14 +121,14 @@ class _MainPageState extends State<MainPage> {
             children: [
               Image.asset(
                 'assets/img/LogoBackgroundYellow.png',
-                width: 40,
-                height: 40,
+                width: 32, // Reduzido de 40
+                height: 32, // Reduzido de 40
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6), // Reduzido de 8
               const Text(
                 'Chronora',
                 style: TextStyle(
-                  fontSize: 24,
+                  fontSize: 20, // Reduzido de 24
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -147,13 +146,13 @@ class _MainPageState extends State<MainPage> {
                 filled: true,
                 fillColor: AppColors.branco,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8), // Reduzido de 10
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), // Vertical reduzido
                 suffixIcon: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Image.asset('assets/img/Search.png', width: 20),
+                  padding: const EdgeInsets.all(6.0), // Reduzido de 8
+                  child: Image.asset('assets/img/Search.png', width: 18), // Reduzido de 20
                 ),
               ),
             ),
@@ -166,37 +165,42 @@ class _MainPageState extends State<MainPage> {
                 onPressed: () {
                   Navigator.pushNamed(context, '/service-creation');
                 },
-                icon: Image.asset('assets/img/Plus.png', width: 24),
+                icon: Image.asset('assets/img/Plus.png', width: 22), // Reduzido de 24
+                padding: const EdgeInsets.all(6), // Adicionado padding reduzido
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6), // Reduzido de 8
               // Chronos
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3), // Reduzido
                 child: Row(
                   children: [
-                    Image.asset('assets/img/Coin.png', width: 20),
-                    const SizedBox(width: 4),
+                    Image.asset('assets/img/Coin.png', width: 18), // Reduzido de 20
+                    const SizedBox(width: 3), // Reduzido de 4
                     const Text(
                       '123',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
+                        fontSize: 14, // Adicionado tamanho menor
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6), // Reduzido de 8
               IconButton(
                 onPressed: () {},
-                icon: Image.asset('assets/img/Briefcase.png', width: 24),
+                icon: Image.asset('assets/img/Briefcase.png', width: 22), // Reduzido de 24
+                padding: const EdgeInsets.all(6),
               ),
               IconButton(
                 onPressed: () {},
-                icon: Image.asset('assets/img/Profile.png', width: 24),
+                icon: Image.asset('assets/img/Profile.png', width: 22), // Reduzido de 24
+                padding: const EdgeInsets.all(6),
               ),
               IconButton(
                 onPressed: () {},
-                icon: Image.asset('assets/img/Settings.png', width: 24),
+                icon: Image.asset('assets/img/Settings.png', width: 22), // Reduzido de 24
+                padding: const EdgeInsets.all(6),
               ),
             ],
           ),
@@ -214,11 +218,11 @@ class _MainPageState extends State<MainPage> {
             'As horas acumuladas no seu banco representam oportunidades reais de ação.',
             style: TextStyle(
               color: AppColors.branco,
-              fontSize: 18,
+              fontSize: 16, // Reduzido de 18
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16), // Reduzido de 20
           ElevatedButton(
             onPressed: () {
               Navigator.pushNamed(context, '/service-creation');
@@ -226,9 +230,9 @@ class _MainPageState extends State<MainPage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.branco,
               foregroundColor: AppColors.preto,
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10), // Reduzido
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16), // Reduzido de 20
               ),
             ),
             child: Row(
@@ -236,23 +240,23 @@ class _MainPageState extends State<MainPage> {
               children: [
                 const Text(
                   'Faça um pedido',
-                  style: TextStyle(fontSize: 18),
+                  style: TextStyle(fontSize: 16), // Reduzido de 18
                 ),
-                const SizedBox(width: 8),
-                Image.asset('assets/img/Plus.png', width: 20),
+                const SizedBox(width: 6), // Reduzido de 8
+                Image.asset('assets/img/Plus.png', width: 18), // Reduzido de 20
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16), // Reduzido de 20
           const Text(
             'Ou realize o de alguém',
             style: TextStyle(
               color: AppColors.branco,
-              fontSize: 18,
+              fontSize: 16, // Reduzido de 18
             ),
           ),
-          const SizedBox(height: 20),
-          Image.asset('assets/img/White Lines.png', width: 100),
+          const SizedBox(height: 16), // Reduzido de 20
+          Image.asset('assets/img/White Lines.png', width: 80), // Reduzido de 100
         ],
       ),
     );
@@ -267,8 +271,8 @@ class _MainPageState extends State<MainPage> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             crossAxisCount: 4,
-            crossAxisSpacing: 20,
-            childAspectRatio: 3,
+            crossAxisSpacing: 16, // Reduzido de 20
+            childAspectRatio: 3.2, // Ajustado para compensar altura reduzida
             children: [
               // Avaliação
               _buildFilterItem(
@@ -276,11 +280,11 @@ class _MainPageState extends State<MainPage> {
                 DropdownButtonFormField<String>(
                   initialValue: avaliacaoValue,
                   items: const [
-                    DropdownMenuItem(value: "0", child: Text("0 - 1 estrelas")),
-                    DropdownMenuItem(value: "1", child: Text("1 - 2 estrelas")),
-                    DropdownMenuItem(value: "2", child: Text("2 - 3 estrelas")),
-                    DropdownMenuItem(value: "3", child: Text("3 - 4 estrelas")),
-                    DropdownMenuItem(value: "4", child: Text("4 - 5 estrelas")),
+                    DropdownMenuItem(value: "0", child: Text("0 - 1 estrelas", style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(value: "1", child: Text("1 - 2 estrelas", style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(value: "2", child: Text("2 - 3 estrelas", style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(value: "3", child: Text("3 - 4 estrelas", style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(value: "4", child: Text("4 - 5 estrelas", style: TextStyle(fontSize: 12))),
                   ],
                   onChanged: (value) {
                     setState(() {
@@ -291,11 +295,12 @@ class _MainPageState extends State<MainPage> {
                     filled: true,
                     fillColor: AppColors.branco,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(12), // Reduzido de 20
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // Reduzido
                   ),
+                  style: const TextStyle(fontSize: 12), // Fonte menor
                 ),
               ),
               
@@ -303,10 +308,10 @@ class _MainPageState extends State<MainPage> {
               _buildFilterItem(
                 'Tempo',
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 12), // Reduzido
                   decoration: BoxDecoration(
                     color: AppColors.branco,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(12), // Reduzido de 20
                   ),
                   child: Stack(
                     children: [
@@ -323,19 +328,19 @@ class _MainPageState extends State<MainPage> {
                         activeColor: AppColors.amareloClaro,
                       ),
                       Positioned(
-                        bottom: 25,
-                        left: (tempoValue - 5) / 95 * (MediaQuery.of(context).size.width * 0.7 / 4 - 32),
+                        bottom: 20, // Ajustado
+                        left: (tempoValue - 5) / 95 * (MediaQuery.of(context).size.width * 0.7 / 4 - 24),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // Reduzido
                           decoration: BoxDecoration(
                             color: AppColors.preto,
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(3), // Reduzido
                           ),
                           child: Text(
                             tempoValue == 5 ? "0-5" : "${tempoValue.toInt() - 5}-${tempoValue.toInt()}",
                             style: const TextStyle(
                               color: AppColors.branco,
-                              fontSize: 12,
+                              fontSize: 10, // Reduzido
                             ),
                           ),
                         ),
@@ -352,14 +357,16 @@ class _MainPageState extends State<MainPage> {
                   controller: _categoriaController,
                   decoration: InputDecoration(
                     hintText: 'Digite ou escolha',
+                    hintStyle: const TextStyle(fontSize: 12), // Fonte menor
                     filled: true,
                     fillColor: AppColors.branco,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(12), // Reduzido de 20
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), // Reduzido
                   ),
+                  style: const TextStyle(fontSize: 12), // Fonte menor
                 ),
               ),
               
@@ -369,11 +376,11 @@ class _MainPageState extends State<MainPage> {
                 DropdownButtonFormField<String>(
                   initialValue: ordenacaoValue,
                   items: const [
-                    DropdownMenuItem(value: "0", child: Text("Mais recentes")),
-                    DropdownMenuItem(value: "1", child: Text("Mais antigos")),
-                    DropdownMenuItem(value: "2", child: Text("Melhores avaliados")),
-                    DropdownMenuItem(value: "3", child: Text("Maior tempo")),
-                    DropdownMenuItem(value: "4", child: Text("Menor tempo")),
+                    DropdownMenuItem(value: "0", child: Text("Mais recentes", style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(value: "1", child: Text("Mais antigos", style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(value: "2", child: Text("Melhores avaliados", style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(value: "3", child: Text("Maior tempo", style: TextStyle(fontSize: 12))),
+                    DropdownMenuItem(value: "4", child: Text("Menor tempo", style: TextStyle(fontSize: 12))),
                   ],
                   onChanged: (value) {
                     setState(() {
@@ -384,11 +391,12 @@ class _MainPageState extends State<MainPage> {
                     filled: true,
                     fillColor: AppColors.branco,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(12), // Reduzido de 20
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // Reduzido
                   ),
+                  style: const TextStyle(fontSize: 12), // Fonte menor
                 ),
               ),
             ],
@@ -406,10 +414,10 @@ class _MainPageState extends State<MainPage> {
           title,
           style: const TextStyle(
             color: AppColors.branco,
-            fontSize: 16,
+            fontSize: 14, // Reduzido de 16
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6), // Reduzido de 8
         Expanded(child: child),
       ],
     );
@@ -417,27 +425,36 @@ class _MainPageState extends State<MainPage> {
 
   Widget _buildServicesGrid() {
     if (isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppColors.amareloClaro),
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.amareloClaro),
+          ),
         ),
       );
     }
 
     if (errorMessage.isNotEmpty) {
-      return Center(
-        child: Text(
-          errorMessage,
-          style: const TextStyle(color: AppColors.branco),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        child: Center(
+          child: Text(
+            errorMessage,
+            style: const TextStyle(color: AppColors.branco),
+          ),
         ),
       );
     }
 
     if (services.isEmpty) {
-      return const Center(
-        child: Text(
-          'Nenhum serviço encontrado.',
-          style: TextStyle(color: AppColors.branco),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        child: Center(
+          child: Text(
+            'Nenhum serviço encontrado.',
+            style: const TextStyle(color: AppColors.branco),
+          ),
         ),
       );
     }
@@ -449,9 +466,9 @@ class _MainPageState extends State<MainPage> {
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 4,
-          crossAxisSpacing: 20,
-          mainAxisSpacing: 20,
-          childAspectRatio: 0.7,
+          crossAxisSpacing: 16, // Reduzido de 20
+          mainAxisSpacing: 16, // Reduzido de 20
+          childAspectRatio: 0.65, // Ajustado para cards mais compactos
         ),
         itemCount: services.length,
         itemBuilder: (context, index) {
