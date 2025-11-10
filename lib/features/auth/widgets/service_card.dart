@@ -7,9 +7,9 @@ class ServiceCard extends StatelessWidget {
   final Service service;
 
   const ServiceCard({
-    Key? key,
+    super.key,
     required this.service,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

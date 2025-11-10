@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import '../../../../shared/widgets/background_widget.dart';
+import '../../../shared/widgets/background_auth_widget.dart';
 import '../widgets/auth_text_field.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/api_service.dart';
@@ -223,7 +223,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                   const SizedBox(height: 12), // Reduzido de 16
                   
                   AuthTextField(
-                    hintText: 'Número de celular (com DDD)',
+                    hintText: 'Número de celular',
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
                     validator: _validatePhone, // Adicionado validator
@@ -244,14 +244,14 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                     hintText: 'Confirmar Senha',
                     controller: _confirmPasswordController,
                     obscureText: true,
-                    validator: _validateConfirmPassword, // Adicionado validator
+                    validator: _validateConfirmPassword,
                   ),
                   
                   const SizedBox(height: 20),
                   
                   // Botão para anexar documento - ALTURA REDUZIDA
                   SizedBox(
-                    width: double.infinity, // Alterado de cálculo fixo
+                    width: double.infinity,
                     child: OutlinedButton(
                       onPressed: _pickFile,
                       style: OutlinedButton.styleFrom(
@@ -274,7 +274,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                             child: Text(
                               'Documento com foto',
                               style: TextStyle(
-                                fontSize: _getResponsiveFontSize(context), // Fonte responsiva
+                                fontSize: _getResponsiveFontSize(context),
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.amareloUmPoucoEscuro,
                               ),
@@ -301,16 +301,16 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                         color: Colors.grey,
                       ),
                       textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis, // Adicionado
-                      maxLines: 2, // Adicionado
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2,
                     ),
                   },
                   
-                  const SizedBox(height: 20), // Reduzido de 30
+                  const SizedBox(height: 12),
                   
                   // Botão de criar conta - ALTURA REDUZIDA
                   SizedBox(
-                    width: double.infinity, // Alterado de cálculo fixo
+                    width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _submitForm,
                       style: ElevatedButton.styleFrom(
@@ -332,7 +332,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                           : Text(
                               'Criar Conta',
                               style: TextStyle(
-                                fontSize: _getResponsiveFontSize(context), // Fonte responsiva
+                                fontSize: _getResponsiveFontSize(context),
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.branco,
                               ),
@@ -340,11 +340,11 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                     ),
                   ),
                   
-                  const SizedBox(height: 12), // Reduzido de 16
+                  const SizedBox(height: 12), // Aumentado de 8 para 12
                   
                   // Botão de voltar para login - ALTURA REDUZIDA
                   SizedBox(
-                    width: double.infinity, // Alterado de cálculo fixo
+                    width: double.infinity,
                     child: OutlinedButton(
                       onPressed: _isLoading
                           ? null

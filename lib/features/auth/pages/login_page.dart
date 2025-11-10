@@ -2,7 +2,7 @@ import 'package:chronora/app/routes.dart';
 import 'package:chronora/features/auth/pages/account_creation_page.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../../shared/widgets/background_widget.dart';
+import '../../../shared/widgets/background_auth_widget.dart';
 import '../widgets/auth_text_field.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/api_service.dart';
@@ -21,7 +21,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
 
   Future<void> _saveToken(String token) async {
-  try {
+    try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_token', token);
       print('Token salvo com sucesso!');
@@ -76,14 +76,15 @@ class _LoginPageState extends State<LoginPage> {
     return BackgroundWidget(
       child: Center(
         child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
           child: Container(
-            width: MediaQuery.of(context).size.width * 0.3,
+            width: MediaQuery.of(context).size.width * 0.9,
             constraints: BoxConstraints(
               maxWidth: 400,
-              minHeight: MediaQuery.of(context).size.height * 0.55,
+              minHeight: MediaQuery.of(context).size.height * 0.4,
             ),
-            margin: const EdgeInsets.all(20),
-            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             decoration: BoxDecoration(
               color: AppColors.branco,
               borderRadius: BorderRadius.circular(40),
@@ -101,6 +102,7 @@ class _LoginPageState extends State<LoginPage> {
                       fontWeight: FontWeight.bold,
                       color: AppColors.preto,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 30),
                   
@@ -120,59 +122,125 @@ class _LoginPageState extends State<LoginPage> {
                   
                   const SizedBox(height: 20),
                   
-                  // Checkbox "Lembre-se de mim" e "Esqueceu a senha"
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.75 * 0.3,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
+                  // Checkbox "Lembre-se de mim" e "Esqueceu a senha" - CORRIGIDO
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (constraints.maxWidth < 300) {
+                        return Column(
                           children: [
-                            Checkbox(
-                              value: false,
-                              onChanged: (value) {
-                                // Implementar lembrar de mim
-                              },
+                            Container(
+                              width: double.infinity,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.start, // Alinhado à esquerda
+                                children: [
+                                  Checkbox(
+                                    value: false,
+                                    onChanged: (value) {
+                                      // Implementar lembrar de mim
+                                    },
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  const SizedBox(width: 4), // Espaço reduzido entre checkbox e texto
+                                  const Flexible(
+                                    child: Text(
+                                      'Lembre-se de mim',
+                                      style: TextStyle(
+                                        color: AppColors.preto,
+                                        fontSize: 14, // Fonte um pouco menor
+                                      ),
+                                      overflow: TextOverflow.visible, // Permite que o texto seja visível
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            const Text(
-                              'Lembre-se de mim',
-                              style: TextStyle(
-                                color: AppColors.preto,
+                            const SizedBox(height: 8),
+                            Container(
+                              width: double.infinity,
+                              child: TextButton(
+                                onPressed: () {
+                                  // Navegar para esqueci a senha
+                                },
+                                child: const Text(
+                                  'Esqueceu a senha?',
+                                  style: TextStyle(
+                                    color: AppColors.azul,
+                                    fontStyle: FontStyle.italic,
+                                    fontSize: 14, // Fonte um pouco menor
+                                  ),
+                                ),
                               ),
                             ),
                           ],
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            // Navegar para esqueci a senha
-                          },
-                          child: const Text(
-                            'Esqueceu a senha?',
-                            style: TextStyle(
-                              color: AppColors.azul,
-                              fontStyle: FontStyle.italic,
-                            ),
+                        );
+                      } else {
+                        return Container(
+                          width: double.infinity,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Checkbox(
+                                      value: false,
+                                      onChanged: (value) {
+                                        // Implementar lembrar de mim
+                                      },
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    const SizedBox(width: 4), // Espaço reduzido entre checkbox e texto
+                                    const Flexible(
+                                      child: Text(
+                                        'Lembre-se de mim',
+                                        style: TextStyle(
+                                          color: AppColors.preto,
+                                          fontSize: 14, // Fonte um pouco menor
+                                        ),
+                                        overflow: TextOverflow.visible,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8), // Espaço entre os dois elementos
+                              Flexible(
+                                child: TextButton(
+                                  onPressed: () {
+                                    // Navegar para esqueci a senha
+                                  },
+                                  child: const Text(
+                                    'Esqueceu a senha?',
+                                    style: TextStyle(
+                                      color: AppColors.azul,
+                                      fontStyle: FontStyle.italic,
+                                      fontSize: 14, // Fonte um pouco menor
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
+                        );
+                      }
+                    },
                   ),
                   
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 20),
                   
                   // Botão de Login
                   SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.79 * 0.3,
+                    width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _login,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.amareloUmPoucoEscuro,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
-                      child: _isLoading
+                      child: _isLoading 
                           ? const SizedBox(
                               width: 20,
                               height: 20,
@@ -196,7 +264,7 @@ class _LoginPageState extends State<LoginPage> {
                   
                   // Botão de Criar Conta
                   SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.79 * 0.3,
+                    width: double.infinity,
                     child: OutlinedButton(
                       onPressed: _isLoading
                           ? null
@@ -213,7 +281,7 @@ class _LoginPageState extends State<LoginPage> {
                           color: AppColors.amareloUmPoucoEscuro,
                           width: 3,
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(4),
                         ),
