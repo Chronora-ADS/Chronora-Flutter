@@ -6,11 +6,11 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/services/api_service.dart';
-import '../../shared/widgets/background_widget.dart';
+import '../../shared/widgets/background_auth_widget.dart';
 import '../auth/widgets/service_card.dart';
 
 class MainPage extends StatefulWidget {
-  const MainPage({Key? key}) : super(key: key);
+  const MainPage({super.key});
 
   @override
   State<MainPage> createState() => _MainPageState();
@@ -137,7 +137,7 @@ class _MainPageState extends State<MainPage> {
           ),
           
           // Search Bar
-          Container(
+          SizedBox(
             width: MediaQuery.of(context).size.width * 0.4,
             child: TextField(
               controller: _searchController,
@@ -206,7 +206,7 @@ class _MainPageState extends State<MainPage> {
   }
 
   Widget _buildMakeRequestSection() {
-    return Container(
+    return SizedBox(
       width: MediaQuery.of(context).size.width * 0.7,
       child: Column(
         children: [
@@ -259,7 +259,7 @@ class _MainPageState extends State<MainPage> {
   }
 
   Widget _buildFiltersSection() {
-    return Container(
+    return SizedBox(
       width: MediaQuery.of(context).size.width * 0.7,
       child: Column(
         children: [
@@ -274,7 +274,7 @@ class _MainPageState extends State<MainPage> {
               _buildFilterItem(
                 'Avaliação de usuário',
                 DropdownButtonFormField<String>(
-                  value: avaliacaoValue,
+                  initialValue: avaliacaoValue,
                   items: const [
                     DropdownMenuItem(value: "0", child: Text("0 - 1 estrelas")),
                     DropdownMenuItem(value: "1", child: Text("1 - 2 estrelas")),
@@ -367,7 +367,7 @@ class _MainPageState extends State<MainPage> {
               _buildFilterItem(
                 'Ordenação',
                 DropdownButtonFormField<String>(
-                  value: ordenacaoValue,
+                  initialValue: ordenacaoValue,
                   items: const [
                     DropdownMenuItem(value: "0", child: Text("Mais recentes")),
                     DropdownMenuItem(value: "1", child: Text("Mais antigos")),
@@ -442,7 +442,7 @@ class _MainPageState extends State<MainPage> {
       );
     }
 
-    return Container(
+    return SizedBox(
       width: MediaQuery.of(context).size.width * 0.7,
       child: GridView.builder(
         shrinkWrap: true,

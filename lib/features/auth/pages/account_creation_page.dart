@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import '../../../../shared/widgets/background_widget.dart';
+import '../../../shared/widgets/background_auth_widget.dart';
 import '../widgets/auth_text_field.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/api_service.dart';
