@@ -76,15 +76,15 @@ class _LoginPageState extends State<LoginPage> {
     return BackgroundWidget(
       child: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16), // Padding adicional de segurança
+          padding: const EdgeInsets.all(16),
           child: Container(
             width: MediaQuery.of(context).size.width * 0.9,
             constraints: BoxConstraints(
               maxWidth: 400,
-              minHeight: MediaQuery.of(context).size.height * 0.55,
+              minHeight: MediaQuery.of(context).size.height * 0.4,
             ),
-            margin: const EdgeInsets.all(16), // Reduzido de 20 para 16
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30), // Reduzido horizontal de 40 para 24
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             decoration: BoxDecoration(
               color: AppColors.branco,
               borderRadius: BorderRadius.circular(40),
@@ -128,67 +128,35 @@ class _LoginPageState extends State<LoginPage> {
                       if (constraints.maxWidth < 300) {
                         return Column(
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Checkbox(
-                                  value: false,
-                                  onChanged: (value) {
-                                    // Implementar lembrar de mim
-                                  },
-                                ),
-                                const Flexible(
-                                  child: Text(
-                                    'Lembre-se de mim',
-                                    style: TextStyle(
-                                      color: AppColors.preto,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            TextButton(
-                              onPressed: () {
-                                // Navegar para esqueci a senha
-                              },
-                              child: const Text(
-                                'Esqueceu a senha?',
-                                style: TextStyle(
-                                  color: AppColors.azul,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      } else {
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Flexible(
+                            Container(
+                              width: double.infinity,
                               child: Row(
+                                mainAxisAlignment: MainAxisAlignment.start, // Alinhado à esquerda
                                 children: [
                                   Checkbox(
                                     value: false,
                                     onChanged: (value) {
                                       // Implementar lembrar de mim
                                     },
+                                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                   ),
+                                  const SizedBox(width: 4), // Espaço reduzido entre checkbox e texto
                                   const Flexible(
                                     child: Text(
                                       'Lembre-se de mim',
                                       style: TextStyle(
                                         color: AppColors.preto,
+                                        fontSize: 14, // Fonte um pouco menor
                                       ),
-                                      overflow: TextOverflow.ellipsis,
+                                      overflow: TextOverflow.visible, // Permite que o texto seja visível
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            Flexible(
+                            const SizedBox(height: 8),
+                            Container(
+                              width: double.infinity,
                               child: TextButton(
                                 onPressed: () {
                                   // Navegar para esqueci a senha
@@ -198,17 +166,67 @@ class _LoginPageState extends State<LoginPage> {
                                   style: TextStyle(
                                     color: AppColors.azul,
                                     fontStyle: FontStyle.italic,
+                                    fontSize: 14, // Fonte um pouco menor
                                   ),
                                 ),
                               ),
                             ),
                           ],
                         );
+                      } else {
+                        return Container(
+                          width: double.infinity,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Checkbox(
+                                      value: false,
+                                      onChanged: (value) {
+                                        // Implementar lembrar de mim
+                                      },
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    const SizedBox(width: 4), // Espaço reduzido entre checkbox e texto
+                                    const Flexible(
+                                      child: Text(
+                                        'Lembre-se de mim',
+                                        style: TextStyle(
+                                          color: AppColors.preto,
+                                          fontSize: 14, // Fonte um pouco menor
+                                        ),
+                                        overflow: TextOverflow.visible,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8), // Espaço entre os dois elementos
+                              Flexible(
+                                child: TextButton(
+                                  onPressed: () {
+                                    // Navegar para esqueci a senha
+                                  },
+                                  child: const Text(
+                                    'Esqueceu a senha?',
+                                    style: TextStyle(
+                                      color: AppColors.azul,
+                                      fontStyle: FontStyle.italic,
+                                      fontSize: 14, // Fonte um pouco menor
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
                       }
                     },
                   ),
                   
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 20),
                   
                   // Botão de Login
                   SizedBox(
@@ -217,7 +235,7 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: _isLoading ? null : _login,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.amareloUmPoucoEscuro,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(4),
                         ),
@@ -263,7 +281,7 @@ class _LoginPageState extends State<LoginPage> {
                           color: AppColors.amareloUmPoucoEscuro,
                           width: 3,
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(4),
                         ),

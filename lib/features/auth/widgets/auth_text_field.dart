@@ -25,7 +25,7 @@ class AuthTextField extends StatelessWidget {
     Widget build(BuildContext context) {
         return Container(
             width: MediaQuery.of(context).size.width * 0.75,
-            margin: const EdgeInsets.symmetric(vertical: 8),
+            margin: const EdgeInsets.symmetric(vertical: 4),
             decoration: BoxDecoration(
                 boxShadow: [
                     BoxShadow(
@@ -59,7 +59,10 @@ class AuthTextField extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                         borderSide: const BorderSide(color: AppColors.amareloUmPoucoEscuro, width: 2),
                     ),
-                    contentPadding: const EdgeInsets.all(16),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    )
                 ),
             ),
         );
