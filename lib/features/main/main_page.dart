@@ -8,6 +8,7 @@ import '../../core/services/api_service.dart';
 import '../../shared/widgets/background_default_widget.dart';
 import '../auth/widgets/service_card.dart';
 import '../auth/widgets/filters_modal.dart';
+import '../auth/widgets/side_menu.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -18,7 +19,7 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   final TextEditingController _searchController = TextEditingController();
-
+  
   List<Service> services = [];
   bool isLoading = true;
   String errorMessage = '';
@@ -41,8 +42,7 @@ class _MainPageState extends State<MainPage> {
       if (token == null) {
         setState(() {
           isLoading = false;
-          errorMessage =
-              "Você precisa estar logado para visualizar os serviços.";
+          errorMessage = "Você precisa estar logado para visualizar os serviços.";
         });
         return;
       }
@@ -94,10 +94,14 @@ class _MainPageState extends State<MainPage> {
       backgroundColor: const Color(0xFF0B0C0C),
       appBar: AppBar(
         backgroundColor: AppColors.amareloClaro,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: AppColors.preto),
-          onPressed: () {
-            Scaffold.of(context).openDrawer();
+        leading: Builder(
+          builder: (BuildContext context) {
+            return IconButton(
+              icon: const Icon(Icons.menu, color: AppColors.preto),
+              onPressed: () {
+                Scaffold.of(context).openDrawer();
+              },
+            );
           },
         ),
         centerTitle: true,
@@ -133,8 +137,7 @@ class _MainPageState extends State<MainPage> {
                 right: 8,
                 top: 8,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   decoration: const BoxDecoration(
                     color: AppColors.branco,
                     shape: BoxShape.circle,
@@ -149,127 +152,64 @@ class _MainPageState extends State<MainPage> {
           ),
         ],
       ),
-      drawer: _buildDrawer(),
-      body: BackgroundWidget(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              // Search Bar
-              Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Pintura de parede, aula de inglês...',
-                    hintStyle:
-                        const TextStyle(color: AppColors.textoPlaceholder),
-                    filled: true,
-                    fillColor: AppColors.branco,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    prefixIcon: const Icon(Icons.search,
-                        color: AppColors.textoPlaceholder),
-                  ),
-                ),
-              ),
-
-              // Make Request Section
-              _buildMakeRequestSection(),
-
-              const SizedBox(height: 24),
-
-              // Filtros Button
-              Row(
+      drawer: const SideMenu(),
+      body: Builder(
+        builder: (BuildContext context) {
+          return BackgroundWidget(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
                 children: [
-                  ElevatedButton.icon(
-                    onPressed: _showFiltersModal,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.branco,
-                      foregroundColor: AppColors.preto,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
+                  // Search Bar
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Pintura de parede, aula de inglês...',
+                        hintStyle: const TextStyle(color: AppColors.textoPlaceholder),
+                        filled: true,
+                        fillColor: AppColors.branco,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        prefixIcon: const Icon(Icons.search, color: AppColors.textoPlaceholder),
+                      ),
                     ),
-                    icon: const Icon(Icons.filter_list),
-                    label: const Text('Filtros'),
                   ),
+
+                  // Make Request Section
+                  _buildMakeRequestSection(),
+
+                  const SizedBox(height: 24),
+
+                  // Filtros Button
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: _showFiltersModal,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.branco,
+                          foregroundColor: AppColors.preto,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                        icon: const Icon(Icons.filter_list),
+                        label: const Text('Filtros'),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Services List
+                  _buildServicesList(),
                 ],
               ),
-
-              const SizedBox(height: 24),
-
-              // Services List
-              _buildServicesList(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDrawer() {
-    return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          DrawerHeader(
-            decoration: const BoxDecoration(
-              color: AppColors.amareloClaro,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Image.asset(
-                  'assets/img/LogoBackgroundYellow.png',
-                  width: 60,
-                  height: 60,
-                ),
-                const Text(
-                  'Chronora',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.business_center),
-            title: const Text('Meus Serviços'),
-            onTap: () {},
-          ),
-          ListTile(
-            leading: const Icon(Icons.add_circle_outline),
-            title: const Text('Criar Serviço'),
-            onTap: () {
-              Navigator.pushNamed(context, '/service-creation');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.person),
-            title: const Text('Perfil'),
-            onTap: () {},
-          ),
-          ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text('Configurações'),
-            onTap: () {},
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.exit_to_app),
-            title: const Text('Sair'),
-            onTap: () {
-              // Implementar logout
-              Navigator.pushReplacementNamed(context, '/login');
-            },
-          ),
-        ],
+          );
+        },
       ),
     );
   }
