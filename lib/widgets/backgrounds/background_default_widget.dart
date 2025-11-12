@@ -14,7 +14,6 @@ class BackgroundDefaultWidget extends StatelessWidget {
 	@override
 	Widget build(BuildContext context) {
 		final screenSize = MediaQuery.of(context).size;
-		final isMobile = screenSize.width < 600;
 
 		return Scaffold(
 			backgroundColor: AppColors.preto,
