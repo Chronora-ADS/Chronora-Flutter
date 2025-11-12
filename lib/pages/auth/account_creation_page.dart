@@ -187,7 +187,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BackgroundWidget(
+    return BackgroundAuthWidget(
       child: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),

@@ -73,7 +73,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BackgroundWidget(
+    return BackgroundAuthWidget(
       child: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),

@@ -155,7 +155,7 @@ class _MainPageState extends State<MainPage> {
       drawer: const SideMenu(),
       body: Builder(
         builder: (BuildContext context) {
-          return BackgroundWidget(
+          return BackgroundDefaultWidget(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(

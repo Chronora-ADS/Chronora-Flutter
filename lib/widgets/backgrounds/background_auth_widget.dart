@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 
-class BackgroundWidget extends StatelessWidget {
+class BackgroundAuthWidget extends StatelessWidget {
 	final Widget child;
 	final bool showLogo;
 
-	const BackgroundWidget({
+	const BackgroundAuthWidget({
 		super.key, 
 		required this.child, 
 		this.showLogo = true
