@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../core/constants/app_colors.dart';
 import '../core/services/api_service.dart';
-import '../widgets/background_default_widget.dart';
+import '../widgets/backgrounds/background_default_widget.dart';
 import '../widgets/service_card.dart';
 import '../widgets/filters_modal.dart';
 import '../widgets/side_menu.dart';

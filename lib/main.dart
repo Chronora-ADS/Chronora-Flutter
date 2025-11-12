@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'app/routes.dart';
+import 'core/constants/app_routes.dart';
 
 void main() {
     runApp(const ChronoraFlutter());

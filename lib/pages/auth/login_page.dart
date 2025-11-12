@@ -1,8 +1,8 @@
-import 'package:chronora/app/routes.dart';
+import 'package:chronora/core/constants/app_routes.dart';
 import 'package:chronora/pages/auth/account_creation_page.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../widgets/background_auth_widget.dart';
+import '../../widgets/backgrounds/background_auth_widget.dart';
 import '../../widgets/auth_text_field.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/api_service.dart';
