@@ -132,7 +132,7 @@ class _FiltersModalState extends State<FiltersModal> {
                   _buildFilterSection(
                     'Avaliação de usuário',
                     DropdownButtonFormField<String>(
-                      value: avaliacaoValue,
+                      initialValue: avaliacaoValue,
                       items: const [
                         DropdownMenuItem(
                             value: "0", child: Text("0 - 1 estrelas")),
@@ -217,7 +217,7 @@ class _FiltersModalState extends State<FiltersModal> {
                   _buildFilterSection(
                     'Ordenação',
                     DropdownButtonFormField<String>(
-                      value: ordenacaoValue,
+                      initialValue: ordenacaoValue,
                       items: const [
                         DropdownMenuItem(
                             value: "0", child: Text("Mais recentes")),
