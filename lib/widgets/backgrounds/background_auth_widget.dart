@@ -36,42 +36,41 @@ class BackgroundAuthWidget extends StatelessWidget {
 								),
 
 								// Logo RESPONSIVA
-								if (showLogo) {
-									Positioned(
-										left: _getResponsiveValue(screenSize.width, 20, 50),
-										top: _getResponsiveValue(screenSize.height, 20, 80),
-										child: Container(
-											constraints: BoxConstraints(
-												maxWidth: _getElementWidth(screenSize.width, 0.6, 0.4),
-											),
-											padding: const EdgeInsets.all(8),
-											decoration: BoxDecoration(
-												borderRadius: BorderRadius.circular(8),
-											),
-											child: Row(
-												mainAxisSize: MainAxisSize.min,
-												children: [
-													Image.asset(
-														'assets/img/LogoBackgroundYellow.png',
-														height: _getResponsiveValue(screenSize.height, 30, 60),
-													),
-													const SizedBox(width: 8),
-													Flexible(
-														child: Text(
-															'Chronora',
-															style: TextStyle(
-																fontSize: _getResponsiveFontSize(screenSize.width),
-																fontWeight: FontWeight.bold,
-																color: AppColors.preto,
-															),
-															overflow: TextOverflow.ellipsis,
+								if (showLogo) 
+								Positioned(
+									left: _getResponsiveValue(screenSize.width, 20, 50),
+									top: _getResponsiveValue(screenSize.height, 20, 80),
+									child: Container(
+										constraints: BoxConstraints(
+											maxWidth: _getElementWidth(screenSize.width, 0.6, 0.4),
+										),
+										padding: const EdgeInsets.all(8),
+										decoration: BoxDecoration(
+											borderRadius: BorderRadius.circular(8),
+										),
+										child: Row(
+											mainAxisSize: MainAxisSize.min,
+											children: [
+												Image.asset(
+													'assets/img/LogoBackgroundYellow.png',
+													height: _getResponsiveValue(screenSize.height, 30, 60),
+												),
+												const SizedBox(width: 8),
+												Flexible(
+													child: Text(
+														'Chronora',
+														style: TextStyle(
+															fontSize: _getResponsiveFontSize(screenSize.width),
+															fontWeight: FontWeight.bold,
+															color: AppColors.preto,
 														),
+														overflow: TextOverflow.ellipsis,
 													),
-												],
-											),
+												),
+											],
 										),
 									),
-								}
+								),
 							],
 						),
 					),
