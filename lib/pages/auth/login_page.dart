@@ -116,7 +116,6 @@ class _LoginPageState extends State<LoginPage> {
                     hintText: 'E-mail',
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    isWeb: !isMobile,
                   ),
 
                   const SizedBox(height: 16),
@@ -125,7 +124,6 @@ class _LoginPageState extends State<LoginPage> {
                     hintText: 'Senha',
                     controller: _passwordController,
                     obscureText: true,
-                    isWeb: !isMobile,
                   ),
 
                   const SizedBox(height: 20),
