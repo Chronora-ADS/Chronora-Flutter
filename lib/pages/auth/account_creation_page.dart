@@ -4,11 +4,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../shared/widgets/background_auth_widget.dart';
-import '../widgets/auth_text_field.dart';
-import '../../../core/constants/app_colors.dart';
-import '../../../core/services/api_service.dart';
-import '../../../../app/routes.dart';
+import '../../widgets/background_auth_widget.dart';
+import '../../widgets/auth_text_field.dart';
+import '../../core/constants/app_colors.dart';
+import '../../core/services/api_service.dart';
+import '../../app/routes.dart';
 
 class AccountCreationPage extends StatefulWidget {
   const AccountCreationPage({super.key});

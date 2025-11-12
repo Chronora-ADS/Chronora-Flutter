@@ -3,12 +3,12 @@ import 'package:chronora/core/models/service_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 
-import '../../core/constants/app_colors.dart';
-import '../../core/services/api_service.dart';
-import '../../shared/widgets/background_default_widget.dart';
-import '../auth/widgets/service_card.dart';
-import '../auth/widgets/filters_modal.dart';
-import '../auth/widgets/side_menu.dart';
+import '../core/constants/app_colors.dart';
+import '../core/services/api_service.dart';
+import '../widgets/background_default_widget.dart';
+import '../widgets/service_card.dart';
+import '../widgets/filters_modal.dart';
+import '../widgets/side_menu.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
