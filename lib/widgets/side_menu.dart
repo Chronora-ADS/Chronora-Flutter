@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../app/routes.dart';
-import '../../../core/constants/app_colors.dart';
+import '../app/routes.dart';
+import '../core/constants/app_colors.dart';
 
 class SideMenu extends StatelessWidget {
   const SideMenu({super.key});
