@@ -73,18 +73,24 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isMobile = screenSize.width < 600;
+
     return BackgroundAuthWidget(
       child: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(isMobile ? 16 : 24),
           child: Container(
-            width: MediaQuery.of(context).size.width * 0.9,
+            width: _getContainerWidth(screenSize.width),
             constraints: BoxConstraints(
               maxWidth: 400,
-              minHeight: MediaQuery.of(context).size.height * 0.4,
+              minHeight: _getContainerHeight(screenSize.height),
             ),
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            margin: EdgeInsets.all(isMobile ? 16 : 24),
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 24 : 32,
+              vertical: isMobile ? 16 : 24,
+            ),
             decoration: BoxDecoration(
               color: AppColors.branco,
               borderRadius: BorderRadius.circular(40),
@@ -110,6 +116,7 @@ class _LoginPageState extends State<LoginPage> {
                     hintText: 'E-mail',
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
+                    isWeb: !isMobile,
                   ),
 
                   const SizedBox(height: 16),
@@ -118,120 +125,13 @@ class _LoginPageState extends State<LoginPage> {
                     hintText: 'Senha',
                     controller: _passwordController,
                     obscureText: true,
+                    isWeb: !isMobile,
                   ),
 
                   const SizedBox(height: 20),
 
-                  // Checkbox "Lembre-se de mim" e "Esqueceu a senha" - CORRIGIDO
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      if (constraints.maxWidth < 300) {
-                        return Column(
-                          children: [
-                            SizedBox(
-                              width: double.infinity,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment
-                                    .start, // Alinhado à esquerda
-                                children: [
-                                  Checkbox(
-                                    value: false,
-                                    onChanged: (value) {
-                                      // Implementar lembrar de mim
-                                    },
-                                    materialTapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                  const SizedBox(width: 4), // Espaço reduzido entre checkbox e texto
-                                  const Flexible(
-                                    child: Text(
-                                      'Lembre-se de mim',
-                                      style: TextStyle(
-                                        color: AppColors.preto,
-                                        fontSize: 12, // Fonte um pouco menor
-                                      ),
-                                      overflow: TextOverflow
-                                          .visible, // Permite que o texto seja visível
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              width: double.infinity,
-                              child: TextButton(
-                                onPressed: () {
-                                  // Navegar para esqueci a senha
-                                },
-                                child: const Text(
-                                  'Esqueceu a senha?',
-                                  style: TextStyle(
-                                    color: AppColors.azul,
-                                    fontStyle: FontStyle.italic,
-                                    fontSize: 12, // Fonte um pouco menor
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      } else {
-                        return SizedBox(
-                          width: double.infinity,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Row(
-                                  children: [
-                                    Checkbox(
-                                      value: false,
-                                      onChanged: (value) {
-                                        // Implementar lembrar de mim
-                                      },
-                                      materialTapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                    const SizedBox(
-                                        width:
-                                            4), // Espaço reduzido entre checkbox e texto
-                                    const Flexible(
-                                      child: Text(
-                                        'Lembre-se de mim',
-                                        style: TextStyle(
-                                          color: AppColors.preto,
-                                          fontSize: 14, // Fonte um pouco menor
-                                        ),
-                                        overflow: TextOverflow.visible,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(
-                                  width: 8), // Espaço entre os dois elementos
-                              Flexible(
-                                child: TextButton(
-                                  onPressed: () {
-                                    // Navegar para esqueci a senha
-                                  },
-                                  child: const Text(
-                                    'Esqueceu a senha?',
-                                    style: TextStyle(
-                                      color: AppColors.azul,
-                                      fontStyle: FontStyle.italic,
-                                      fontSize: 14, // Fonte um pouco menor
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-                    },
-                  ),
+                  // CORREÇÃO: Checkbox e "Esqueceu a senha" sempre na mesma linha
+                  _buildRememberForgotSection(isMobile),
 
                   const SizedBox(height: 20),
 
@@ -242,7 +142,9 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: _isLoading ? null : _login,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.amareloUmPoucoEscuro,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        padding: EdgeInsets.symmetric(
+                          vertical: isMobile ? 12 : 16,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(4),
                         ),
@@ -253,14 +155,13 @@ class _LoginPageState extends State<LoginPage> {
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor:
-                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
-                          : const Text(
+                          : Text(
                               'Entrar',
                               style: TextStyle(
-                                fontSize: 22,
+                                fontSize: isMobile ? 22 : 24,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.branco,
                               ),
@@ -280,8 +181,7 @@ class _LoginPageState extends State<LoginPage> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) =>
-                                      const AccountCreationPage(),
+                                  builder: (context) => const AccountCreationPage(),
                                 ),
                               );
                             },
@@ -290,15 +190,17 @@ class _LoginPageState extends State<LoginPage> {
                           color: AppColors.amareloUmPoucoEscuro,
                           width: 3,
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        padding: EdgeInsets.symmetric(
+                          vertical: isMobile ? 12 : 16,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Criar Conta',
                         style: TextStyle(
-                          fontSize: 22,
+                          fontSize: isMobile ? 22 : 24,
                           fontWeight: FontWeight.bold,
                           color: AppColors.amareloUmPoucoEscuro,
                         ),
@@ -312,6 +214,77 @@ class _LoginPageState extends State<LoginPage> {
         ),
       ),
     );
+  }
+
+  // MÉTODO NOVO: Constroi a seção "Lembre-se de mim" e "Esqueceu a senha"
+  Widget _buildRememberForgotSection(bool isMobile) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // Checkbox "Lembre-se de mim"
+        Flexible(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Checkbox(
+                value: false,
+                onChanged: (value) {
+                  // Implementar lembrar de mim
+                },
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  'Lembre-se de mim',
+                  style: TextStyle(
+                    color: AppColors.preto,
+                    fontSize: isMobile ? 12 : 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(width: 8),
+
+        // "Esqueceu a senha"
+        Flexible(
+          child: TextButton(
+            onPressed: () {
+              // Navegar para esqueci a senha
+            },
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              'Esqueceu a senha?',
+              style: TextStyle(
+                color: AppColors.azul,
+                fontStyle: FontStyle.italic,
+                fontSize: isMobile ? 12 : 14,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  double _getContainerWidth(double screenWidth) {
+    if (screenWidth < 600) return screenWidth * 0.9;
+    if (screenWidth < 1200) return screenWidth * 0.7;
+    return screenWidth * 0.4;
+  }
+
+  double _getContainerHeight(double screenHeight) {
+    if (screenHeight < 800) return screenHeight * 0.6;
+    return screenHeight * 0.5;
   }
 
   @override
