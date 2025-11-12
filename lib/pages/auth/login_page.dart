@@ -142,15 +142,13 @@ class _LoginPageState extends State<LoginPage> {
                                     materialTapTargetSize:
                                         MaterialTapTargetSize.shrinkWrap,
                                   ),
-                                  const SizedBox(
-                                      width:
-                                          4), // Espaço reduzido entre checkbox e texto
+                                  const SizedBox(width: 4), // Espaço reduzido entre checkbox e texto
                                   const Flexible(
                                     child: Text(
                                       'Lembre-se de mim',
                                       style: TextStyle(
                                         color: AppColors.preto,
-                                        fontSize: 14, // Fonte um pouco menor
+                                        fontSize: 12, // Fonte um pouco menor
                                       ),
                                       overflow: TextOverflow
                                           .visible, // Permite que o texto seja visível
@@ -171,7 +169,7 @@ class _LoginPageState extends State<LoginPage> {
                                   style: TextStyle(
                                     color: AppColors.azul,
                                     fontStyle: FontStyle.italic,
-                                    fontSize: 14, // Fonte um pouco menor
+                                    fontSize: 12, // Fonte um pouco menor
                                   ),
                                 ),
                               ),
