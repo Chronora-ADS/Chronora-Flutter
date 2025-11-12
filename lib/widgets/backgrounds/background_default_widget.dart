@@ -52,7 +52,7 @@ class BackgroundDefaultWidget extends StatelessWidget {
 	double _getElementWidth(double screenWidth, double mobilePercent, double desktopPercent) {
 		final percent = screenWidth < 600 ? mobilePercent : desktopPercent;
 		final maxWidth = screenWidth < 600 ? double.infinity : 400;
-		return (screenWidth * percent).clamp(0, maxWidth);
+		return (screenWidth * percent).clamp(0, maxWidth).toDouble();
 	}
 
 	double _getResponsiveTop(double screenHeight, double mobileTop, double desktopTop) {

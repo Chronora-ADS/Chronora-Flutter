@@ -109,7 +109,7 @@ class BackgroundAuthWidget extends StatelessWidget {
 	double _getElementWidth(double screenWidth, double mobilePercent, double desktopPercent) {
 		final percent = screenWidth < 600 ? mobilePercent : desktopPercent;
 		final maxWidth = screenWidth < 600 ? double.infinity : 800;
-		return (screenWidth * percent).clamp(0, maxWidth).toDouble(); // ADICIONADO .toDouble()
+		return (screenWidth * percent).clamp(0, maxWidth).toDouble();
 	}
 
 	// Valor responsivo com limites
