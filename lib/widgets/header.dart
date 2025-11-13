@@ -4,13 +4,11 @@ import '../../core/constants/app_colors.dart';
 class Header extends StatelessWidget implements PreferredSizeWidget {
   final int coinCount;
   final VoidCallback? onMenuPressed;
-  final VoidCallback? onCoinPressed;
 
   const Header({
     super.key,
-    this.coinCount = 123, // Valor padrão
+    this.coinCount = 123,
     this.onMenuPressed,
-    this.onCoinPressed,
   });
 
   @override
@@ -20,15 +18,9 @@ class Header extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       backgroundColor: AppColors.amareloClaro,
-      leading: Builder(
-        builder: (BuildContext context) {
-          return IconButton(
-            icon: const Icon(Icons.menu, color: AppColors.preto),
-            onPressed: onMenuPressed ?? () {
-              Scaffold.of(context).openDrawer();
-            },
-          );
-        },
+      leading: IconButton(
+        icon: const Icon(Icons.menu, color: AppColors.preto),
+        onPressed: onMenuPressed,
       ),
       centerTitle: true,
       title: Row(
@@ -51,13 +43,9 @@ class Header extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       actions: [
-        // Moedas SEM círculo branco
         Row(
           children: [
-            GestureDetector(
-              onTap: onCoinPressed,
-              child: Image.asset('assets/img/Coin.png', width: 24, height: 24),
-            ),
+            Image.asset('assets/img/Coin.png', width: 24, height: 24),
             const SizedBox(width: 4),
             Text(
               coinCount.toString(),
@@ -71,6 +59,7 @@ class Header extends StatelessWidget implements PreferredSizeWidget {
           ],
         ),
       ],
+      elevation: 0, // Remove sombra
     );
   }
 }
