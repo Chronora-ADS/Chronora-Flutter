@@ -91,13 +91,24 @@ class _SellChronosPageState extends State<SellChronosPage> {
           icon: Icon(Icons.arrow_back, color: AppColors.preto),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          'Vender Chronos',
-          style: TextStyle(
-            color: AppColors.preto,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/img/LogoBackgroundYellow.png',
+              width: 32,
+              height: 32,
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Chronora',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.preto,
+              ),
+            ),
+          ],
         ),
         actions: [
           Consumer<SellChronosController>(
@@ -163,8 +174,10 @@ class _SellChronosPageState extends State<SellChronosPage> {
                               ),
                             ),
                             const SizedBox(width: 8),
+                            Image.asset('assets/img/Coin.png', width: 18, height: 18),
+                            const SizedBox(width: 6),
                             Text(
-                              '🪙 ${controller.currentBalance}',
+                              '${controller.currentBalance}',
                               style: TextStyle(
                                 color: AppColors.preto,
                                 fontWeight: FontWeight.bold,
@@ -224,9 +237,14 @@ class _SellChronosPageState extends State<SellChronosPage> {
                         const SizedBox(height: 12),
 
                         // Chronos pós-venda
-                        Text(
-                          'Chronos pós-venda: 🪙 ${controller.chronosAfterSale}',
-                          style: TextStyle(color: AppColors.preto),
+                        Row(
+                          children: [
+                            Text('Chronos pós-venda:', style: TextStyle(color: AppColors.preto)),
+                            const SizedBox(width: 8),
+                            Image.asset('assets/img/Coin.png', width: 18, height: 18),
+                            const SizedBox(width: 6),
+                            Text('${controller.chronosAfterSale}', style: TextStyle(color: AppColors.preto)),
+                          ],
                         ),
                         const SizedBox(height: 14),
 
