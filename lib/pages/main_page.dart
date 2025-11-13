@@ -24,7 +24,6 @@ class _MainPageState extends State<MainPage> {
 	List<Service> services = [];
 	bool isLoading = true;
 	String errorMessage = '';
-	int coinCount = 123; // Movido para state para poder atualizar
 
 	// Variáveis de estado para os filtros
 	double tempoValue = 5.0;
@@ -35,7 +34,6 @@ class _MainPageState extends State<MainPage> {
 	void initState() {
 		super.initState();
 		_fetchServices();
-		_loadCoinCount(); // Carregar contagem de moedas se necessário
 	}
 
 	Future<void> _fetchServices() async {
@@ -44,8 +42,8 @@ class _MainPageState extends State<MainPage> {
 
 		if (token == null) {
 			setState(() {
-			isLoading = false;
-			errorMessage = "Você precisa estar logado para visualizar os serviços.";
+				isLoading = false;
+				errorMessage = "Você precisa estar logado para visualizar os serviços.";
 			});
 			return;
 		}
@@ -55,13 +53,13 @@ class _MainPageState extends State<MainPage> {
 		if (response.statusCode == 200) {
 			final List<dynamic> data = json.decode(response.body);
 			setState(() {
-			services = data.map((item) => Service.fromJson(item)).toList();
-			isLoading = false;
+				services = data.map((item) => Service.fromJson(item)).toList();
+				isLoading = false;
 			});
 		} else {
 			setState(() {
-			isLoading = false;
-			errorMessage = "Erro ao carregar os serviços.";
+				isLoading = false;
+				errorMessage = "Erro ao carregar os serviços.";
 			});
 		}
 		} catch (error) {
@@ -70,11 +68,6 @@ class _MainPageState extends State<MainPage> {
 			errorMessage = "Falha ao carregar os serviços.";
 		});
 		}
-	}
-
-	Future<void> _loadCoinCount() async {
-		// Aqui você pode carregar a contagem real de moedas do usuário
-		// Por enquanto mantemos o valor estático
 	}
 
 	Future<String?> _getToken() async {
@@ -100,9 +93,7 @@ class _MainPageState extends State<MainPage> {
 	Widget build(BuildContext context) {
 		return Scaffold(
 			backgroundColor: const Color(0xFF0B0C0C),
-			appBar: Header(
-				coinCount: coinCount,
-			),
+			appBar: Header(),
 			drawer: const SideMenu(),
 			body: Builder(
 				builder: (BuildContext context) {
