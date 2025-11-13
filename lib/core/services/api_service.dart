@@ -34,4 +34,46 @@ class ApiService {
       throw Exception('Erro de conexão: $e');
     }
   }
+
+  static Future<http.Response> patch(
+    String endpoint,
+    Map<String, dynamic> data, {
+    String? token,
+  }) async {
+    try {
+      final headers = {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+
+      final response = await http.patch(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: headers,
+        body: jsonEncode(data),
+      );
+      return response;
+    } catch (e) {
+      throw Exception('Erro de conexão: $e');
+    }
+  }
+
+  static Future<http.Response> delete(
+    String endpoint, {
+    String? token,
+  }) async {
+    try {
+      final headers = {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: headers,
+      );
+      return response;
+    } catch (e) {
+      throw Exception('Erro de conexão: $e');
+    }
+  }
 }
