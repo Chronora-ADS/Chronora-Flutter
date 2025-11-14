@@ -9,7 +9,10 @@ class ApiService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl$endpoint'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
         body: jsonEncode(data),
       );
       return response;
@@ -22,6 +25,7 @@ class ApiService {
     try {
       final headers = {
         'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
         if (token != null) 'Authorization': 'Bearer $token',
       };
 
