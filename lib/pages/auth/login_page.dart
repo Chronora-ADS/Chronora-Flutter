@@ -40,15 +40,27 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+      
+      print('📧 Email enviado: $email');
+      print('🔑 Password enviado: $password');
+      print('📤 Enviando para: /auth/login');
+
       final response = await ApiService.post('/auth/login', {
-        'email': _emailController.text.trim(),
-        'password': _passwordController.text,
+        'email': email,
+        'password': password,
       });
+
+      print('📡 Status da resposta: ${response.statusCode}');
+      print('📦 Corpo da resposta: ${response.body}');
 
       if (response.statusCode == 200) {
         // A API está retornando um JSON, precisamos extrair o token
         final responseData = json.decode(response.body);
         final token = responseData['access_token']; // Extrair o token do JSON
+
+        print('🔐 Token recebido: ${token != null ? "SIM" : "NÃO"}');
 
         if (token == null) {
           throw Exception('Token não encontrado na resposta');
@@ -63,11 +75,13 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.pushReplacementNamed(context, AppRoutes.main);
       } else {
         final error = response.body;
+        print('❌ Erro no login: $error');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erro no login: $error')),
         );
       }
     } catch (e) {
+      print('💥 Erro de conexão: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro de conexão: $e')),
       );
