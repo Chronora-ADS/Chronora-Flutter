@@ -42,18 +42,11 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
-      
-      print('📧 Email enviado: $email');
-      print('🔑 Password enviado: $password');
-      print('📤 Enviando para: /auth/login');
 
       final response = await ApiService.post('/auth/login', {
         'email': email,
         'password': password,
       });
-
-      print('📡 Status da resposta: ${response.statusCode}');
-      print('📦 Corpo da resposta: ${response.body}');
 
       if (response.statusCode == 200) {
         // A API está retornando um JSON, precisamos extrair o token
@@ -75,13 +68,13 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.pushReplacementNamed(context, AppRoutes.main);
       } else {
         final error = response.body;
-        print('❌ Erro no login: $error');
+        print('Erro no login: $error');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erro no login: $error')),
         );
       }
     } catch (e) {
-      print('💥 Erro de conexão: $e');
+      print('Erro de conexão: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro de conexão: $e')),
       );
