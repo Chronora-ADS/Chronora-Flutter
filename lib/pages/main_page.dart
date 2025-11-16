@@ -37,6 +37,11 @@ class _MainPageState extends State<MainPage> {
     _fetchServices();
   }
 
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('auth_token');
+  }
+
   Future<void> _fetchServices() async {
     try {
       final String? token = await _getToken();
@@ -50,9 +55,31 @@ class _MainPageState extends State<MainPage> {
       }
 
       final response = await ApiService.get('/service/get/all', token: token);
+      print('Status: ${response.statusCode}');
+      print('Response: ${response.body}');
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
+        final dynamic responseData = json.decode(response.body); // Use dynamic aqui
+        List<dynamic> data = [];
+
+        // Verifique o tipo da resposta
+        if (responseData is Map<String, dynamic>) {
+          // Se for um Map, procure pelas chaves comuns
+          if (responseData.containsKey('services')) {
+            data = responseData['services'] as List<dynamic>;
+          } else if (responseData.containsKey('data')) {
+            data = responseData['data'] as List<dynamic>;
+          } else if (responseData.containsKey('content')) {
+            data = responseData['content'] as List<dynamic>;
+          } else {
+            // Se não encontrar chaves conhecidas, tente usar o Map completo
+            print('Estrutura inesperada: $responseData');
+          }
+        } else if (responseData is List<dynamic>) {
+          // Se for uma List diretamente
+          data = responseData;
+        }
+
         setState(() {
           services = data.map((item) => Service.fromJson(item)).toList();
           isLoading = false;
@@ -60,21 +87,17 @@ class _MainPageState extends State<MainPage> {
       } else {
         setState(() {
           isLoading = false;
-          errorMessage = "Erro ao carregar os serviços.";
+          errorMessage = "Erro ${response.statusCode} ao carregar os serviços.";
         });
       }
     } catch (error) {
+      print('Erro na requisição: $error');
       setState(() {
         isLoading = false;
-        errorMessage = "Falha ao carregar os serviços.";
+        errorMessage = "Falha ao carregar os serviços: $error";
       });
     }
-  }
-
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
-  }
+}
 
   void _showFiltersModal() {
     showModalBottomSheet(
@@ -258,7 +281,7 @@ class _MainPageState extends State<MainPage> {
                 child: Row(
                   children: [
                     // Menu lateral
-                    Container(
+                    SizedBox(
                       width: MediaQuery.of(context).size.width * 0.6,
                       child: const SideMenu(),
                     ),
