@@ -13,8 +13,46 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   final TextEditingController _chronosController = TextEditingController();
   final TextEditingController _deadlineController = TextEditingController();
   final TextEditingController _categoriesController = TextEditingController();
-  final TextEditingController _searchController = TextEditingController(); // Novo controller para search
+  final TextEditingController _searchController = TextEditingController();
   String? _selectedModality;
+  
+  // Fixed: Use late keyword to ensure initialization
+  late List<String> _categoriesTags;
+
+  @override
+  void initState() {
+    super.initState();
+    _categoriesTags = []; // This will never be null
+  }
+
+  // Fixed: Dispose controllers to prevent memory leaks
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _chronosController.dispose();
+    _deadlineController.dispose();
+    _categoriesController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // Safe method to add categories
+  void _addCategory(String category) {
+    if (category.trim().isNotEmpty) {
+      setState(() {
+        _categoriesTags.add(category.trim());
+        _categoriesController.clear();
+      });
+    }
+  }
+
+  // Safe method to remove categories
+  void _removeCategory(String category) {
+    setState(() {
+      _categoriesTags.remove(category);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,53 +61,21 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       body: SafeArea(
         child: Stack(
           children: [
-            // Imagem Comb2.png no canto superior esquerdo (ATRÁS do conteúdo)
-            Positioned(
-              left: 0,
-              top: 135, // 70px (header) + 50px de afastamento = 120px
-              child: Image.asset(
-                'assets/img/Comb2.png'
-              ),
-            ),
+            // Background images
+            _buildBackgroundImages(),
             
-            // Imagem BarAscending.png no canto inferior esquerdo (ATRÁS do conteúdo)
-            Positioned(
-              left: 0,
-              bottom: 0,
-              child: Image.asset(
-                'assets/img/BarAscending.png',
-                width: 210.47,
-                height: 178.9,
-              ),
-            ),
-            
-            // Imagem Comb3.png no canto inferior direito (ATRÁS do conteúdo)
-            Positioned(
-              right: 0, // Totalmente colado na borda direita
-              bottom: 60, // 60 pixels de afastamento do bottom
-              child: Image.asset(
-                'assets/img/Comb3.png'
-              ),
-            ),
-            
-            // Conteúdo principal (NA FRENTE das imagens)
+            // Main content
             Column(
               children: [
-                // Header - FORA do Padding para ocupar 100% da largura
                 _buildHeader(),
                 const SizedBox(height: 16),
-                
-                // Conteúdo principal DENTRO do Padding
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Column(
                       children: [
-                        // Search Bar
                         _buildSearchBar(),
-                        const SizedBox(height: 60), // Gap de 6px abaixo da search bar
-                        
-                        // Main Form
+                        const SizedBox(height: 60),
                         Expanded(
                           child: SingleChildScrollView(
                             child: _buildForm(),
@@ -87,53 +93,85 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     );
   }
 
+  Widget _buildBackgroundImages() {
+    return Stack(
+      children: [
+        Positioned(
+          left: 0,
+          top: 135,
+          child: Image.asset(
+            'assets/img/Comb2.png',
+            errorBuilder: (context, error, stackTrace) => const SizedBox(),
+          ),
+        ),
+        Positioned(
+          left: 0,
+          bottom: 0,
+          child: Image.asset(
+            'assets/img/BarAscending.png',
+            width: 210.47,
+            height: 178.9,
+            errorBuilder: (context, error, stackTrace) => const SizedBox(),
+          ),
+        ),
+        Positioned(
+          right: 0,
+          bottom: 60,
+          child: Image.asset(
+            'assets/img/Comb3.png',
+            errorBuilder: (context, error, stackTrace) => const SizedBox(),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildHeader() {
     return Container(
-      width: double.infinity, // Ocupa 100% da largura
+      width: double.infinity,
       height: 70,
       decoration: const BoxDecoration(
         color: Color(0xFFFFC300),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Distribui espaço entre os elementos
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Menu na esquerda
           Padding(
             padding: const EdgeInsets.only(left: 20),
             child: Image.asset(
               'assets/img/Menu.png',
               width: 40,
               height: 40,
+              errorBuilder: (context, error, stackTrace) => 
+                const Icon(Icons.menu, size: 30),
             ),
           ),
           
-          // Logo no centro
           Image.asset(
             'assets/img/LogoHeader.png',
             width: 125,
             height: 39,
+            errorBuilder: (context, error, stackTrace) => 
+              const Text('LOGO', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           ),
           
-          // Moedas na direita com texto
           Padding(
-            padding: const EdgeInsets.only(right: 0), // Desloca 53px para a esquerda
+            padding: const EdgeInsets.only(right: 20),
             child: Row(
               children: [
                 Image.asset(
                   'assets/img/Coin.png',
                   width: 30,
                   height: 30,
+                  errorBuilder: (context, error, stackTrace) => 
+                    const Icon(Icons.monetization_on, size: 25),
                 ),
-                const SizedBox(width: 8), // Espaço entre ícone e texto
-                Container(
-                  width: 39,
-                  height: 24,
-                  child: const Text(
-                    '123',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                const SizedBox(width: 8),
+                const Text(
+                  '123',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
@@ -149,14 +187,14 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       height: 40,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(15),
-        color: const Color(0xFFE9EAEC), // 100% de opacidade
+        color: const Color(0xFFE9EAEC),
       ),
       child: TextFormField(
         controller: _searchController,
         decoration: InputDecoration(
           hintText: 'Pintura de parede, aula de inglês...',
           hintStyle: TextStyle(
-            color: Colors.black.withOpacity(0.7), // 70% de transparência
+            color: Colors.black.withOpacity(0.7),
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           border: OutlineInputBorder(
@@ -171,16 +209,13 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
               'assets/img/Search.png',
               width: 20,
               height: 20,
+              errorBuilder: (context, error, stackTrace) => 
+                const Icon(Icons.search, size: 20),
             ),
           ),
         ),
         onChanged: (value) {
-          // Aqui você pode adicionar lógica de busca em tempo real se quiser
           print('Texto da busca: $value');
-        },
-        onFieldSubmitted: (value) {
-          // Aqui você pode adicionar lógica quando o usuário pressionar Enter
-          print('Buscar por: $value');
         },
       ),
     );
@@ -190,7 +225,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     return Container(
       padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
-        color: const Color(0xFFE9EAEC), // E9EAEC
+        color: const Color(0xFFE9EAEC),
         borderRadius: BorderRadius.circular(15),
       ),
       child: Form(
@@ -198,7 +233,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Título do formulário - CENTRALIZADO
             const Center(
               child: Text(
                 'Criação do pedido',
@@ -210,25 +244,20 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             ),
             const SizedBox(height: 25),
 
-            // Campos do formulário
-            _buildFormField('Título', _titleController),
+            _buildFormField('Título', _titleController, validator: _requiredValidator),
             const SizedBox(height: 15),
-            _buildFormField('Descrição', _descriptionController),
+            _buildFormField('Descrição', _descriptionController, validator: _requiredValidator),
             const SizedBox(height: 15),
-            _buildFormField('Tempo em Chronos', _chronosController),
+            _buildFormField('Tempo em Chronos', _chronosController, validator: _requiredValidator),
             const SizedBox(height: 15),
             _buildDateField('Prazo'),
             const SizedBox(height: 15),
-            _buildFormField('Categoria(s)', _categoriesController),
+            _buildCategoriesField(),
             const SizedBox(height: 15),
             _buildModalityDropdown(),
             const SizedBox(height: 25),
-
-            // Botão de imagem
             _buildImageButton(),
             const SizedBox(height: 30),
-
-            // Botões de ação
             _buildActionButtons(),
           ],
         ),
@@ -236,11 +265,19 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     );
   }
 
-  Widget _buildFormField(String placeholder, TextEditingController controller) {
+  // Fixed: Added validation function
+  String? _requiredValidator(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Este campo é obrigatório';
+    }
+    return null;
+  }
+
+  Widget _buildFormField(String placeholder, TextEditingController controller, {String? Function(String?)? validator}) {
     return Container(
       height: 46,
       decoration: BoxDecoration(
-        color: const Color(0xFFE9EAEC), // E9EAEC
+        color: const Color(0xFFE9EAEC),
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
@@ -252,10 +289,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       ),
       child: TextFormField(
         controller: controller,
+        validator: validator,
         decoration: InputDecoration(
           hintText: placeholder,
           hintStyle: TextStyle(
-            color: Colors.black.withOpacity(0.7), // 70% de transparência
+            color: Colors.black.withOpacity(0.7),
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           border: OutlineInputBorder(
@@ -263,7 +301,8 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             borderSide: BorderSide.none,
           ),
           filled: true,
-          fillColor: const Color(0xFFE9EAEC), // E9EAEC
+          fillColor: const Color(0xFFE9EAEC),
+          errorStyle: const TextStyle(fontSize: 12, height: 0.1),
         ),
       ),
     );
@@ -273,7 +312,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     return Container(
       height: 46,
       decoration: BoxDecoration(
-        color: const Color(0xFFE9EAEC), // E9EAEC
+        color: const Color(0xFFE9EAEC),
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
@@ -286,10 +325,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       child: TextFormField(
         controller: _deadlineController,
         readOnly: true,
+        validator: _requiredValidator,
         decoration: InputDecoration(
           hintText: placeholder,
           hintStyle: TextStyle(
-            color: Colors.black.withOpacity(0.7), // 70% de transparência
+            color: Colors.black.withOpacity(0.7),
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           border: OutlineInputBorder(
@@ -297,15 +337,18 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             borderSide: BorderSide.none,
           ),
           filled: true,
-          fillColor: const Color(0xFFE9EAEC), // E9EAEC
+          fillColor: const Color(0xFFE9EAEC),
           suffixIcon: Padding(
             padding: const EdgeInsets.all(10),
             child: Image.asset(
               'assets/img/calendar.png',
               width: 24,
               height: 24,
+              errorBuilder: (context, error, stackTrace) => 
+                const Icon(Icons.calendar_today, size: 20),
             ),
           ),
+          errorStyle: const TextStyle(fontSize: 12, height: 0.1),
         ),
         onTap: () async {
           final DateTime? picked = await showDatePicker(
@@ -315,10 +358,110 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             lastDate: DateTime(2100),
           );
           if (picked != null) {
-            _deadlineController.text = "${picked.day}/${picked.month}/${picked.year}";
+            setState(() {
+              _deadlineController.text = "${picked.day}/${picked.month}/${picked.year}";
+            });
           }
         },
       ),
+    );
+  }
+
+  Widget _buildCategoriesField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: 46,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE9EAEC),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.3),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: TextFormField(
+            controller: _categoriesController,
+            decoration: InputDecoration(
+              hintText: 'Categoria(s) - Pressione Enter para adicionar',
+              hintStyle: TextStyle(
+                color: Colors.black.withOpacity(0.7),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
+              filled: true,
+              fillColor: const Color(0xFFE9EAEC),
+            ),
+            onFieldSubmitted: _addCategory,
+          ),
+        ),
+        
+        // Fixed: Direct check on the late-initialized list
+        if (_categoriesTags.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _categoriesTags.map((tag) => _buildTag(tag)).toList(),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildTag(String tagText) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFC29503),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildPaintbrushIcon(),
+          const SizedBox(width: 6),
+          Text(
+            tagText,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: () => _removeCategory(tagText),
+            child: const Icon(
+              Icons.close,
+              color: Colors.white,
+              size: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaintbrushIcon() {
+    return Image.asset(
+      'assets/img/Paintbrush.png',
+      width: 24,
+      height: 24,
+      color: Colors.white,
+      errorBuilder: (context, error, stackTrace) {
+        return const Icon(
+          Icons.category,
+          color: Colors.white,
+          size: 24,
+        );
+      },
     );
   }
 
@@ -326,7 +469,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     return Container(
       height: 46,
       decoration: BoxDecoration(
-        color: const Color(0xFFE9EAEC), // E9EAEC
+        color: const Color(0xFFE9EAEC),
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
@@ -338,10 +481,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       ),
       child: DropdownButtonFormField<String>(
         value: _selectedModality,
+        validator: (value) => value == null ? 'Selecione uma modalidade' : null,
         decoration: InputDecoration(
           hintText: 'Modalidade',
           hintStyle: TextStyle(
-            color: Colors.black.withOpacity(0.7), // 70% de transparência
+            color: Colors.black.withOpacity(0.7),
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           border: OutlineInputBorder(
@@ -349,15 +493,18 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             borderSide: BorderSide.none,
           ),
           filled: true,
-          fillColor: const Color(0xFFE9EAEC), // E9EAEC
+          fillColor: const Color(0xFFE9EAEC),
           suffixIcon: Padding(
             padding: const EdgeInsets.all(10),
             child: Image.asset(
               'assets/img/down-arrow.png',
               width: 24,
               height: 24,
+              errorBuilder: (context, error, stackTrace) => 
+                const Icon(Icons.arrow_drop_down, size: 24),
             ),
           ),
+          errorStyle: const TextStyle(fontSize: 12, height: 0.1),
         ),
         items: ['Presencial', 'Remoto', 'Híbrido']
             .map((modality) => DropdownMenuItem(
@@ -375,37 +522,45 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   }
 
   Widget _buildImageButton() {
-    return Container(
-      height: 46,
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: const Color(0xFFC29503),
-          width: 2,
+    return GestureDetector(
+      onTap: () {
+        // TODO: Implement image picker functionality
+        print('Adicionar imagem');
+      },
+      child: Container(
+        height: 46,
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: const Color(0xFFC29503),
+            width: 2,
+          ),
+          borderRadius: BorderRadius.circular(8),
         ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Espaço entre texto e imagem
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 16),
-            child: const Text(
-              'Imagem do pedido',
-              style: TextStyle(
-                color: Color(0xFFC29503),
-                fontWeight: FontWeight.bold,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(left: 16),
+              child: Text(
+                'Imagem do pedido',
+                style: TextStyle(
+                  color: Color(0xFFC29503),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Image.asset(
-              'assets/img/AddImage.png',
-              width: 24,
-              height: 24,
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Image.asset(
+                'assets/img/AddImage.png',
+                width: 24,
+                height: 24,
+                errorBuilder: (context, error, stackTrace) => 
+                  const Icon(Icons.add_photo_alternate, color: Color(0xFFC29503)),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -414,7 +569,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Botão Cancelar
         Expanded(
           child: Container(
             height: 46,
@@ -438,8 +592,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           ),
         ),
         const SizedBox(width: 16),
-        
-        // Botão Criar Pedido
         Expanded(
           child: Container(
             height: 46,
@@ -450,13 +602,44 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             child: TextButton(
               onPressed: () {
                 if (_formKey.currentState!.validate()) {
+                  // Fixed: Added validation for categories
+                  if (_categoriesTags.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Adicione pelo menos uma categoria'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+                  
                   // Lógica para criar o pedido
+                  print('Pedido criado com sucesso!');
+                  print('Título: ${_titleController.text}');
+                  print('Descrição: ${_descriptionController.text}');
+                  print('Chronos: ${_chronosController.text}');
+                  print('Prazo: ${_deadlineController.text}');
+                  print('Categorias: $_categoriesTags');
+                  print('Modalidade: $_selectedModality');
+                  
+                  // TODO: Implement actual request creation logic
+                  
+                  // Show success message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Pedido criado com sucesso!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                  
+                  // Navigate back after successful creation
+                  Navigator.pop(context);
                 }
               },
               child: const Text(
                 'Criar pedido',
                 style: TextStyle(
-                  color: Color(0xFFE9EAEC), // E9EAEC
+                  color: Color(0xFFE9EAEC),
                   fontWeight: FontWeight.bold,
                 ),
               ),
