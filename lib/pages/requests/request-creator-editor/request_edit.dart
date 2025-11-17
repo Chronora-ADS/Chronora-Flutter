@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:html' as html if (dart.library.io) 'dart:io';
+import 'dart:typed_data';
 
-class RequestCreationPage extends StatefulWidget {
-  const RequestCreationPage({super.key});
+class RequestEdittingPage extends StatefulWidget {
+  const RequestEdittingPage({super.key});
   @override
-  _RequestCreationPageState createState() => _RequestCreationPageState();
+  _RequestEdittingPageState createState() => _RequestEdittingPageState();
 }
 
-class _RequestCreationPageState extends State<RequestCreationPage> {
+class _RequestEdittingPageState extends State<RequestEdittingPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -18,6 +23,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   
   // Fixed: Use late keyword to ensure initialization
   late List<String> _categoriesTags;
+  
+  // Updated: Variables for image handling (web compatible)
+  dynamic _selectedImage;
+  String? _imageFileName;
+  Uint8List? _imageBytes;
 
   @override
   void initState() {
@@ -52,6 +62,106 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     setState(() {
       _categoriesTags.remove(category);
     });
+  }
+
+  // Updated: Web-compatible image picker
+  Future<void> _pickImage() async {
+    if (kIsWeb) {
+      // Web implementation
+      _pickImageWeb();
+    } else {
+      // Mobile implementation
+      _pickImageMobile();
+    }
+  }
+
+  // Mobile image picker
+  Future<void> _pickImageMobile() async {
+    final ImagePicker picker = ImagePicker();
+    try {
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1024,
+        maxHeight: 1024,
+      );
+
+      if (image != null) {
+        setState(() {
+          _selectedImage = File(image.path);
+          _imageFileName = image.name;
+        });
+      }
+    } catch (e) {
+      print('Error picking image: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Erro ao selecionar imagem'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Web image picker
+  void _pickImageWeb() {
+    // Create a file input element
+    final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
+    uploadInput.accept = 'image/png,image/jpeg,image/jpg,image/webp,image/bmp';
+    
+    uploadInput.onChange.listen((e) {
+      final files = uploadInput.files;
+      if (files != null && files.isNotEmpty) {
+        final file = files[0];
+        final reader = html.FileReader();
+        
+        reader.onLoadEnd.listen((e) {
+          setState(() {
+            _imageBytes = reader.result as Uint8List?;
+            _imageFileName = file.name;
+            _selectedImage = _imageBytes;
+          });
+        });
+        
+        reader.readAsArrayBuffer(file);
+      }
+    });
+    
+    // Trigger the file selection dialog
+    uploadInput.click();
+  }
+
+  // Updated: Method to truncate filename if too long (web compatible)
+  String _getDisplayFileName(String fileName, double maxWidth) {
+    const double maxPercentage = 0.45; // 45% of button width
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: fileName,
+        style: const TextStyle(
+          color: Color(0xFFC29503),
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+        ),
+      ),
+      maxLines: 1,
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    if (textPainter.width <= maxWidth * maxPercentage) {
+      return fileName;
+    }
+
+    // Truncate the filename
+    final extension = fileName.split('.').last;
+    final nameWithoutExtension = fileName.substring(0, fileName.lastIndexOf('.'));
+    final maxNameLength = (maxWidth * maxPercentage / textPainter.width * nameWithoutExtension.length * 0.6).floor();
+
+    if (maxNameLength <= 3) {
+      return '...$extension';
+    }
+
+    final truncatedName = '${nameWithoutExtension.substring(0, maxNameLength)}...$extension';
+    return truncatedName;
   }
 
   @override
@@ -235,7 +345,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           children: [
             const Center(
               child: Text(
-                'Criação do pedido',
+                'Edição do pedido',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -246,7 +356,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
 
             _buildFormField('Título', _titleController, validator: _requiredValidator),
             const SizedBox(height: 15),
-            _buildFormField('Descrição', _descriptionController, validator: _requiredValidator),
+            _buildDescriptionField(), // Updated: Expanded description field
             const SizedBox(height: 15),
             _buildFormField('Tempo em Chronos', _chronosController, validator: _requiredValidator),
             const SizedBox(height: 15),
@@ -303,6 +413,46 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           filled: true,
           fillColor: const Color(0xFFE9EAEC),
           errorStyle: const TextStyle(fontSize: 12, height: 0.1),
+        ),
+      ),
+    );
+  }
+
+  // New: Expanded description field that grows vertically
+  Widget _buildDescriptionField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFE9EAEC),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: _descriptionController,
+        validator: _requiredValidator,
+        maxLines: null, // Allows unlimited lines - expands vertically
+        minLines: 3, // Minimum 3 lines height
+        keyboardType: TextInputType.multiline,
+        textInputAction: TextInputAction.newline,
+        decoration: InputDecoration(
+          hintText: 'Descrição',
+          hintStyle: TextStyle(
+            color: Colors.black.withOpacity(0.7),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: const Color(0xFFE9EAEC),
+          errorStyle: const TextStyle(fontSize: 12, height: 0.1),
+          alignLabelWithHint: true,
         ),
       ),
     );
@@ -522,46 +672,62 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   }
 
   Widget _buildImageButton() {
-    return GestureDetector(
-      onTap: () {
-        // TODO: Implement image picker functionality
-        print('Adicionar imagem');
-      },
-      child: Container(
-        height: 46,
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: const Color(0xFFC29503),
-            width: 2,
-          ),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(left: 16),
-              child: Text(
-                'Imagem do pedido',
-                style: TextStyle(
-                  color: Color(0xFFC29503),
-                  fontWeight: FontWeight.bold,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final buttonWidth = constraints.maxWidth;
+        final displayText = _imageFileName != null 
+            ? _getDisplayFileName(_imageFileName!, buttonWidth)
+            : 'Imagem do pedido';
+
+        return GestureDetector(
+          onTap: _pickImage,
+          child: Container(
+            height: 46,
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: const Color(0xFFC29503),
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 16),
+                    child: Text(
+                      displayText,
+                      style: const TextStyle(
+                        color: Color(0xFFC29503),
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
                 ),
-              ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: _imageFileName != null
+                      ? const Icon(
+                          Icons.check_circle,
+                          color: Color(0xFFC29503),
+                          size: 24,
+                        )
+                      : Image.asset(
+                          'assets/img/AddImage.png',
+                          width: 24,
+                          height: 24,
+                          errorBuilder: (context, error, stackTrace) => 
+                            const Icon(Icons.add_photo_alternate, color: Color(0xFFC29503)),
+                        ),
+                ),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Image.asset(
-                'assets/img/AddImage.png',
-                width: 24,
-                height: 24,
-                errorBuilder: (context, error, stackTrace) => 
-                  const Icon(Icons.add_photo_alternate, color: Color(0xFFC29503)),
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -621,6 +787,14 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
                   print('Prazo: ${_deadlineController.text}');
                   print('Categorias: $_categoriesTags');
                   print('Modalidade: $_selectedModality');
+                  if (_imageFileName != null) {
+                    print('Imagem selecionada: $_imageFileName');
+                    if (kIsWeb) {
+                      print('Image bytes length: ${_imageBytes?.length}');
+                    } else {
+                      print('Image path: ${_selectedImage?.path}');
+                    }
+                  }
                   
                   // TODO: Implement actual request creation logic
                   
@@ -637,7 +811,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
                 }
               },
               child: const Text(
-                'Criar pedido',
+                'Editar pedido',
                 style: TextStyle(
                   color: Color(0xFFE9EAEC),
                   fontWeight: FontWeight.bold,
