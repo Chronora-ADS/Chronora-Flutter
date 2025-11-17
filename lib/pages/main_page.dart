@@ -10,6 +10,7 @@ import '../widgets/header.dart';
 import '../widgets/service_card.dart';
 import '../widgets/filters_modal.dart';
 import '../widgets/side_menu.dart';
+import '../widgets/wallet_modal.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -21,12 +22,12 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   final TextEditingController _searchController = TextEditingController();
   bool _isDrawerOpen = false;
-  
+  bool _isWalletOpen = false;
+
   List<Service> services = [];
   bool isLoading = true;
   String errorMessage = '';
 
-  // Variáveis de estado para os filtros
   double tempoValue = 5.0;
   String avaliacaoValue = "0";
   String ordenacaoValue = "0";
@@ -49,22 +50,19 @@ class _MainPageState extends State<MainPage> {
       if (token == null) {
         setState(() {
           isLoading = false;
-          errorMessage = "Você precisa estar logado para visualizar os serviços.";
+          errorMessage =
+              "Você precisa estar logado para visualizar os serviços.";
         });
         return;
       }
 
       final response = await ApiService.get('/service/get/all', token: token);
-      print('Status: ${response.statusCode}');
-      print('Response: ${response.body}');
 
       if (response.statusCode == 200) {
-        final dynamic responseData = json.decode(response.body); // Use dynamic aqui
+        final dynamic responseData = json.decode(response.body);
         List<dynamic> data = [];
 
-        // Verifique o tipo da resposta
         if (responseData is Map<String, dynamic>) {
-          // Se for um Map, procure pelas chaves comuns
           if (responseData.containsKey('services')) {
             data = responseData['services'] as List<dynamic>;
           } else if (responseData.containsKey('data')) {
@@ -72,11 +70,9 @@ class _MainPageState extends State<MainPage> {
           } else if (responseData.containsKey('content')) {
             data = responseData['content'] as List<dynamic>;
           } else {
-            // Se não encontrar chaves conhecidas, tente usar o Map completo
             print('Estrutura inesperada: $responseData');
           }
         } else if (responseData is List<dynamic>) {
-          // Se for uma List diretamente
           data = responseData;
         }
 
@@ -97,7 +93,7 @@ class _MainPageState extends State<MainPage> {
         errorMessage = "Falha ao carregar os serviços: $error";
       });
     }
-}
+  }
 
   void _showFiltersModal() {
     showModalBottomSheet(
@@ -119,6 +115,19 @@ class _MainPageState extends State<MainPage> {
     });
   }
 
+  void _openWallet() {
+    setState(() {
+      _isDrawerOpen = false; // Fecha o side menu
+      _isWalletOpen = true; // Abre a carteira
+    });
+  }
+
+  void _closeWallet() {
+    setState(() {
+      _isWalletOpen = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -128,12 +137,9 @@ class _MainPageState extends State<MainPage> {
           // Conteúdo principal
           Column(
             children: [
-              // Header fixo no topo
               Header(
                 onMenuPressed: _toggleDrawer,
               ),
-              
-              // Conteúdo da página
               Expanded(
                 child: BackgroundDefaultWidget(
                   child: SingleChildScrollView(
@@ -152,15 +158,18 @@ class _MainPageState extends State<MainPage> {
                             controller: _searchController,
                             decoration: InputDecoration(
                               hintText: 'Pintura de parede, aula de inglês...',
-                              hintStyle: const TextStyle(color: AppColors.textoPlaceholder),
+                              hintStyle: const TextStyle(
+                                  color: AppColors.textoPlaceholder),
                               filled: true,
                               fillColor: AppColors.branco,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(20),
                                 borderSide: BorderSide.none,
                               ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              prefixIcon: const Icon(Icons.search, color: AppColors.textoPlaceholder),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              prefixIcon: const Icon(Icons.search,
+                                  color: AppColors.textoPlaceholder),
                             ),
                           ),
                         ),
@@ -177,16 +186,16 @@ class _MainPageState extends State<MainPage> {
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 16),
-                            
-                            // Botão com logo Plus
                             ElevatedButton(
                               onPressed: () {
-                                Navigator.pushNamed(context, '/service-creation');
+                                Navigator.pushNamed(
+                                    context, '/request-creation');
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.branco,
                                 foregroundColor: AppColors.preto,
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 24, vertical: 12),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -218,7 +227,6 @@ class _MainPageState extends State<MainPage> {
                           ],
                         ),
 
-                        // Duas linhas brancas abaixo da seção
                         const SizedBox(height: 24),
                         Container(
                           width: double.infinity,
@@ -233,7 +241,6 @@ class _MainPageState extends State<MainPage> {
                         ),
                         const SizedBox(height: 24),
 
-                        // Filtros Button
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
@@ -241,7 +248,8 @@ class _MainPageState extends State<MainPage> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.branco,
                               foregroundColor: AppColors.preto,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 16),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -259,7 +267,6 @@ class _MainPageState extends State<MainPage> {
 
                         const SizedBox(height: 24),
 
-                        // Services List
                         _buildServicesList(),
                       ],
                     ),
@@ -269,24 +276,23 @@ class _MainPageState extends State<MainPage> {
             ],
           ),
 
-          // Menu lateral - ABAIXO do header
+          // Menu lateral
           if (_isDrawerOpen)
             Positioned(
-              top: kToolbarHeight, // Começa abaixo do header
+              top: kToolbarHeight,
               left: 0,
               right: 0,
               bottom: 0,
               child: Container(
-                color: Colors.black.withOpacity(0.5), // Overlay
+                color: Colors.black.withOpacity(0.5),
                 child: Row(
                   children: [
-                    // Menu lateral
                     SizedBox(
                       width: MediaQuery.of(context).size.width * 0.6,
-                      child: const SideMenu(),
+                      child: SideMenu(
+                        onWalletPressed: _openWallet, // Usa a nova função
+                      ),
                     ),
-                    
-                    // Área vazia para fechar o menu ao clicar
                     Expanded(
                       child: GestureDetector(
                         onTap: _toggleDrawer,
@@ -296,6 +302,26 @@ class _MainPageState extends State<MainPage> {
                       ),
                     ),
                   ],
+                ),
+              ),
+            ),
+
+          // Modal da Carteira
+          if (_isWalletOpen)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: WalletModal(
+                      onClose: _closeWallet, // Usa a nova função
+                    ),
+                  ),
                 ),
               ),
             ),

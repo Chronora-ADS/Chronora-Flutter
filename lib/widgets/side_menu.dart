@@ -3,7 +3,9 @@ import '../core/constants/app_routes.dart';
 import '../core/constants/app_colors.dart';
 
 class SideMenu extends StatelessWidget {
-  const SideMenu({super.key});
+  final VoidCallback onWalletPressed;
+
+  const SideMenu({super.key, required this.onWalletPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -11,12 +13,10 @@ class SideMenu extends StatelessWidget {
       color: AppColors.amareloUmPoucoEscuro,
       child: Column(
         children: [
-          // Conteúdo principal do menu - ocupa o espaço disponível
           Expanded(
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
-                // Seção principal do menu
                 _buildMenuSection(
                   title: '',
                   children: [
@@ -31,7 +31,7 @@ class SideMenu extends StatelessWidget {
                       icon: 'assets/img/PlusWhite.png',
                       title: 'Crie um pedido',
                       onTap: () {
-                        Navigator.pushNamed(context, '/service-creation');
+                        Navigator.pushNamed(context, '/request-creation');
                       },
                     ),
                     _buildMenuItem(
@@ -44,9 +44,7 @@ class SideMenu extends StatelessWidget {
                     _buildMenuItem(
                       icon: 'assets/img/CoinWhite.png',
                       title: 'Carteira',
-                      onTap: () {
-                        Navigator.pushNamed(context, '/wallet');
-                      },
+                      onTap: onWalletPressed, // Agora usa diretamente a função
                     ),
                     _buildMenuItem(
                       icon: 'assets/img/NotificationsWhite.png',
@@ -60,8 +58,6 @@ class SideMenu extends StatelessWidget {
               ],
             ),
           ),
-
-          // Seção de perfil - SEMPRE no final
           Column(
             children: [
               Container(
@@ -86,10 +82,9 @@ class SideMenu extends StatelessWidget {
                       Navigator.pushNamed(context, '/settings');
                     },
                   ),
-                  
-                  // Item Log out personalizado - Ícone e texto centralizados
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Container(
                       decoration: BoxDecoration(
                         color: AppColors.branco,
@@ -102,9 +97,10 @@ class SideMenu extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 8),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center, // Centraliza ícone e texto
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Image.asset(
                                 'assets/img/Logout.png',
@@ -112,7 +108,7 @@ class SideMenu extends StatelessWidget {
                                 height: 24,
                                 color: Colors.red,
                               ),
-                              const SizedBox(width: 12), // Espaço entre ícone e texto
+                              const SizedBox(width: 12),
                               const Text(
                                 'Log out',
                                 style: TextStyle(
@@ -185,7 +181,6 @@ class SideMenu extends StatelessWidget {
   }
 
   void _logout(BuildContext context) {
-    // Implementar lógica de logout
     Navigator.pushReplacementNamed(context, AppRoutes.login);
   }
 }
