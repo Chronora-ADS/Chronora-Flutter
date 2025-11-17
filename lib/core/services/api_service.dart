@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http; //
 
 class ApiService {
-  //static const String baseUrl = 'https://chronora-java.onrender.com';
+  // static const String baseUrl = 'https://chronora-java.onrender.com';
   static const String baseUrl = 'http://localhost:8085';
 
   static Future<http.Response> post(
@@ -10,7 +10,10 @@ class ApiService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl$endpoint'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
         body: jsonEncode(data),
       );
       return response;
@@ -23,6 +26,7 @@ class ApiService {
     try {
       final headers = {
         'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
         if (token != null) 'Authorization': 'Bearer $token',
       };
 

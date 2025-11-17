@@ -9,18 +9,21 @@ class AppRoutes {
   static const String login = '/login';
   static const String accountCreation = '/account-creation';
   static const String main = '/main';
-  static const String serviceCreation = '/service-creation';
   static const String requestCreation = '/request-creation';
   static const String requestEditting = '/request-editting';
+  static const String buyChronos = '/buy-chronos';
+  static const String sellChronos = '/sell-chronos';
 
   static Map<String, WidgetBuilder> get routes {
     return {
       login: (context) => const LoginPage(),
       accountCreation: (context) => const AccountCreationPage(),
       main: (context) => const MainPage(),
+
       requestCreation: (context) => const RequestCreationPage(), // Adicionar depois
       requestEditting: (context) => const RequestEdittingPage(), // Adicionar depois
-      // serviceCreation: (context) => const ServiceCreationPage(), // Adicionar depois
+      // buyChronos: (context) => const BuyChronosPage(),
+      // sellChronos: (context) => const SellChronosPage(),
     };
   }
 }
