@@ -13,6 +13,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   final TextEditingController _chronosController = TextEditingController();
   final TextEditingController _deadlineController = TextEditingController();
   final TextEditingController _categoriesController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController(); // Novo controller para search
   String? _selectedModality;
 
   @override
@@ -20,31 +21,65 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     return Scaffold(
       backgroundColor: const Color(0xFF0B0C0C),
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // Header - FORA do Padding para ocupar 100% da largura
-            _buildHeader(),
-            const SizedBox(height: 16),
-            
-            // Conteúdo principal DENTRO do Padding
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  children: [
-                    // Search Bar
-                    _buildSearchBar(),
-                    const SizedBox(height: 60), // Gap de 6px abaixo da search bar
-                    
-                    // Main Form
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: _buildForm(),
-                      ),
-                    ),
-                  ],
-                ),
+            // Imagem Comb2.png no canto superior esquerdo (ATRÁS do conteúdo)
+            Positioned(
+              left: 0,
+              top: 135, // 70px (header) + 50px de afastamento = 120px
+              child: Image.asset(
+                'assets/img/Comb2.png'
               ),
+            ),
+            
+            // Imagem BarAscending.png no canto inferior esquerdo (ATRÁS do conteúdo)
+            Positioned(
+              left: 0,
+              bottom: 0,
+              child: Image.asset(
+                'assets/img/BarAscending.png',
+                width: 210.47,
+                height: 178.9,
+              ),
+            ),
+            
+            // Imagem Comb3.png no canto inferior direito (ATRÁS do conteúdo)
+            Positioned(
+              right: 0, // Totalmente colado na borda direita
+              bottom: 60, // 60 pixels de afastamento do bottom
+              child: Image.asset(
+                'assets/img/Comb3.png'
+              ),
+            ),
+            
+            // Conteúdo principal (NA FRENTE das imagens)
+            Column(
+              children: [
+                // Header - FORA do Padding para ocupar 100% da largura
+                _buildHeader(),
+                const SizedBox(height: 16),
+                
+                // Conteúdo principal DENTRO do Padding
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      children: [
+                        // Search Bar
+                        _buildSearchBar(),
+                        const SizedBox(height: 60), // Gap de 6px abaixo da search bar
+                        
+                        // Main Form
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: _buildForm(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -116,27 +151,37 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         borderRadius: BorderRadius.circular(15),
         color: const Color(0xFFE9EAEC), // 100% de opacidade
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Espaço entre texto e ícone
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 16),
-            child: Text(
-              'Pintura de parede, aula de inglês...',
-              style: TextStyle(
-                color: Colors.black.withOpacity(0.7),
-              ),
-            ),
+      child: TextFormField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Pintura de parede, aula de inglês...',
+          hintStyle: TextStyle(
+            color: Colors.black.withOpacity(0.7), // 70% de transparência
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: const Color(0xFFE9EAEC),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.all(8.0),
             child: Image.asset(
               'assets/img/Search.png',
               width: 20,
               height: 20,
             ),
           ),
-        ],
+        ),
+        onChanged: (value) {
+          // Aqui você pode adicionar lógica de busca em tempo real se quiser
+          print('Texto da busca: $value');
+        },
+        onFieldSubmitted: (value) {
+          // Aqui você pode adicionar lógica quando o usuário pressionar Enter
+          print('Buscar por: $value');
+        },
       ),
     );
   }
