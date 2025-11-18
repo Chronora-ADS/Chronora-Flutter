@@ -64,21 +64,21 @@ class _HeaderState extends State<Header> {
     }
   }
 
-Map<String, dynamic> _parseResponse(String responseBody) {
-  try {
-    // Tenta fazer parse como JSON primeiro
-    final jsonData = json.decode(responseBody);
-    
-    // Verifica se é um objeto UserEntity completo
-    if (jsonData is Map<String, dynamic>) {
-      final chronos = jsonData['timeChronos'] ?? 0;
-      return {'timeChronos': chronos};
+  Map<String, dynamic> _parseResponse(String responseBody) {
+    try {
+      // Tenta fazer parse como JSON primeiro
+      final jsonData = json.decode(responseBody);
+
+      // Verifica se é um objeto UserEntity completo
+      if (jsonData is Map<String, dynamic>) {
+        final chronos = jsonData['timeChronos'] ?? 0;
+        return {'timeChronos': chronos};
+      }
+      return {'timeChronos': 0};
+    } catch (e) {
+      return {'timeChronos': 0};
     }
-    return {'timeChronos': 0};
-  } catch (e) {
-    return {'timeChronos': 0};
   }
-}
 
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -98,18 +98,9 @@ Map<String, dynamic> _parseResponse(String responseBody) {
         mainAxisSize: MainAxisSize.min,
         children: [
           Image.asset(
-            'assets/img/LogoBackgroundYellow.png',
-            width: 32,
+            'assets/img/LogoHeader.png',
+            width: 125,
             height: 32,
-          ),
-          const SizedBox(width: 8),
-          const Text(
-            'Chronora',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.preto,
-            ),
           ),
         ],
       ),
@@ -124,7 +115,8 @@ Map<String, dynamic> _parseResponse(String responseBody) {
                     height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.preto),
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(AppColors.preto),
                     ),
                   )
                 : Text(

@@ -50,7 +50,7 @@ class WalletModal extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
+                const Text(
                   '299',
                   style: TextStyle(
                     fontSize: 36,
@@ -114,7 +114,7 @@ class WalletModal extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 padding: const EdgeInsets.all(16),
-                child: Center(
+                child: const Center(
                   child: Text(
                     'Vender Chronos',
                     style: TextStyle(
