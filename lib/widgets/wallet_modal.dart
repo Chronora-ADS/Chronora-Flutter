@@ -34,10 +34,10 @@ class WalletModal extends StatelessWidget {
                 alignment: Alignment.centerRight,
                 child: IconButton(
                   onPressed: onClose,
-                  icon: const Icon(
-                    Icons.close,
-                    color: AppColors.preto,
-                    size: 24,
+                  icon: const ImageIcon(
+                    AssetImage('assets/img/Close.png'),
+                    width: 20,
+                    height: 20,
                   ),
                 ),
               ),
@@ -67,7 +67,7 @@ class WalletModal extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
@@ -79,7 +79,6 @@ class WalletModal extends StatelessWidget {
                 onClose();
                 Navigator.pushNamed(context, '/buy-chronos');
               },
-              borderRadius: BorderRadius.circular(12),
               child: Container(
                 padding: const EdgeInsets.all(16),
                 child: const Center(
@@ -102,9 +101,8 @@ class WalletModal extends StatelessWidget {
               color: AppColors.branco,
               border: Border.all(
                 color: AppColors.amareloUmPoucoEscuro,
-                width: 2,
+                width: 4,
               ),
-              borderRadius: BorderRadius.circular(12),
             ),
             child: InkWell(
               onTap: () {
