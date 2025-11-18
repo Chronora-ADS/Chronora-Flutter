@@ -69,7 +69,7 @@ class ServiceCard extends StatelessWidget {
                     Image.asset('assets/img/Coin.png', width: 16),
                     const SizedBox(width: 4),
                     Text(
-                      '${service.timeChronos} chronos',
+                      '${service.timeChronos}',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                       ),
