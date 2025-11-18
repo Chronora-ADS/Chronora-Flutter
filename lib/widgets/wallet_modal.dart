@@ -125,7 +125,8 @@ class _WalletModalState extends State<WalletModal> {
                         height: 40,
                         child: CircularProgressIndicator(
                           strokeWidth: 3,
-                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.preto),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(AppColors.preto),
                         ),
                       )
                     : Text(
@@ -148,7 +149,7 @@ class _WalletModalState extends State<WalletModal> {
           const SizedBox(height: 10),
           Container(
             width: double.infinity,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppColors.amareloUmPoucoEscuro,
             ),
             child: InkWell(
