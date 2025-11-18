@@ -3,16 +3,15 @@ import '../core/constants/app_routes.dart';
 import '../core/constants/app_colors.dart';
 
 class SideMenu extends StatelessWidget {
-  final VoidCallback onClose;
 
-  const SideMenu({super.key, required this.onClose});
+  final VoidCallback onWalletPressed;
+
+  const SideMenu({super.key, required this.onWalletPressed});
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-
     return Container(
-      width: screenSize.width * 0.6,
+
       color: AppColors.amareloUmPoucoEscuro,
       child: Column(
         children: [
@@ -20,87 +19,117 @@ class SideMenu extends StatelessWidget {
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
-                // Seção principal do menu
+
                 _buildMenuSection(
                   title: '',
                   children: [
                     _buildMenuItem(
-                      iconPath: 'assets/img/HomeWhite.png',
+
+                      icon: 'assets/img/HomeWhite.png',
                       title: 'Página Inicial',
                       onTap: () {
-                        onClose();
-                        Navigator.pushNamed(context, '/main');
+                        Navigator.pushReplacementNamed(context, AppRoutes.main);
                       },
                     ),
                     _buildMenuItem(
-                      iconPath: 'assets/img/PlusWhite.png',
+                      icon: 'assets/img/PlusWhite.png',
                       title: 'Crie um pedido',
                       onTap: () {
-                        onClose();
-                        Navigator.pushNamed(context, '/service-creation');
+                        Navigator.pushNamed(context, '/request-creation');
                       },
                     ),
                     _buildMenuItem(
-                      iconPath: 'assets/img/SuitcaseWhite.png',
+                      icon: 'assets/img/SuitcaseWhite.png',
                       title: 'Meus pedidos',
                       onTap: () {
-                        onClose();
                         Navigator.pushNamed(context, '/my-orders');
                       },
                     ),
                     _buildMenuItem(
-                      iconPath: 'assets/img/CoinWhite.png',
+                      icon: 'assets/img/CoinWhite.png',
                       title: 'Carteira',
-                      onTap: () {
-                        onClose();
-                        // fazer modal
-                      },
+                      onTap: onWalletPressed, // Agora usa diretamente a função
                     ),
                     _buildMenuItem(
-                      iconPath: 'assets/img/NotificationWhite.png',
+                      icon: 'assets/img/NotificationsWhite.png',
                       title: 'Notificações',
                       onTap: () {
-                        onClose();
                         Navigator.pushNamed(context, '/notifications');
-                      },
-                    ),
-                  ],
-                ),
-
-                const Divider(height: 1, color: AppColors.branco),
-
-                // Seção de perfil
-                _buildMenuSection(
-                  title: '',
-                  children: [
-                    _buildMenuItem(
-                      iconPath: 'assets/img/UserWhite.png',
-                      title: 'Perfil',
-                      onTap: () {
-                        onClose();
-                        Navigator.pushNamed(context, '/profile');
-                      },
-                    ),
-                    _buildMenuItem(
-                      iconPath: 'assets/img/SettingsWhite.png',
-                      title: 'Configurações',
-                      onTap: () {
-                        onClose();
-                        Navigator.pushNamed(context, '/settings');
-                      },
-                    ),
-                    _buildMenuItem(
-                      iconPath: 'assets/img/Logout.png',
-                      title: 'Log out',
-                      onTap: () {
-                        onClose();
-                        _logout(context);
                       },
                     ),
                   ],
                 ),
               ],
             ),
+          ),
+          Column(
+            children: [
+              Container(
+                height: 3,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                color: AppColors.branco,
+              ),
+              _buildMenuSection(
+                title: '',
+                children: [
+                  _buildMenuItem(
+                    icon: 'assets/img/UserIconWhite.png',
+                    title: 'Perfil',
+                    onTap: () {
+                      Navigator.pushNamed(context, '/profile');
+                    },
+                  ),
+                  _buildMenuItem(
+                    icon: 'assets/img/SettingsWhite.png',
+                    title: 'Configurações',
+                    onTap: () {
+                      Navigator.pushNamed(context, '/settings');
+                    },
+                  ),
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.branco,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: InkWell(
+                        onTap: () {
+                          _logout(context);
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Image.asset(
+                                'assets/img/Logout.png',
+                                width: 24,
+                                height: 24,
+                                color: Colors.red,
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Log out',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),
@@ -120,9 +149,10 @@ class SideMenu extends StatelessWidget {
             child: Text(
               title,
               style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.preto,
+
+
+                fontSize: 20,
+                color: AppColors.branco,
               ),
             ),
           ),
@@ -132,36 +162,35 @@ class SideMenu extends StatelessWidget {
   }
 
   Widget _buildMenuItem({
-    required String iconPath,
+
+    required String icon,
     required String title,
     required VoidCallback onTap,
   }) {
     return ListTile(
-      leading: Container(
+
+      leading: Image.asset(
+        icon,
         width: 24,
         height: 24,
-        child: Image.asset(
-          iconPath,
-          width: 24,
-          height: 24,
-          fit: BoxFit.contain,
-        ),
       ),
       title: Text(
         title,
         style: const TextStyle(
-          fontSize: 16,
+
+          fontSize: 20,
           color: AppColors.branco,
+          fontWeight: FontWeight.w700,
         ),
       ),
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+
       minLeadingWidth: 0,
     );
   }
 
   void _logout(BuildContext context) {
-    // Implementar lógica de logout
     Navigator.pushReplacementNamed(context, AppRoutes.login);
   }
 }

@@ -11,4 +11,5 @@ class AppColors {
     static const Color brancoBorda = Color(0xFFE0E0E0);
     static const Color textoPlaceholder = Color(0xFF2A2E34);
     static const Color azul = Color(0xFF013565);
+    static const Color vermelho = Color(0xFFB10B0B);
 }
