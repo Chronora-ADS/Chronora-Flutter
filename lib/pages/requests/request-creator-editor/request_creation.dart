@@ -5,9 +5,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:html' as html if (dart.library.io) 'dart:io';
 import 'dart:typed_data';
 
-// Importe estes widgets se eles existirem no seu projeto
-// import '../widgets/side_menu.dart';
-// import '../widgets/wallet_modal.dart';
+// Importe os widgets da main_page
+import '../../../widgets/header.dart';
+import '../../../widgets/side_menu.dart';
+import '../../../widgets/wallet_modal.dart';
 
 class RequestCreationPage extends StatefulWidget {
   const RequestCreationPage({super.key});
@@ -24,16 +25,16 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   final TextEditingController _categoriesController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   String? _selectedModality;
-
+  
   // Fixed: Use late keyword to ensure initialization
   late List<String> _categoriesTags;
-
+  
   // Updated: Variables for image handling (web compatible)
   dynamic _selectedImage;
   String? _imageFileName;
   Uint8List? _imageBytes;
 
-  // New: Variables for side menu and wallet
+  // New: Variables for side menu and wallet (igual na main_page)
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
 
@@ -114,16 +115,15 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   // Web image picker
   void _pickImageWeb() {
     // Create a file input element
-    final html.FileUploadInputElement uploadInput =
-        html.FileUploadInputElement();
+    final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
     uploadInput.accept = 'image/png,image/jpeg,image/jpg,image/webp,image/bmp';
-
+    
     uploadInput.onChange.listen((e) {
       final files = uploadInput.files;
       if (files != null && files.isNotEmpty) {
         final file = files[0];
         final reader = html.FileReader();
-
+        
         reader.onLoadEnd.listen((e) {
           setState(() {
             _imageBytes = reader.result as Uint8List?;
@@ -131,11 +131,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             _selectedImage = _imageBytes;
           });
         });
-
+        
         reader.readAsArrayBuffer(file);
       }
     });
-
+    
     // Trigger the file selection dialog
     uploadInput.click();
   }
@@ -162,32 +162,24 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
 
     // Truncate the filename
     final extension = fileName.split('.').last;
-    final nameWithoutExtension =
-        fileName.substring(0, fileName.lastIndexOf('.'));
-    final maxNameLength = (maxWidth *
-            maxPercentage /
-            textPainter.width *
-            nameWithoutExtension.length *
-            0.6)
-        .floor();
+    final nameWithoutExtension = fileName.substring(0, fileName.lastIndexOf('.'));
+    final maxNameLength = (maxWidth * maxPercentage / textPainter.width * nameWithoutExtension.length * 0.6).floor();
 
     if (maxNameLength <= 3) {
       return '...$extension';
     }
 
-    final truncatedName =
-        '${nameWithoutExtension.substring(0, maxNameLength)}...$extension';
+    final truncatedName = '${nameWithoutExtension.substring(0, maxNameLength)}...$extension';
     return truncatedName;
   }
 
-  // New: Side menu toggle function
+  // Funções para controlar o menu lateral e carteira (igual na main_page)
   void _toggleDrawer() {
     setState(() {
       _isDrawerOpen = !_isDrawerOpen;
     });
   }
 
-  // New: Wallet open function
   void _openWallet() {
     setState(() {
       _isDrawerOpen = false; // Fecha o side menu
@@ -195,275 +187,10 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     });
   }
 
-  // New: Wallet close function
   void _closeWallet() {
     setState(() {
       _isWalletOpen = false;
     });
-  }
-
-  // Temporary SideMenu widget (substitua pelo seu widget real se existir)
-  Widget _buildTemporarySideMenu() {
-    return Container(
-      color: Colors.white,
-      child: Column(
-        children: [
-          Container(
-            height: 100,
-            color: Color(0xFFFFC300),
-            child: Center(
-              child: Text(
-                'Menu',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              children: [
-                ListTile(
-                  leading: Icon(Icons.person),
-                  title: Text('Perfil'),
-                  onTap: () {
-                    // Navegar para perfil
-                    _toggleDrawer();
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.wallet),
-                  title: Text('Carteira'),
-                  onTap: _openWallet,
-                ),
-                ListTile(
-                  leading: Icon(Icons.history),
-                  title: Text('Histórico'),
-                  onTap: () {
-                    // Navegar para histórico
-                    _toggleDrawer();
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.settings),
-                  title: Text('Configurações'),
-                  onTap: () {
-                    // Navegar para configurações
-                    _toggleDrawer();
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.exit_to_app),
-                  title: Text('Sair'),
-                  onTap: () {
-                    // Fazer logout
-                    _toggleDrawer();
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Temporary WalletModal widget (substitua pelo seu widget real se existir)
-  Widget _buildTemporaryWalletModal() {
-    return Container(
-      width: MediaQuery.of(context).size.width * 0.9,
-      height: MediaQuery.of(context).size.height * 0.7,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          // Header
-          Container(
-            height: 60,
-            decoration: BoxDecoration(
-              color: Color(0xFFFFC300),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-              ),
-            ),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: Icon(Icons.close, color: Colors.black),
-                  onPressed: _closeWallet,
-                ),
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      'Carteira',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 48), // Para balancear o espaço do ícone
-              ],
-            ),
-          ),
-          // Content
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  // Saldo
-                  Container(
-                    padding: EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Color(0xFFF5F5F5),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          'Saldo Disponível',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Image.asset(
-                              'assets/img/Coin.png',
-                              width: 30,
-                              height: 30,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Icon(Icons.monetization_on,
-                                      size: 30, color: Colors.amber),
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              '123',
-                              style: TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Chronos',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  // Histórico de transações
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Últimas Transações',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        Expanded(
-                          child: ListView(
-                            children: [
-                              _buildTransactionItem(
-                                  'Serviço de Pintura', '+5', true),
-                              _buildTransactionItem(
-                                  'Aula de Inglês', '-3', false),
-                              _buildTransactionItem(
-                                  'Manutenção Elétrica', '+8', true),
-                              _buildTransactionItem('Consultoria', '-2', false),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTransactionItem(
-      String description, String amount, bool isCredit) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 10),
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: isCredit ? Colors.green[100] : Colors.red[100],
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              isCredit ? Icons.arrow_downward : Icons.arrow_upward,
-              color: isCredit ? Colors.green : Colors.red,
-              size: 20,
-            ),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  description,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  'Hoje - 14:30',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            amount,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isCredit ? Colors.green : Colors.red,
-              fontSize: 16,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -474,12 +201,14 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         children: [
           // Background images
           _buildBackgroundImages(),
-
+          
           // Main content
           Column(
             children: [
-              // Updated: Using the same header structure as main_page
-              _buildHeader(),
+              // Header EXATO da main_page com funcionalidade
+              Header(
+                onMenuPressed: _toggleDrawer,
+              ),
               const SizedBox(height: 16),
               Expanded(
                 child: Padding(
@@ -500,7 +229,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             ],
           ),
 
-          // Menu lateral
+          // Menu lateral (igual na main_page)
           if (_isDrawerOpen)
             Positioned(
               top: kToolbarHeight,
@@ -513,8 +242,9 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
                   children: [
                     SizedBox(
                       width: MediaQuery.of(context).size.width * 0.6,
-                      child:
-                          _buildTemporarySideMenu(), // Use o SideMenu real aqui se disponível
+                      child: SideMenu(
+                        onWalletPressed: _openWallet,
+                      ),
                     ),
                     Expanded(
                       child: GestureDetector(
@@ -529,7 +259,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
               ),
             ),
 
-          // Modal da Carteira
+          // Modal da Carteira (igual na main_page)
           if (_isWalletOpen)
             Positioned(
               top: 0,
@@ -541,87 +271,13 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
-                    child:
-                        _buildTemporaryWalletModal(), // Use o WalletModal real aqui se disponível
+                    child: WalletModal(
+                      onClose: _closeWallet,
+                    ),
                   ),
                 ),
               ),
             ),
-        ],
-      ),
-    );
-  }
-
-  // Updated: Header following main_page structure
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      height: 70,
-      decoration: const BoxDecoration(
-        color: Color(0xFFFFC300), // Amarelo do header
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Menu button (left)
-          Padding(
-            padding: const EdgeInsets.only(left: 20),
-            child: GestureDetector(
-              onTap: _toggleDrawer,
-              child: Image.asset(
-                'assets/img/Menu.png',
-                width: 40,
-                height: 40,
-                errorBuilder: (context, error, stackTrace) =>
-                    const Icon(Icons.menu, size: 30, color: Colors.black),
-              ),
-            ),
-          ),
-
-          // Logo (center)
-          Image.asset(
-            'assets/img/LogoHeader.png',
-            width: 125,
-            height: 39,
-            errorBuilder: (context, error, stackTrace) => const Text(
-              'CHRONORA',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-          ),
-
-          // Coin and balance (right)
-          Padding(
-            padding: const EdgeInsets.only(right: 20),
-            child: GestureDetector(
-              onTap: _openWallet,
-              child: Row(
-                children: [
-                  Image.asset(
-                    'assets/img/Coin.png',
-                    width: 30,
-                    height: 30,
-                    errorBuilder: (context, error, stackTrace) => const Icon(
-                        Icons.monetization_on,
-                        size: 25,
-                        color: Colors.black),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    '123',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -687,8 +343,8 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
               'assets/img/Search.png',
               width: 20,
               height: 20,
-              errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.search, size: 20),
+              errorBuilder: (context, error, stackTrace) => 
+                const Icon(Icons.search, size: 20),
             ),
           ),
         ),
@@ -722,13 +378,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             ),
             const SizedBox(height: 25),
 
-            _buildFormField('Título', _titleController,
-                validator: _requiredValidator),
+            _buildFormField('Título', _titleController, validator: _requiredValidator),
             const SizedBox(height: 15),
             _buildDescriptionField(), // Updated: Expanded description field
             const SizedBox(height: 15),
-            _buildFormField('Tempo em Chronos', _chronosController,
-                validator: _requiredValidator),
+            _buildFormField('Tempo em Chronos', _chronosController, validator: _requiredValidator),
             const SizedBox(height: 15),
             _buildDateField('Prazo'),
             const SizedBox(height: 15),
@@ -753,8 +407,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     return null;
   }
 
-  Widget _buildFormField(String placeholder, TextEditingController controller,
-      {String? Function(String?)? validator}) {
+  Widget _buildFormField(String placeholder, TextEditingController controller, {String? Function(String?)? validator}) {
     return Container(
       height: 46,
       decoration: BoxDecoration(
@@ -815,8 +468,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           hintStyle: TextStyle(
             color: Colors.black.withOpacity(0.7),
           ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide.none,
@@ -866,8 +518,8 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
               'assets/img/calendar.png',
               width: 24,
               height: 24,
-              errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.calendar_today, size: 20),
+              errorBuilder: (context, error, stackTrace) => 
+                const Icon(Icons.calendar_today, size: 20),
             ),
           ),
           errorStyle: const TextStyle(fontSize: 12, height: 0.1),
@@ -881,8 +533,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           );
           if (picked != null) {
             setState(() {
-              _deadlineController.text =
-                  "${picked.day}/${picked.month}/${picked.year}";
+              _deadlineController.text = "${picked.day}/${picked.month}/${picked.year}";
             });
           }
         },
@@ -925,7 +576,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             onFieldSubmitted: _addCategory,
           ),
         ),
-
+        
         // Fixed: Direct check on the late-initialized list
         if (_categoriesTags.isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -1023,8 +674,8 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
               'assets/img/down-arrow.png',
               width: 24,
               height: 24,
-              errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.arrow_drop_down, size: 24),
+              errorBuilder: (context, error, stackTrace) => 
+                const Icon(Icons.arrow_drop_down, size: 24),
             ),
           ),
           errorStyle: const TextStyle(fontSize: 12, height: 0.1),
@@ -1048,7 +699,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final buttonWidth = constraints.maxWidth;
-        final displayText = _imageFileName != null
+        final displayText = _imageFileName != null 
             ? _getDisplayFileName(_imageFileName!, buttonWidth)
             : 'Imagem do pedido';
 
@@ -1092,9 +743,8 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
                           'assets/img/AddImage.png',
                           width: 24,
                           height: 24,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(Icons.add_photo_alternate,
-                                  color: Color(0xFFC29503)),
+                          errorBuilder: (context, error, stackTrace) => 
+                            const Icon(Icons.add_photo_alternate, color: Color(0xFFC29503)),
                         ),
                 ),
               ],
@@ -1152,7 +802,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
                     );
                     return;
                   }
-
+                  
                   // Lógica para criar o pedido
                   print('Pedido criado com sucesso!');
                   print('Título: ${_titleController.text}');
@@ -1169,9 +819,9 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
                       print('Image path: ${_selectedImage?.path}');
                     }
                   }
-
+                  
                   // TODO: Implement actual request creation logic
-
+                  
                   // Show success message
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -1179,7 +829,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
                       backgroundColor: Colors.green,
                     ),
                   );
-
+                  
                   // Navigate back after successful creation
                   Navigator.pop(context);
                 }
