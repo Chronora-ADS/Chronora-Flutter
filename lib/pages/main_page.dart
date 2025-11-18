@@ -235,7 +235,7 @@ class _MainPageState extends State<MainPage> {
                                 height: 3,
                                 color: AppColors.branco,
                             ),
-                        )
+                        ),
                         const SizedBox(height: 8),
                         Align(
                             alignment: Alignment.center,
@@ -244,7 +244,7 @@ class _MainPageState extends State<MainPage> {
                                 height: 3,
                                 color: AppColors.branco,
                             ),
-                        )
+                        ),
                         const SizedBox(height: 24),
 
                         SizedBox(
