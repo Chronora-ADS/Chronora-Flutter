@@ -2,37 +2,48 @@ class Service {
   final String title;
   final String serviceImage;
   final int timeChronos;
-  final UserEntity userEntity;
+  final UserCreator userCreator;
   final List<CategoryEntity> categoryEntities;
 
   Service({
     required this.title,
     required this.serviceImage,
     required this.timeChronos,
-    required this.userEntity,
+    required this.userCreator,
     required this.categoryEntities,
   });
 
   factory Service.fromJson(Map<String, dynamic> json) {
+    // Verifica se userCreator existe e é um Map
+    final userCreatorJson = json['userCreator'];
+    UserCreator userCreator;
+
+    if (userCreatorJson != null && userCreatorJson is Map<String, dynamic>) {
+      userCreator = UserCreator.fromJson(userCreatorJson);
+    } else {
+      // Cria um UserCreator padrão se estiver nulo ou inválido
+      userCreator = UserCreator(name: 'Usuário Desconhecido');
+    }
+
     return Service(
-      title: json['title'] ?? '',
+      title: json['title'] ?? 'Título não disponível',
       serviceImage: json['serviceImage'] ?? '',
       timeChronos: json['timeChronos'] ?? 0,
-      userEntity: UserEntity.fromJson(json['userEntity'] ?? {}),
+      userCreator: userCreator,
       categoryEntities: (json['categoryEntities'] as List? ?? [])
-          .map((e) => CategoryEntity.fromJson(e))
+          .map((e) => CategoryEntity.fromJson(e ?? {}))
           .toList(),
     );
   }
 }
 
-class UserEntity {
+class UserCreator {
   final String name;
 
-  UserEntity({required this.name});
+  UserCreator({required this.name});
 
-  factory UserEntity.fromJson(Map<String, dynamic> json) {
-    return UserEntity(
+  factory UserCreator.fromJson(Map<String, dynamic> json) {
+    return UserCreator(
       name: json['name'] ?? '',
     );
   }

@@ -41,7 +41,7 @@ class ServiceCard extends StatelessWidget {
                 ? const Icon(Icons.image, size: 50, color: Colors.grey)
                 : null,
           ),
-          
+
           // Service Info
           Padding(
             padding: const EdgeInsets.all(16),
@@ -59,7 +59,7 @@ class ServiceCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Postado por ${service.userEntity.name}',
+                  'Postado por ${service.userCreator.name}',
                   style: const TextStyle(fontSize: 14),
                 ),
                 const SizedBox(height: 8),
@@ -84,7 +84,8 @@ class ServiceCard extends StatelessWidget {
                     runSpacing: 8,
                     children: service.categoryEntities.map((category) {
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: AppColors.amareloClaro,
                           borderRadius: BorderRadius.circular(5),

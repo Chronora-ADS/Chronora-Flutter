@@ -9,9 +9,9 @@ class AppRoutes {
   static const String login = '/login';
   static const String accountCreation = '/account-creation';
   static const String main = '/main';
+  static const String requestCreation = '/request-creation';
   static const String buyChronos = '/buy-chronos';
   static const String sellChronos = '/sell-chronos';
-  static const String serviceCreation = '/service-creation';
 
   static Map<String, WidgetBuilder> get routes {
     return {
@@ -19,8 +19,8 @@ class AppRoutes {
       accountCreation: (context) => const AccountCreationPage(),
       main: (context) => const MainPage(),
       buyChronos: (context) => const BuyChronosPage(),
-  sellChronos: (context) => const SellChronosPage(),
-      // serviceCreation: (context) => const ServiceCreationPage(), // Adicionar depois
+      sellChronos: (context) => const SellChronosPage(),
+
     };
   }
 }

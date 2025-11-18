@@ -3,97 +3,131 @@ import '../core/constants/app_routes.dart';
 import '../core/constants/app_colors.dart';
 
 class SideMenu extends StatelessWidget {
-  const SideMenu({super.key});
+  final VoidCallback onWalletPressed;
+
+  const SideMenu({super.key, required this.onWalletPressed});
 
   @override
   Widget build(BuildContext context) {
-    return Drawer(
-      width: MediaQuery.of(context).size.width * 0.8,
-      child: Container(
-        color: AppColors.branco,
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            // Header do Menu
-            Container(
-              height: 120,
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                color: AppColors.amareloClaro,
+    return Container(
+      color: AppColors.amareloUmPoucoEscuro,
+      child: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                _buildMenuSection(
+                  title: '',
+                  children: [
+                    _buildMenuItem(
+                      icon: 'assets/img/HomeWhite.png',
+                      title: 'Página Inicial',
+                      onTap: () {
+                        Navigator.pushReplacementNamed(context, AppRoutes.main);
+                      },
+                    ),
+                    _buildMenuItem(
+                      icon: 'assets/img/PlusWhite.png',
+                      title: 'Crie um pedido',
+                      onTap: () {
+                        Navigator.pushNamed(context, '/request-creation');
+                      },
+                    ),
+                    _buildMenuItem(
+                      icon: 'assets/img/SuitcaseWhite.png',
+                      title: 'Meus pedidos',
+                      onTap: () {
+                        Navigator.pushNamed(context, '/my-orders');
+                      },
+                    ),
+                    _buildMenuItem(
+                      icon: 'assets/img/CoinWhite.png',
+                      title: 'Carteira',
+                      onTap: onWalletPressed, // Agora usa diretamente a função
+                    ),
+                    _buildMenuItem(
+                      icon: 'assets/img/NotificationsWhite.png',
+                      title: 'Notificações',
+                      onTap: () {
+                        Navigator.pushNamed(context, '/notifications');
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Column(
+            children: [
+              Container(
+                height: 3,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                color: AppColors.branco,
               ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
+              _buildMenuSection(
+                title: '',
                 children: [
-                  Text(
-                    'Página inicial',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.preto,
+                  _buildMenuItem(
+                    icon: 'assets/img/UserIconWhite.png',
+                    title: 'Perfil',
+                    onTap: () {
+                      Navigator.pushNamed(context, '/profile');
+                    },
+                  ),
+                  _buildMenuItem(
+                    icon: 'assets/img/SettingsWhite.png',
+                    title: 'Configurações',
+                    onTap: () {
+                      Navigator.pushNamed(context, '/settings');
+                    },
+                  ),
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.branco,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: InkWell(
+                        onTap: () {
+                          _logout(context);
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Image.asset(
+                                'assets/img/Logout.png',
+                                width: 24,
+                                height: 24,
+                                color: Colors.red,
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Log out',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
-            ),
-
-            // Seção principal do menu
-            _buildMenuSection(
-              title: 'Crie um pedido',
-              children: [
-                _buildMenuItem(
-                  icon: Icons.add_circle_outline,
-                  title: 'Meus pedidos',
-                  onTap: () {
-                    Navigator.pop(context); // Fecha o drawer
-                    // Navegar para meus pedidos
-                  },
-                ),
-                _buildMenuItem(
-                  icon: Icons.account_balance_wallet,
-                  title: 'Carteira',
-                  onTap: () {
-                    Navigator.pop(context); // Fecha o drawer
-                    // Navegar para carteira
-                  },
-                ),
-                _buildMenuItem(
-                  icon: Icons.notifications,
-                  title: 'Notificações',
-                  onTap: () {
-                    Navigator.pop(context); // Fecha o drawer
-                    // Navegar para notificações
-                  },
-                ),
-              ],
-            ),
-
-            const Divider(height: 1, color: AppColors.preto),
-
-            // Seção de perfil
-            _buildMenuSection(
-              title: 'Perfil',
-              children: [
-                _buildMenuItem(
-                  icon: Icons.person,
-                  title: 'Configurações',
-                  onTap: () {
-                    Navigator.pop(context); // Fecha o drawer
-                    // Navegar para configurações
-                  },
-                ),
-                _buildMenuItem(
-                  icon: Icons.exit_to_app,
-                  title: 'Log out',
-                  onTap: () {
-                    Navigator.pop(context); // Fecha o drawer
-                    _logout(context);
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -105,49 +139,48 @@ class SideMenu extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.preto,
+        if (title.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 20,
+                color: AppColors.branco,
+              ),
             ),
           ),
-        ),
         ...children,
       ],
     );
   }
 
   Widget _buildMenuItem({
-    required IconData icon,
+    required String icon,
     required String title,
     required VoidCallback onTap,
   }) {
     return ListTile(
-      leading: Icon(
+      leading: Image.asset(
         icon,
-        color: AppColors.preto,
-        size: 24,
+        width: 24,
+        height: 24,
       ),
       title: Text(
         title,
         style: const TextStyle(
-          fontSize: 16,
-          color: AppColors.preto,
+          fontSize: 20,
+          color: AppColors.branco,
+          fontWeight: FontWeight.w700,
         ),
       ),
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       minLeadingWidth: 0,
     );
   }
 
   void _logout(BuildContext context) {
-    // Implementar lógica de logout
-    // Limpar token, etc.
     Navigator.pushReplacementNamed(context, AppRoutes.login);
   }
 }
