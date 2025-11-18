@@ -1,9 +1,17 @@
+import 'package:chronora/widgets/header.dart';
+import 'package:chronora/widgets/side_menu.dart';
+import 'package:chronora/widgets/wallet_modal.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:html' as html if (dart.library.io) 'dart:io';
 import 'dart:typed_data';
+
+// Importe os widgets da main_page
+import '../../../widgets/header.dart';
+import '../../../widgets/side_menu.dart';
+import '../../../widgets/wallet_modal.dart';
 
 class RequestEditingPage extends StatefulWidget {
   const RequestEditingPage({super.key});
@@ -28,6 +36,10 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   dynamic _selectedImage;
   String? _imageFileName;
   Uint8List? _imageBytes;
+
+  // New: Variables for side menu and wallet (igual na main_page)
+  bool _isDrawerOpen = false;
+  bool _isWalletOpen = false;
 
   @override
   void initState() {
@@ -172,41 +184,112 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     return truncatedName;
   }
 
+  // Funções para controlar o menu lateral e carteira (igual na main_page)
+  void _toggleDrawer() {
+    setState(() {
+      _isDrawerOpen = !_isDrawerOpen;
+    });
+  }
+
+  void _openWallet() {
+    setState(() {
+      _isDrawerOpen = false; // Fecha o side menu
+      _isWalletOpen = true; // Abre a carteira
+    });
+  }
+
+  void _closeWallet() {
+    setState(() {
+      _isWalletOpen = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0B0C0C),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // Background images
-            _buildBackgroundImages(),
+      body: Stack(
+        children: [
+          // Background images
+          _buildBackgroundImages(),
 
-            // Main content
-            Column(
-              children: [
-                _buildHeader(),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      children: [
-                        _buildSearchBar(),
-                        const SizedBox(height: 60),
-                        Expanded(
-                          child: SingleChildScrollView(
-                            child: _buildForm(),
-                          ),
+          // Main content
+          Column(
+            children: [
+              // Header EXATO da main_page com funcionalidade
+              Header(
+                onMenuPressed: _toggleDrawer,
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    children: [
+                      _buildSearchBar(),
+                      const SizedBox(height: 60),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: _buildForm(),
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Menu lateral (igual na main_page)
+          if (_isDrawerOpen)
+            Positioned(
+              top: kToolbarHeight,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.6,
+                      child: SideMenu(
+                        onWalletPressed: _openWallet,
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _toggleDrawer,
+                        child: Container(
+                          color: Colors.transparent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Modal da Carteira (igual na main_page)
+          if (_isWalletOpen)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: WalletModal(
+                      onClose: _closeWallet,
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -241,60 +324,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      height: 70,
-      decoration: const BoxDecoration(
-        color: Color(0xFFFFC300),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 20),
-            child: Image.asset(
-              'assets/img/Menu.png',
-              width: 40,
-              height: 40,
-              errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.menu, size: 30),
-            ),
-          ),
-          Image.asset(
-            'assets/img/LogoHeader.png',
-            width: 125,
-            height: 39,
-            errorBuilder: (context, error, stackTrace) => const Text('LOGO',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 20),
-            child: Row(
-              children: [
-                Image.asset(
-                  'assets/img/Coin.png',
-                  width: 30,
-                  height: 30,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.monetization_on, size: 25),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  '123',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -791,8 +820,8 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
                     return;
                   }
 
-                  // Lógica para criar o pedido
-                  print('Pedido criado com sucesso!');
+                  // Lógica para editar o pedido
+                  print('Pedido editado com sucesso!');
                   print('Título: ${_titleController.text}');
                   print('Descrição: ${_descriptionController.text}');
                   print('Chronos: ${_chronosController.text}');
@@ -808,17 +837,17 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
                     }
                   }
 
-                  // TODO: Implement actual request creation logic
+                  // TODO: Implement actual request editing logic
 
                   // Show success message
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Pedido criado com sucesso!'),
+                      content: Text('Pedido editado com sucesso!'),
                       backgroundColor: Colors.green,
                     ),
                   );
 
-                  // Navigate back after successful creation
+                  // Navigate back after successful editing
                   Navigator.pop(context);
                 }
               },
