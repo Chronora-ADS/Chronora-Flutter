@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
+import '../../widgets/side_menu.dart';
+import '../../widgets/wallet_modal.dart';
 import 'buy_chronos_controller.dart';
 
 class BuyChronosPage extends StatefulWidget {
@@ -11,12 +13,34 @@ class BuyChronosPage extends StatefulWidget {
 }
 
 class _BuyChronosPageState extends State<BuyChronosPage> {
+  bool _isDrawerOpen = false;
+  bool _isWalletOpen = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<BuyChronosController>(context, listen: false)
           .initializeInitialValues();
+    });
+  }
+
+  void _toggleDrawer() {
+    setState(() {
+      _isDrawerOpen = !_isDrawerOpen;
+    });
+  }
+
+  void _openWallet() {
+    setState(() {
+      _isDrawerOpen = false;
+      _isWalletOpen = true;
+    });
+  }
+
+  void _closeWallet() {
+    setState(() {
+      _isWalletOpen = false;
     });
   }
 
@@ -124,12 +148,15 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
         children: [
           Padding(
             padding: const EdgeInsets.only(left: 20),
-            child: Image.asset(
-              'assets/img/Menu.png',
-              width: 40,
-              height: 40,
-              errorBuilder: (context, error, stackTrace) => 
-                const Icon(Icons.menu, size: 30),
+            child: GestureDetector(
+              onTap: _toggleDrawer,
+              child: Image.asset(
+                'assets/img/Menu.png',
+                width: 40,
+                height: 40,
+                errorBuilder: (context, error, stackTrace) => 
+                  const Icon(Icons.menu, size: 30),
+              ),
             ),
           ),
           
@@ -415,41 +442,89 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0B0C0C),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // Background images
-            _buildBackgroundImages(),
-            
-            // Main content
-            Column(
-              children: [
-                _buildHeader(),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      children: [
-                        _buildSearchBar(),
-                        const SizedBox(height: 60),
-                        Expanded(
-                          child: SingleChildScrollView(
-                            child: Consumer<BuyChronosController>(
-                              builder: (context, controller, child) {
-                                return _buildForm(context, controller);
-                              },
-                            ),
+      body: Stack(
+        children: [
+          // Background images
+          _buildBackgroundImages(),
+          
+          // Main content
+          Column(
+            children: [
+              _buildHeader(),
+              const SizedBox(height: 16),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    children: [
+                      _buildSearchBar(),
+                      const SizedBox(height: 60),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Consumer<BuyChronosController>(
+                            builder: (context, controller, child) {
+                              return _buildForm(context, controller);
+                            },
                           ),
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Menu lateral
+          if (_isDrawerOpen)
+            Positioned(
+              top: 70, // Altura do header
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.6,
+                      child: SideMenu(
+                        onWalletPressed: _openWallet,
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _toggleDrawer,
+                        child: Container(
+                          color: Colors.transparent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Modal da Carteira
+          if (_isWalletOpen)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: WalletModal(
+                      onClose: _closeWallet,
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

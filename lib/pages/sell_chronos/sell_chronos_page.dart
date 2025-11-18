@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
-import '../../widgets/backgrounds/background_default_widget.dart';
+import '../../widgets/side_menu.dart';
+import '../../widgets/wallet_modal.dart';
 import 'sell_chronos_controller.dart';
 
 class SellChronosPage extends StatefulWidget {
@@ -12,12 +13,34 @@ class SellChronosPage extends StatefulWidget {
 }
 
 class _SellChronosPageState extends State<SellChronosPage> {
+  bool _isDrawerOpen = false;
+  bool _isWalletOpen = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<SellChronosController>(context, listen: false)
           .initializeInitialValues();
+    });
+  }
+
+  void _toggleDrawer() {
+    setState(() {
+      _isDrawerOpen = !_isDrawerOpen;
+    });
+  }
+
+  void _openWallet() {
+    setState(() {
+      _isDrawerOpen = false;
+      _isWalletOpen = true;
+    });
+  }
+
+  void _closeWallet() {
+    setState(() {
+      _isWalletOpen = false;
     });
   }
 
@@ -80,227 +103,328 @@ class _SellChronosPageState extends State<SellChronosPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.preto,
-      appBar: AppBar(
-        backgroundColor: AppColors.amareloClaro,
-        centerTitle: true,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppColors.preto),
-          onPressed: () => Navigator.pop(context),
+  Widget _buildBackgroundImages() {
+    return Stack(
+      children: [
+        Positioned(
+          left: 0,
+          top: 135,
+          child: Image.asset(
+            'assets/img/Comb2.png',
+            errorBuilder: (context, error, stackTrace) => const SizedBox(),
+          ),
         ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(
-              'assets/img/LogoBackgroundYellow.png',
-              width: 32,
-              height: 32,
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              'Chronora',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.preto,
+        Positioned(
+          left: 0,
+          bottom: 0,
+          child: Image.asset(
+            'assets/img/BarAscending.png',
+            width: 210.47,
+            height: 178.9,
+            errorBuilder: (context, error, stackTrace) => const SizedBox(),
+          ),
+        ),
+        Positioned(
+          right: 0,
+          bottom: 60,
+          child: Image.asset(
+            'assets/img/Comb3.png',
+            errorBuilder: (context, error, stackTrace) => const SizedBox(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      height: 70,
+      decoration: const BoxDecoration(
+        color: Color(0xFFFFC300),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 20),
+            child: GestureDetector(
+              onTap: _toggleDrawer,
+              child: Image.asset(
+                'assets/img/Menu.png',
+                width: 40,
+                height: 40,
+                errorBuilder: (context, error, stackTrace) => 
+                  const Icon(Icons.menu, size: 30),
               ),
             ),
-          ],
-        ),
-        actions: [
-          Consumer<SellChronosController>(
-            builder: (context, controller, child) {
-              return Row(
-                children: [
-                  Image.asset('assets/img/Coin.png', width: 24, height: 24),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${controller.currentBalance}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.preto,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                ],
-              );
-            },
+          ),
+          
+          Image.asset(
+            'assets/img/LogoHeader.png',
+            width: 125,
+            height: 39,
+            errorBuilder: (context, error, stackTrace) => 
+              const Text('LOGO', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          ),
+          
+          Padding(
+            padding: const EdgeInsets.only(right: 20),
+            child: Row(
+              children: [
+                Image.asset(
+                  'assets/img/Coin.png',
+                  width: 30,
+                  height: 30,
+                  errorBuilder: (context, error, stackTrace) => 
+                    const Icon(Icons.monetization_on, size: 25),
+                ),
+                const SizedBox(width: 8),
+                Consumer<SellChronosController>(
+                  builder: (context, controller, child) {
+                    return Text(
+                      '${controller.currentBalance}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ],
       ),
-      body: BackgroundDefaultWidget(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Consumer<SellChronosController>(
-              builder: (context, controller, child) {
-                return ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 380),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.branco,
-                      borderRadius: BorderRadius.circular(26),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Título
-                        Center(
-                          child: Text(
-                            'Vender Chronos',
-                            style: TextStyle(
-                              color: AppColors.preto,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
+    );
+  }
 
-                        // Saldo atual
-                        Row(
-                          children: [
-                            Text(
-                              'Chronos atuais:',
-                              style: TextStyle(
-                                color: AppColors.preto,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Image.asset('assets/img/Coin.png', width: 18, height: 18),
-                            const SizedBox(width: 6),
-                            Text(
-                              '${controller.currentBalance}',
-                              style: TextStyle(
-                                color: AppColors.preto,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Campo de quantidade de venda
-                        TextField(
-                          controller: controller.amountController,
-                          onChanged: controller.updateSellAmount,
-                          keyboardType: TextInputType.number,
-                          style: TextStyle(color: AppColors.preto),
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: AppColors.branco,
-                            hintText: 'Quantidade de venda',
-                            hintStyle: TextStyle(color: AppColors.textoPlaceholder),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: AppColors.cinza.withValues(alpha: 0.12)),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-
-                        // Resumo com borda amarela
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: AppColors.amareloClaro, width: 2),
-                            borderRadius: BorderRadius.circular(8),
-                            color: AppColors.branco,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _labelValueRow('Subtotal', 'R\$ ${controller.subtotal.toStringAsFixed(2)}'),
-                              const SizedBox(height: 8),
-                              _labelValueRow('Taxa (10%)', 'R\$ ${controller.taxAmount.toStringAsFixed(2)}'),
-                              const SizedBox(height: 10),
-                              Divider(color: AppColors.cinza),
-                              const SizedBox(height: 10),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('Total', style: TextStyle(color: AppColors.preto, fontWeight: FontWeight.bold)),
-                                  Text('R\$ ${controller.totalAmount.toStringAsFixed(2)}', style: TextStyle(color: AppColors.amareloClaro, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Chronos pós-venda
-                        Row(
-                          children: [
-                            Text('Chronos pós-venda:', style: TextStyle(color: AppColors.preto)),
-                            const SizedBox(width: 8),
-                            Image.asset('assets/img/Coin.png', width: 18, height: 18),
-                            const SizedBox(width: 6),
-                            Text('${controller.chronosAfterSale}', style: TextStyle(color: AppColors.preto)),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-
-                        // Botões
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () {
-                                  controller.reset();
-                                },
-                                style: OutlinedButton.styleFrom(
-                                  side: BorderSide(color: AppColors.amareloClaro, width: 2),
-                                  backgroundColor: AppColors.branco,
-                                ),
-                                child: Text('Cancelar', style: TextStyle(color: AppColors.amareloClaro)),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: controller.canProceed
-                                    ? () {
-                                        int amount = int.tryParse(controller.amountController.text) ?? 0;
-                                        controller.sellChronos(
-                                          amount: amount,
-                                          pixKey: 'pending', // placeholder - PIX será na próxima tela
-                                          onSuccess: () {
-                                            showSuccessDialog('Venda realizada com sucesso!\nChronos removidos: $amount');
-                                          },
-                                          onError: (err) {
-                                            showErrorDialog(err);
-                                          },
-                                        );
-                                      }
-                                    : null,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: controller.canProceed ? AppColors.branco : Colors.grey[400],
-                                  foregroundColor: controller.canProceed ? AppColors.preto : Colors.black54,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                ),
-                                child: Text('Finalizar venda', style: TextStyle(fontWeight: FontWeight.bold)),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                    ),
-                  ),
-                );
-              },
+  Widget _buildSearchBar() {
+    return Container(
+      height: 40,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        color: const Color(0xFFE9EAEC),
+      ),
+      child: TextFormField(
+        decoration: InputDecoration(
+          hintText: 'Pintura de parede, aula de inglês...',
+          hintStyle: TextStyle(
+            color: Colors.black.withOpacity(0.7),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: const Color(0xFFE9EAEC),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Image.asset(
+              'assets/img/Search.png',
+              width: 20,
+              height: 20,
+              errorBuilder: (context, error, stackTrace) => 
+                const Icon(Icons.search, size: 20),
             ),
           ),
         ),
+        onChanged: (value) {
+          print('Texto da busca: $value');
+        },
+      ),
+    );
+  }
+
+  Widget _buildForm(BuildContext context, SellChronosController controller) {
+    return Container(
+      padding: const EdgeInsets.all(25),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE9EAEC),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Center(
+            child: Text(
+              'Vender Chronos',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(height: 25),
+
+          // Saldo atual
+          Row(
+            children: [
+              Text(
+                'Chronos atuais:',
+                style: TextStyle(
+                  color: Colors.black.withOpacity(0.7),
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Image.asset('assets/img/Coin.png', width: 18, height: 18),
+              const SizedBox(width: 6),
+              Text(
+                '${controller.currentBalance}',
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+
+          // Campo de quantidade
+          Container(
+            height: 46,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE9EAEC),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.3),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: controller.amountController,
+              onChanged: controller.updateSellAmount,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.black),
+              decoration: InputDecoration(
+                hintText: 'Quantidade de venda',
+                hintStyle: TextStyle(
+                  color: Colors.black.withOpacity(0.7),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: const Color(0xFFE9EAEC),
+                errorStyle: const TextStyle(fontSize: 12, height: 0.1),
+              ),
+            ),
+          ),
+          const SizedBox(height: 15),
+
+          // Resumo com borda amarela
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border.all(color: const Color(0xFFC29503), width: 2),
+              borderRadius: BorderRadius.circular(8),
+              color: const Color(0xFFE9EAEC),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _labelValueRow('Subtotal', 'R\$ ${controller.subtotal.toStringAsFixed(2)}'),
+                const SizedBox(height: 8),
+                _labelValueRow('Taxa (10%)', 'R\$ ${controller.taxAmount.toStringAsFixed(2)}'),
+                const SizedBox(height: 10),
+                Divider(color: Colors.grey.withOpacity(0.5)),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Total a receber', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                    Text('R\$ ${controller.totalAmount.toStringAsFixed(2)}', style: TextStyle(color: const Color(0xFFC29503), fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 15),
+
+          // Chronos pós-venda
+          Row(
+            children: [
+              Text('Chronos pós-venda:', style: TextStyle(color: Colors.black.withOpacity(0.7))),
+              const SizedBox(width: 8),
+              Image.asset('assets/img/Coin.png', width: 18, height: 18),
+              const SizedBox(width: 6),
+              Text('${controller.chronosAfterSale}', style: TextStyle(color: Colors.black)),
+            ],
+          ),
+          const SizedBox(height: 25),
+
+          // Botões
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Container(
+                  height: 46,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: const Color(0xFFC29503),
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: TextButton(
+                    onPressed: () {
+                      controller.reset();
+                    },
+                    child: const Text(
+                      'Cancelar',
+                      style: TextStyle(
+                        color: Color(0xFFC29503),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Container(
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFC29503),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: TextButton(
+                    onPressed: controller.canProceed
+                        ? () {
+                            int amount = int.tryParse(controller.amountController.text) ?? 0;
+                            controller.sellChronos(
+                              amount: amount,
+                              pixKey: 'pending', // placeholder - PIX será na próxima tela
+                              onSuccess: () {
+                                showSuccessDialog('Venda realizada com sucesso!\nChronos removidos: $amount');
+                              },
+                              onError: (err) {
+                                showErrorDialog(err);
+                              },
+                            );
+                          }
+                        : null,
+                    child: Text(
+                      'Finalizar venda',
+                      style: TextStyle(
+                        color: const Color(0xFFE9EAEC),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -309,9 +433,100 @@ class _SellChronosPageState extends State<SellChronosPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: AppColors.cinza)),
-        Text(value, style: TextStyle(color: AppColors.preto, fontWeight: FontWeight.bold)),
+        Text(label, style: TextStyle(color: Colors.black.withOpacity(0.7))),
+        Text(value, style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
       ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0B0C0C),
+      body: Stack(
+        children: [
+          // Background images
+          _buildBackgroundImages(),
+          
+          // Main content
+          Column(
+            children: [
+              _buildHeader(),
+              const SizedBox(height: 16),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    children: [
+                      _buildSearchBar(),
+                      const SizedBox(height: 60),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Consumer<SellChronosController>(
+                            builder: (context, controller, child) {
+                              return _buildForm(context, controller);
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Menu lateral
+          if (_isDrawerOpen)
+            Positioned(
+              top: 70, // Altura do header
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.6,
+                      child: SideMenu(
+                        onWalletPressed: _openWallet,
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _toggleDrawer,
+                        child: Container(
+                          color: Colors.transparent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Modal da Carteira
+          if (_isWalletOpen)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: WalletModal(
+                      onClose: _closeWallet,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
