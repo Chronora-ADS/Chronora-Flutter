@@ -36,8 +36,7 @@ class WalletModal extends StatelessWidget {
                   onPressed: onClose,
                   icon: const ImageIcon(
                     AssetImage('assets/img/Close.png'),
-                    width: 20,
-                    height: 20,
+                    size: 20,
                   ),
                 ),
               ),
