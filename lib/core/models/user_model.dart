@@ -4,6 +4,8 @@ class User {
   final String email;
   final String phone;
   final String? profileImage;
+  final String? chronora;
+  final String? descricao;
   final String? currentPassword;
   final String? newPassword;
 
@@ -13,6 +15,8 @@ class User {
     required this.email,
     required this.phone,
     this.profileImage,
+    this.chronora,
+    this.descricao,
     this.currentPassword,
     this.newPassword,
   });
@@ -24,6 +28,8 @@ class User {
       email: json['email'] ?? '',
       phone: json['phone'] ?? '',
       profileImage: json['profileImage'],
+      chronora: json['chronora']?.toString(),
+      descricao: json['descricao'],
     );
   }
 
@@ -34,6 +40,8 @@ class User {
       'email': email,
       'phone': phone,
       'profileImage': profileImage,
+      'chronora': chronora,
+      'descricao': descricao,
     };
   }
 
@@ -43,6 +51,8 @@ class User {
     String? email,
     String? phone,
     String? profileImage,
+    String? chronora,
+    String? descricao,
     String? currentPassword,
     String? newPassword,
   }) {
@@ -52,6 +62,8 @@ class User {
       email: email ?? this.email,
       phone: phone ?? this.phone,
       profileImage: profileImage ?? this.profileImage,
+      chronora: chronora ?? this.chronora,
+      descricao: descricao ?? this.descricao,
       currentPassword: currentPassword ?? this.currentPassword,
       newPassword: newPassword ?? this.newPassword,
     );

@@ -4,8 +4,6 @@ import '../core/constants/app_colors.dart';
 import '../core/constants/app_routes.dart';
 import '../core/models/user_model.dart';
 import '../core/services/profile_controller.dart';
-import '../widgets/perfil_edit.dart';
-import '../widgets/perfil_delet.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -51,27 +49,30 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _showEditModal() {
     if (_user == null) return;
-    
-    showDialog(
-      context: context,
-      builder: (context) => ProfileEditModal(
-        user: _user!,
-        onProfileUpdated: _loadUserProfile,
-      ),
+    Navigator.pushNamed(
+      context,
+      AppRoutes.profileEdit,
+      arguments: {
+        'user': _user!,
+        'onProfileUpdated': _loadUserProfile,
+      },
     );
   }
 
   void _showDeleteModal() {
-    showDialog(
-      context: context,
-      builder: (context) => ProfileDeleteModal(
-        onAccountDeleted: () {
+    if (_user == null) return;
+    Navigator.pushNamed(
+      context,
+      AppRoutes.profileDelete,
+      arguments: {
+        'user': _user!,
+        'onAccountDeleted': () {
           Navigator.of(context).pushNamedAndRemoveUntil(
-            '/login',
+            AppRoutes.login,
             (route) => false,
           );
         },
-      ),
+      },
     );
   }
 

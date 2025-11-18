@@ -18,7 +18,7 @@ class ProfileController {
         return;
       }
 
-      final response = await ApiService.get('/user/get/3', token: token);
+      final response = await ApiService.get("/user/get/3", token: token);
       
       if (response.statusCode == 200) {
         final userData = jsonDecode(response.body);
@@ -37,6 +37,8 @@ class ProfileController {
     required String name,
     required String email,
     required String phone,
+    String? chronora,
+    String? descricao,
     String? newPassword,
     String? currentPassword,
   }) async {
@@ -53,6 +55,8 @@ class ProfileController {
         'name': name,
         'email': email,
         'phone': phone,
+        if (chronora != null && chronora.isNotEmpty) 'chronora': chronora,
+        if (descricao != null && descricao.isNotEmpty) 'descricao': descricao,
         if (newPassword != null && newPassword.isNotEmpty) 'newPassword': newPassword,
         if (currentPassword != null && currentPassword.isNotEmpty) 'currentPassword': currentPassword,
       };

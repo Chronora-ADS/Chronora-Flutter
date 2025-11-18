@@ -2,8 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../../pages/profile_page.dart';
-import '../../widgets/perfil_edit.dart';
-import '../../widgets/perfil_delet.dart';
+import '../../core/constants/app_routes.dart';
 
 /// Adicione este método no seu menu/navigation
 /// para acessar a tela de perfil
@@ -22,36 +21,36 @@ class ProfileIntegrationExample {
 
   /// Abrir modal de edição de perfil
   static void openEditProfileModal(BuildContext context, user) {
-    showDialog(
-      context: context,
-      builder: (context) => ProfileEditModal(
-        user: user,
-        onProfileUpdated: () {
-          // Recarregar dados após atualização
+    Navigator.pushNamed(
+      context,
+      AppRoutes.profileEdit,
+      arguments: {
+        'user': user,
+        'onProfileUpdated': () {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Perfil atualizado com sucesso!'),
               duration: Duration(seconds: 2),
             ),
           );
-        },
-      ),
+        }
+      },
     );
   }
 
   /// Abrir modal de deletar conta
   static void openDeleteAccountModal(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => ProfileDeleteModal(
-        onAccountDeleted: () {
-          // Redirecionar para login após deletar conta
+    Navigator.pushNamed(
+      context,
+      AppRoutes.profileDelete,
+      arguments: {
+        'onAccountDeleted': () {
           Navigator.of(context).pushNamedAndRemoveUntil(
-            '/login',
+            AppRoutes.login,
             (route) => false,
           );
-        },
-      ),
+        }
+      },
     );
   }
 
