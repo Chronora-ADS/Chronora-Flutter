@@ -1,38 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
-import 'sell_chronos_controller.dart';
-import 'sell_success_page.dart'; // Importar a nova tela de sucesso
 
-class PixSellPage extends StatefulWidget {
+class SellSuccessPage extends StatefulWidget {
   final int chronosAmount;
   final double totalAmount;
+  final String pixKey;
 
-  const PixSellPage({
+  const SellSuccessPage({
     Key? key,
     required this.chronosAmount,
     required this.totalAmount,
+    required this.pixKey,
   }) : super(key: key);
 
   @override
-  State<PixSellPage> createState() => _PixSellPageState();
+  State<SellSuccessPage> createState() => _SellSuccessPageState();
 }
 
-class _PixSellPageState extends State<PixSellPage> {
+class _SellSuccessPageState extends State<SellSuccessPage> {
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<SellChronosController>(context, listen: false)
-          .initializeInitialValues();
-    });
-  }
 
   void _toggleDrawer() {
     setState(() {
@@ -51,34 +41,6 @@ class _PixSellPageState extends State<PixSellPage> {
     setState(() {
       _isWalletOpen = false;
     });
-  }
-
-  void showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: AppColors.preto,
-          title: Text(
-            'Erro',
-            style: TextStyle(color: AppColors.branco),
-          ),
-          content: Text(
-            message,
-            style: TextStyle(color: AppColors.branco),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'OK',
-                style: TextStyle(color: AppColors.amareloClaro),
-              ),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   Widget _buildBackgroundImages() {
@@ -152,7 +114,7 @@ class _PixSellPageState extends State<PixSellPage> {
     );
   }
 
-  Widget _buildForm(BuildContext context, SellChronosController controller) {
+  Widget _buildSuccessContent() {
     return Container(
       padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
@@ -160,144 +122,110 @@ class _PixSellPageState extends State<PixSellPage> {
         borderRadius: BorderRadius.circular(15),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Center(
-            child: Text(
-              'Vender Chronos',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(height: 25),
-
-          // Resumo da venda
+          // Ícone de sucesso
           Container(
-            padding: const EdgeInsets.all(16),
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFC29503), width: 2),
-              borderRadius: BorderRadius.circular(8),
-              color: const Color(0xFFF8F9FA),
+              color: const Color(0xFF4CAF50),
+              shape: BoxShape.circle,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Resumo da Venda',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 12),
-                _labelValueRow('Chronos vendidos', '${widget.chronosAmount}'),
-                const SizedBox(height: 8),
-                _labelValueRow('Valor a receber', 'R\$ ${widget.totalAmount.toStringAsFixed(2)}'),
-                const SizedBox(height: 8),
-                _labelValueRow('Taxa (10%)', 'R\$ ${(widget.totalAmount * 0.1).toStringAsFixed(2)}'),
-              ],
+            child: const Icon(
+              Icons.check,
+              color: Colors.white,
+              size: 40,
             ),
           ),
-
-          const SizedBox(height: 25),
-
-          // Campo de chave PIX
+          
+          const SizedBox(height: 24),
+          
+          // Título de sucesso
           const Text(
-            'Informar chave PIX',
+            'Venda realizada com sucesso!',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
               color: Colors.black,
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 12),
-
+          
+          const SizedBox(height: 30),
+          
+          // Detalhes da transação
           Container(
-            height: 46,
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFFE9EAEC),
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.3),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
+              border: Border.all(color: const Color(0xFFC29503), width: 2),
+              borderRadius: BorderRadius.circular(12),
+              color: const Color(0xFFF8F9FA),
+            ),
+            child: Column(
+              children: [
+                // Chronos vendidos
+                _buildDetailRow(
+                  'Chronos vendidos:',
+                  '${widget.chronosAmount}',
+                  Icons.schedule,
+                ),
+                const SizedBox(height: 16),
+                
+                // Valor recebido
+                _buildDetailRow(
+                  'Valor recebido:',
+                  'R\$ ${widget.totalAmount.toStringAsFixed(2)}',
+                  Icons.attach_money,
+                ),
+                const SizedBox(height: 16),
+                
+                // Chave PIX
+                _buildDetailRow(
+                  'Chave PIX:',
+                  _formatPixKey(widget.pixKey),
+                  Icons.qr_code,
+                ),
+                const SizedBox(height: 16),
+                
+                // Taxa
+                _buildDetailRow(
+                  'Taxa (10%):',
+                  'R\$ ${(widget.totalAmount * 0.1).toStringAsFixed(2)}',
+                  Icons.percent,
                 ),
               ],
             ),
-            child: TextField(
-              controller: controller.pixKeyController,
-              onChanged: (value) {
-                setState(() {});
-              },
-              keyboardType: TextInputType.text,
-              style: const TextStyle(color: Colors.black),
-              decoration: InputDecoration(
-                hintText: 'Digite sua chave PIX (CPF, e-mail, telefone, chave aleatória)',
-                hintStyle: TextStyle(
-                  color: Colors.black.withOpacity(0.7),
-                  fontSize: 12,
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: const Color(0xFFE9EAEC),
-              ),
-            ),
           ),
-
-          const SizedBox(height: 8),
-          Text(
-            'Tipos de chave aceitos: CPF, e-mail, telefone ou chave aleatória',
-            style: TextStyle(
-              color: Colors.black.withOpacity(0.6),
-              fontSize: 11,
-            ),
-          ),
-
+          
           const SizedBox(height: 30),
-
-          // Botão Finalizar Venda
+          
+          // Mensagem de confirmação
+          Text(
+            'O valor será creditado em sua conta em até 2 dias úteis.',
+            style: TextStyle(
+              color: Colors.black.withOpacity(0.7),
+              fontSize: 14,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          
+          const SizedBox(height: 30),
+          
+          // Botão Voltar ao Início
           SizedBox(
             width: double.infinity,
-            height: 46,
+            height: 50,
             child: ElevatedButton(
-              onPressed: controller.pixKeyController.text.isNotEmpty
-                  ? () {
-                      final pixKey = controller.pixKeyController.text;
-                      if (_validatePixKey(pixKey)) {
-                        controller.sellChronos(
-                          amount: widget.chronosAmount,
-                          pixKey: pixKey,
-                          onSuccess: () {
-                            // Navegar para tela de sucesso
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => SellSuccessPage(
-                                  chronosAmount: widget.chronosAmount,
-                                  totalAmount: widget.totalAmount,
-                                  pixKey: pixKey,
-                                ),
-                              ),
-                            );
-                          },
-                          onError: (err) {
-                            showErrorDialog(err);
-                          },
-                        );
-                      } else {
-                        showErrorDialog('Chave PIX inválida. Verifique os dados informados.');
-                      }
-                    }
-                  : null,
+              onPressed: () {
+                // Navega para a tela principal limpando o stack
+                Navigator.pushNamedAndRemoveUntil(
+                  context, 
+                  '/main', 
+                  (route) => false
+                );
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFC29503),
                 shape: RoundedRectangleBorder(
@@ -305,7 +233,7 @@ class _PixSellPageState extends State<PixSellPage> {
                 ),
               ),
               child: const Text(
-                'Finalizar Venda',
+                'Voltar ao Início',
                 style: TextStyle(
                   color: Color(0xFFE9EAEC),
                   fontSize: 16,
@@ -314,16 +242,18 @@ class _PixSellPageState extends State<PixSellPage> {
               ),
             ),
           ),
-
+          
           const SizedBox(height: 16),
-
-          // Botão Cancelar
+          
+          // Botão Nova Venda
           SizedBox(
             width: double.infinity,
-            height: 46,
+            height: 50,
             child: OutlinedButton(
               onPressed: () {
-                Navigator.pop(context);
+                // Navega de volta para a tela de venda
+                Navigator.popUntil(context, (route) => route.isFirst);
+                Navigator.pushNamed(context, '/sell-chronos');
               },
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(
@@ -335,7 +265,7 @@ class _PixSellPageState extends State<PixSellPage> {
                 ),
               ),
               child: const Text(
-                'Cancelar',
+                'Fazer Nova Venda',
                 style: TextStyle(
                   color: Color(0xFFC29503),
                   fontSize: 16,
@@ -349,48 +279,49 @@ class _PixSellPageState extends State<PixSellPage> {
     );
   }
 
-  Widget _labelValueRow(String label, String value) {
+  Widget _buildDetailRow(String label, String value, IconData icon) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.black.withOpacity(0.7),
-            fontSize: 14,
-          ),
+        Icon(
+          icon,
+          color: const Color(0xFFC29503),
+          size: 20,
         ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.black.withOpacity(0.7),
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  bool _validatePixKey(String key) {
-    if (key.isEmpty) return false;
+  String _formatPixKey(String pixKey) {
+    if (pixKey.length <= 8) return pixKey;
     
-    // Verificação de e-mail
-    final emailRegex = RegExp(r"^[\w-.]+@[\w-]+\.[a-zA-Z]{2,}");
-    if (emailRegex.hasMatch(key)) return true;
-    
-    // Verificação de CPF (apenas números, 11 dígitos)
-    final digitsOnly = key.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digitsOnly.length == 11) return true;
-    
-    // Verificação de telefone (10-13 dígitos)
-    if (digitsOnly.length >= 10 && digitsOnly.length <= 13) return true;
-    
-    // Verificação de chave aleatória (UUID-like)
-    final randomKey = RegExp(r'^[a-zA-Z0-9_-]{8,64}$');
-    if (randomKey.hasMatch(key)) return true;
-    
-    return false;
+    // Formatação para mostrar apenas os primeiros e últimos caracteres
+    final firstPart = pixKey.substring(0, 4);
+    final lastPart = pixKey.substring(pixKey.length - 4);
+    return '$firstPart***$lastPart';
   }
 
   @override
@@ -416,11 +347,7 @@ class _PixSellPageState extends State<PixSellPage> {
                       const SizedBox(height: 40),
                       Expanded(
                         child: SingleChildScrollView(
-                          child: Consumer<SellChronosController>(
-                            builder: (context, controller, child) {
-                              return _buildForm(context, controller);
-                            },
-                          ),
+                          child: _buildSuccessContent(),
                         ),
                       ),
                     ],

@@ -5,6 +5,7 @@ import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
 import 'buy_chronos_controller.dart';
+import 'buy_success_page.dart'; // Importar a nova tela de sucesso
 
 class BuyChronosPage extends StatefulWidget {
   const BuyChronosPage({Key? key}) : super(key: key);
@@ -62,37 +63,6 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
-                'OK',
-                style: TextStyle(color: AppColors.amareloClaro),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void showSuccessDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: AppColors.preto,
-          title: Text(
-            'Sucesso',
-            style: TextStyle(color: AppColors.branco),
-          ),
-          content: Text(
-            message,
-            style: TextStyle(color: AppColors.branco),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pop(context);
-              },
               child: Text(
                 'OK',
                 style: TextStyle(color: AppColors.amareloClaro),
@@ -341,7 +311,17 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
                             controller.purchaseChronos(
                               amount: amount,
                               onSuccess: () {
-                                showSuccessDialog('Compra realizada com sucesso!\nChronos adicionados: $amount');
+                                // Navegar para tela de sucesso
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => BuySuccessPage(
+                                      chronosAmount: amount,
+                                      totalAmount: controller.totalAmount,
+                                      paymentMethod: controller.selectedPaymentMethod,
+                                    ),
+                                  ),
+                                );
                               },
                               onError: (err) {
                                 showErrorDialog(err);
@@ -349,10 +329,10 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
                             );
                           }
                         : null,
-                    child: Text(
+                    child: const Text(
                       'Finalizar compra',
                       style: TextStyle(
-                        color: const Color(0xFFE9EAEC),
+                        color: Color(0xFFE9EAEC),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
