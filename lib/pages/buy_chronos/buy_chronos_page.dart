@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
+import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
 import 'buy_chronos_controller.dart';
@@ -133,69 +134,6 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      height: 70,
-      decoration: const BoxDecoration(
-        color: Color(0xFFFFC300),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 20),
-            child: GestureDetector(
-              onTap: _toggleDrawer,
-              child: Image.asset(
-                'assets/img/Menu.png',
-                width: 40,
-                height: 40,
-                errorBuilder: (context, error, stackTrace) => 
-                  const Icon(Icons.menu, size: 30),
-              ),
-            ),
-          ),
-          
-          Image.asset(
-            'assets/img/LogoHeader.png',
-            width: 125,
-            height: 39,
-            errorBuilder: (context, error, stackTrace) => 
-              const Text('LOGO', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          ),
-          
-          Padding(
-            padding: const EdgeInsets.only(right: 20),
-            child: Row(
-              children: [
-                Image.asset(
-                  'assets/img/Coin.png',
-                  width: 30,
-                  height: 30,
-                  errorBuilder: (context, error, stackTrace) => 
-                    const Icon(Icons.monetization_on, size: 25),
-                ),
-                const SizedBox(width: 8),
-                Consumer<BuyChronosController>(
-                  builder: (context, controller, child) {
-                    return Text(
-                      '${controller.currentBalance}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -441,6 +379,7 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: Header(onMenuPressed: _toggleDrawer),
       backgroundColor: const Color(0xFF0B0C0C),
       body: Stack(
         children: [
@@ -450,7 +389,6 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
           // Main content
           Column(
             children: [
-              _buildHeader(),
               const SizedBox(height: 16),
               Expanded(
                 child: Padding(
@@ -478,7 +416,7 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
           // Menu lateral
           if (_isDrawerOpen)
             Positioned(
-              top: 70, // Altura do header
+              top: 0,
               left: 0,
               right: 0,
               bottom: 0,

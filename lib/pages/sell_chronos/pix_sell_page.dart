@@ -5,16 +5,22 @@ import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
 import 'sell_chronos_controller.dart';
-import 'pix_sell_page.dart'; // ← IMPORTAR A NOVA TELA
 
-class SellChronosPage extends StatefulWidget {
-  const SellChronosPage({Key? key}) : super(key: key);
+class PixSellPage extends StatefulWidget {
+  final int chronosAmount;
+  final double totalAmount;
+
+  const PixSellPage({
+    Key? key,
+    required this.chronosAmount,
+    required this.totalAmount,
+  }) : super(key: key);
 
   @override
-  State<SellChronosPage> createState() => _SellChronosPageState();
+  State<PixSellPage> createState() => _PixSellPageState();
 }
 
-class _SellChronosPageState extends State<SellChronosPage> {
+class _PixSellPageState extends State<PixSellPage> {
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
 
@@ -63,6 +69,37 @@ class _SellChronosPageState extends State<SellChronosPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
+              child: Text(
+                'OK',
+                style: TextStyle(color: AppColors.amareloClaro),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void showSuccessDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppColors.preto,
+          title: Text(
+            'Sucesso',
+            style: TextStyle(color: AppColors.branco),
+          ),
+          content: Text(
+            message,
+            style: TextStyle(color: AppColors.branco),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
               child: Text(
                 'OK',
                 style: TextStyle(color: AppColors.amareloClaro),
@@ -166,31 +203,49 @@ class _SellChronosPageState extends State<SellChronosPage> {
           ),
           const SizedBox(height: 25),
 
-          // Saldo atual
-          Row(
-            children: [
-              Text(
-                'Chronos atuais:',
-                style: TextStyle(
-                  color: Colors.black.withOpacity(0.7),
-                  fontSize: 14,
+          // Resumo da venda
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border.all(color: const Color(0xFFC29503), width: 2),
+              borderRadius: BorderRadius.circular(8),
+              color: const Color(0xFFF8F9FA),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Resumo da Venda',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-              ),
-              const SizedBox(width: 8),
-              Image.asset('assets/img/Coin.png', width: 18, height: 18),
-              const SizedBox(width: 6),
-              Text(
-                '${controller.currentBalance}',
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                _labelValueRow('Chronos vendidos', '${widget.chronosAmount}'),
+                const SizedBox(height: 8),
+                _labelValueRow('Valor a receber', 'R\$ ${widget.totalAmount.toStringAsFixed(2)}'),
+                const SizedBox(height: 8),
+                _labelValueRow('Taxa (10%)', 'R\$ ${(widget.totalAmount * 0.1).toStringAsFixed(2)}'),
+              ],
+            ),
           ),
-          const SizedBox(height: 15),
 
-          // Campo de quantidade
+          const SizedBox(height: 25),
+
+          // Campo de chave PIX
+          const Text(
+            'Informar chave PIX',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 12),
+
           Container(
             height: 46,
             decoration: BoxDecoration(
@@ -205,14 +260,17 @@ class _SellChronosPageState extends State<SellChronosPage> {
               ],
             ),
             child: TextField(
-              controller: controller.amountController,
-              onChanged: controller.updateSellAmount,
-              keyboardType: TextInputType.number,
+              controller: controller.pixKeyController,
+              onChanged: (value) {
+                setState(() {});
+              },
+              keyboardType: TextInputType.text,
               style: const TextStyle(color: Colors.black),
               decoration: InputDecoration(
-                hintText: 'Quantidade de venda',
+                hintText: 'Digite sua chave PIX (CPF, e-mail, telefone, chave aleatória)',
                 hintStyle: TextStyle(
                   color: Colors.black.withOpacity(0.7),
+                  fontSize: 12,
                 ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                 border: OutlineInputBorder(
@@ -221,116 +279,90 @@ class _SellChronosPageState extends State<SellChronosPage> {
                 ),
                 filled: true,
                 fillColor: const Color(0xFFE9EAEC),
-                errorStyle: const TextStyle(fontSize: 12, height: 0.1),
               ),
             ),
           ),
-          const SizedBox(height: 15),
 
-          // Resumo com borda amarela
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFC29503), width: 2),
-              borderRadius: BorderRadius.circular(8),
-              color: const Color(0xFFE9EAEC),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _labelValueRow('Subtotal', 'R\$ ${controller.subtotal.toStringAsFixed(2)}'),
-                const SizedBox(height: 8),
-                _labelValueRow('Taxa (10%)', 'R\$ ${controller.taxAmount.toStringAsFixed(2)}'),
-                const SizedBox(height: 10),
-                Divider(color: Colors.grey.withOpacity(0.5)),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Total a receber', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                    Text('R\$ ${controller.totalAmount.toStringAsFixed(2)}', style: TextStyle(color: const Color(0xFFC29503), fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ],
+          const SizedBox(height: 8),
+          Text(
+            'Tipos de chave aceitos: CPF, e-mail, telefone ou chave aleatória',
+            style: TextStyle(
+              color: Colors.black.withOpacity(0.6),
+              fontSize: 11,
             ),
           ),
-          const SizedBox(height: 15),
 
-          // Chronos pós-venda
-          Row(
-            children: [
-              Text('Chronos pós-venda:', style: TextStyle(color: Colors.black.withOpacity(0.7))),
-              const SizedBox(width: 8),
-              Image.asset('assets/img/Coin.png', width: 18, height: 18),
-              const SizedBox(width: 6),
-              Text('${controller.chronosAfterSale}', style: TextStyle(color: Colors.black)),
-            ],
+          const SizedBox(height: 30),
+
+          // Botão Finalizar Venda
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: ElevatedButton(
+              onPressed: controller.pixKeyController.text.isNotEmpty
+                  ? () {
+                      final pixKey = controller.pixKeyController.text;
+                      if (_validatePixKey(pixKey)) {
+                        controller.sellChronos(
+                          amount: widget.chronosAmount,
+                          pixKey: pixKey,
+                          onSuccess: () {
+                            showSuccessDialog('Venda realizada com sucesso!\nValor creditado: R\$${widget.totalAmount.toStringAsFixed(2)}');
+                          },
+                          onError: (err) {
+                            showErrorDialog(err);
+                          },
+                        );
+                      } else {
+                        showErrorDialog('Chave PIX inválida. Verifique os dados informados.');
+                      }
+                    }
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFC29503),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'Finalizar Venda',
+                style: TextStyle(
+                  color: Color(0xFFE9EAEC),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           ),
-          const SizedBox(height: 25),
 
-          // Botões
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Container(
-                  height: 46,
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: const Color(0xFFC29503),
-                      width: 2,
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: TextButton(
-                    onPressed: () {
-                      controller.reset();
-                    },
-                    child: const Text(
-                      'Cancelar',
-                      style: TextStyle(
-                        color: Color(0xFFC29503),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+          const SizedBox(height: 16),
+
+          // Botão Cancelar
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: OutlinedButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(
+                  color: Color(0xFFC29503),
+                  width: 2,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Container(
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFC29503),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: TextButton(
-                    onPressed: controller.canProceed
-                        ? () {
-                            int amount = int.tryParse(controller.amountController.text) ?? 0;
-                            // Navegar para tela PIX em vez de processar diretamente
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => PixSellPage(
-                                  chronosAmount: amount,
-                                  totalAmount: controller.totalAmount,
-                                ),
-                              ),
-                            );
-                          }
-                        : null,
-                    child: const Text(
-                      'Continuar',
-                      style: TextStyle(
-                        color: Color(0xFFE9EAEC),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+              child: const Text(
+                'Cancelar',
+                style: TextStyle(
+                  color: Color(0xFFC29503),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -341,10 +373,44 @@ class _SellChronosPageState extends State<SellChronosPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: Colors.black.withOpacity(0.7))),
-        Text(value, style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.black.withOpacity(0.7),
+            fontSize: 14,
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
       ],
     );
+  }
+
+  bool _validatePixKey(String key) {
+    if (key.isEmpty) return false;
+    
+    // Verificação de e-mail
+    final emailRegex = RegExp(r"^[\w-.]+@[\w-]+\.[a-zA-Z]{2,}");
+    if (emailRegex.hasMatch(key)) return true;
+    
+    // Verificação de CPF (apenas números, 11 dígitos)
+    final digitsOnly = key.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digitsOnly.length == 11) return true;
+    
+    // Verificação de telefone (10-13 dígitos)
+    if (digitsOnly.length >= 10 && digitsOnly.length <= 13) return true;
+    
+    // Verificação de chave aleatória (UUID-like)
+    final randomKey = RegExp(r'^[a-zA-Z0-9_-]{8,64}$');
+    if (randomKey.hasMatch(key)) return true;
+    
+    return false;
   }
 
   @override
@@ -367,7 +433,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
                   child: Column(
                     children: [
                       _buildSearchBar(),
-                      const SizedBox(height: 60),
+                      const SizedBox(height: 40),
                       Expanded(
                         child: SingleChildScrollView(
                           child: Consumer<SellChronosController>(

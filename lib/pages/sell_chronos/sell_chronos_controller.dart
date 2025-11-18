@@ -213,7 +213,7 @@ class SellChronosController extends ChangeNotifier {
             Text(
               'Você será redirecionado em 3 segundos...',
               style: TextStyle(
-                color: const Color(0xFFE9EAEC).withValues(alpha: 0.7),
+                color: const Color(0xFFE9EAEC).withOpacity(0.7),
                 fontSize: 14,
               ),
             ),
