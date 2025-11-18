@@ -5,13 +5,13 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:html' as html if (dart.library.io) 'dart:io';
 import 'dart:typed_data';
 
-class RequestEdittingPage extends StatefulWidget {
-  const RequestEdittingPage({super.key});
+class RequestEditingPage extends StatefulWidget {
+  const RequestEditingPage({super.key});
   @override
-  _RequestEdittingPageState createState() => _RequestEdittingPageState();
+  _RequestEditingPageState createState() => _RequestEditingPageState();
 }
 
-class _RequestEdittingPageState extends State<RequestEdittingPage> {
+class _RequestEditingPageState extends State<RequestEditingPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -20,10 +20,10 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
   final TextEditingController _categoriesController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   String? _selectedModality;
-  
+
   // Fixed: Use late keyword to ensure initialization
   late List<String> _categoriesTags;
-  
+
   // Updated: Variables for image handling (web compatible)
   dynamic _selectedImage;
   String? _imageFileName;
@@ -106,15 +106,16 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
   // Web image picker
   void _pickImageWeb() {
     // Create a file input element
-    final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
+    final html.FileUploadInputElement uploadInput =
+        html.FileUploadInputElement();
     uploadInput.accept = 'image/png,image/jpeg,image/jpg,image/webp,image/bmp';
-    
+
     uploadInput.onChange.listen((e) {
       final files = uploadInput.files;
       if (files != null && files.isNotEmpty) {
         final file = files[0];
         final reader = html.FileReader();
-        
+
         reader.onLoadEnd.listen((e) {
           setState(() {
             _imageBytes = reader.result as Uint8List?;
@@ -122,11 +123,11 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
             _selectedImage = _imageBytes;
           });
         });
-        
+
         reader.readAsArrayBuffer(file);
       }
     });
-    
+
     // Trigger the file selection dialog
     uploadInput.click();
   }
@@ -153,14 +154,21 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
 
     // Truncate the filename
     final extension = fileName.split('.').last;
-    final nameWithoutExtension = fileName.substring(0, fileName.lastIndexOf('.'));
-    final maxNameLength = (maxWidth * maxPercentage / textPainter.width * nameWithoutExtension.length * 0.6).floor();
+    final nameWithoutExtension =
+        fileName.substring(0, fileName.lastIndexOf('.'));
+    final maxNameLength = (maxWidth *
+            maxPercentage /
+            textPainter.width *
+            nameWithoutExtension.length *
+            0.6)
+        .floor();
 
     if (maxNameLength <= 3) {
       return '...$extension';
     }
 
-    final truncatedName = '${nameWithoutExtension.substring(0, maxNameLength)}...$extension';
+    final truncatedName =
+        '${nameWithoutExtension.substring(0, maxNameLength)}...$extension';
     return truncatedName;
   }
 
@@ -173,7 +181,7 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
           children: [
             // Background images
             _buildBackgroundImages(),
-            
+
             // Main content
             Column(
               children: [
@@ -252,19 +260,17 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
               'assets/img/Menu.png',
               width: 40,
               height: 40,
-              errorBuilder: (context, error, stackTrace) => 
-                const Icon(Icons.menu, size: 30),
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.menu, size: 30),
             ),
           ),
-          
           Image.asset(
             'assets/img/LogoHeader.png',
             width: 125,
             height: 39,
-            errorBuilder: (context, error, stackTrace) => 
-              const Text('LOGO', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            errorBuilder: (context, error, stackTrace) => const Text('LOGO',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           ),
-          
           Padding(
             padding: const EdgeInsets.only(right: 20),
             child: Row(
@@ -273,8 +279,8 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
                   'assets/img/Coin.png',
                   width: 30,
                   height: 30,
-                  errorBuilder: (context, error, stackTrace) => 
-                    const Icon(Icons.monetization_on, size: 25),
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.monetization_on, size: 25),
                 ),
                 const SizedBox(width: 8),
                 const Text(
@@ -319,8 +325,8 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
               'assets/img/Search.png',
               width: 20,
               height: 20,
-              errorBuilder: (context, error, stackTrace) => 
-                const Icon(Icons.search, size: 20),
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.search, size: 20),
             ),
           ),
         ),
@@ -354,11 +360,13 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
             ),
             const SizedBox(height: 25),
 
-            _buildFormField('Título', _titleController, validator: _requiredValidator),
+            _buildFormField('Título', _titleController,
+                validator: _requiredValidator),
             const SizedBox(height: 15),
             _buildDescriptionField(), // Updated: Expanded description field
             const SizedBox(height: 15),
-            _buildFormField('Tempo em Chronos', _chronosController, validator: _requiredValidator),
+            _buildFormField('Tempo em Chronos', _chronosController,
+                validator: _requiredValidator),
             const SizedBox(height: 15),
             _buildDateField('Prazo'),
             const SizedBox(height: 15),
@@ -383,7 +391,8 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
     return null;
   }
 
-  Widget _buildFormField(String placeholder, TextEditingController controller, {String? Function(String?)? validator}) {
+  Widget _buildFormField(String placeholder, TextEditingController controller,
+      {String? Function(String?)? validator}) {
     return Container(
       height: 46,
       decoration: BoxDecoration(
@@ -444,7 +453,8 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
           hintStyle: TextStyle(
             color: Colors.black.withOpacity(0.7),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide.none,
@@ -494,8 +504,8 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
               'assets/img/calendar.png',
               width: 24,
               height: 24,
-              errorBuilder: (context, error, stackTrace) => 
-                const Icon(Icons.calendar_today, size: 20),
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.calendar_today, size: 20),
             ),
           ),
           errorStyle: const TextStyle(fontSize: 12, height: 0.1),
@@ -509,7 +519,8 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
           );
           if (picked != null) {
             setState(() {
-              _deadlineController.text = "${picked.day}/${picked.month}/${picked.year}";
+              _deadlineController.text =
+                  "${picked.day}/${picked.month}/${picked.year}";
             });
           }
         },
@@ -552,7 +563,7 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
             onFieldSubmitted: _addCategory,
           ),
         ),
-        
+
         // Fixed: Direct check on the late-initialized list
         if (_categoriesTags.isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -650,8 +661,8 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
               'assets/img/down-arrow.png',
               width: 24,
               height: 24,
-              errorBuilder: (context, error, stackTrace) => 
-                const Icon(Icons.arrow_drop_down, size: 24),
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.arrow_drop_down, size: 24),
             ),
           ),
           errorStyle: const TextStyle(fontSize: 12, height: 0.1),
@@ -675,7 +686,7 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final buttonWidth = constraints.maxWidth;
-        final displayText = _imageFileName != null 
+        final displayText = _imageFileName != null
             ? _getDisplayFileName(_imageFileName!, buttonWidth)
             : 'Imagem do pedido';
 
@@ -719,8 +730,9 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
                           'assets/img/AddImage.png',
                           width: 24,
                           height: 24,
-                          errorBuilder: (context, error, stackTrace) => 
-                            const Icon(Icons.add_photo_alternate, color: Color(0xFFC29503)),
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.add_photo_alternate,
+                                  color: Color(0xFFC29503)),
                         ),
                 ),
               ],
@@ -778,7 +790,7 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
                     );
                     return;
                   }
-                  
+
                   // Lógica para criar o pedido
                   print('Pedido criado com sucesso!');
                   print('Título: ${_titleController.text}');
@@ -795,9 +807,9 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
                       print('Image path: ${_selectedImage?.path}');
                     }
                   }
-                  
+
                   // TODO: Implement actual request creation logic
-                  
+
                   // Show success message
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -805,7 +817,7 @@ class _RequestEdittingPageState extends State<RequestEdittingPage> {
                       backgroundColor: Colors.green,
                     ),
                   );
-                  
+
                   // Navigate back after successful creation
                   Navigator.pop(context);
                 }
