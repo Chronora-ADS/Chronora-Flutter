@@ -23,7 +23,7 @@ class ServiceCard extends StatelessWidget {
         children: [
           // Service Image
           Container(
-            height: 120,
+            height: 300,
             width: double.infinity,
             decoration: BoxDecoration(
               borderRadius: const BorderRadius.only(
