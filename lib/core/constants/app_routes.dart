@@ -2,9 +2,6 @@ import 'package:chronora/pages/auth/account_creation_page.dart';
 import 'package:chronora/pages/auth/login_page.dart';
 import 'package:chronora/pages/main_page.dart';
 import 'package:chronora/pages/profile_page.dart';
-import 'package:chronora/widgets/perfil_edit.dart';
-import 'package:chronora/widgets/perfil_delet.dart';
-import 'package:chronora/core/models/user_model.dart';
 // import 'package:chronora/pages/buy_chronos/buy_chronos_page.dart';
 // import 'package:chronora/pages/sell_chronos/sell_chronos_page.dart';
 import 'package:flutter/material.dart';
@@ -25,6 +22,7 @@ class AppRoutes {
       login: (context) => const LoginPage(),
       accountCreation: (context) => const AccountCreationPage(),
       main: (context) => const MainPage(),
+      profile: (context) => const ProfilePage(),
 
 
       // serviceCreation: (context) => const ServiceCreationPage(),

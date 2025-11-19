@@ -4,7 +4,7 @@ import '../../core/models/user_model.dart';
 import '../../core/services/profile_controller.dart';
 
 class PerfilEdit extends StatefulWidget {
-  final User user; // Recebe o usuário logado com todos os dados
+  final User user;
   final VoidCallback onProfileUpdated;
 
   const PerfilEdit({
@@ -33,11 +33,10 @@ class _PerfilEditState extends State<PerfilEdit> {
   @override
   void initState() {
     super.initState();
-    // Preenche automaticamente com os dados do usuário recebidos
     nameController = TextEditingController(text: widget.user.name);
     emailController = TextEditingController(text: widget.user.email);
-    phoneController = TextEditingController(text: widget.user.phone);
-    chronoraController = TextEditingController(text: widget.user.chronora ?? '');
+    phoneController = TextEditingController(text: widget.user.phoneNumber);
+    chronoraController = TextEditingController(text: widget.user.timeChronos?.toString() ?? '');
     descricaoController = TextEditingController(text: widget.user.descricao ?? '');
     currentPasswordController = TextEditingController();
     newPasswordController = TextEditingController();
@@ -59,11 +58,9 @@ class _PerfilEditState extends State<PerfilEdit> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Chronora - Mostra dados reais do usuário
             _buildHeader(),
             const SizedBox(height: 32),
 
-            // Informações Pessoais - Mostra dados reais
             const Text(
               'Informações Pessoais',
               style: TextStyle(
@@ -74,7 +71,6 @@ class _PerfilEditState extends State<PerfilEdit> {
             ),
             const SizedBox(height: 16),
 
-            // Campos editáveis preenchidos com dados do usuário
             _buildTextField(
               controller: nameController,
               label: 'Nome completo',
@@ -86,7 +82,7 @@ class _PerfilEditState extends State<PerfilEdit> {
               controller: emailController,
               label: 'Email',
               icon: Icons.email,
-              enabled: false, // Email geralmente não é editável
+              enabled: false,
             ),
             const SizedBox(height: 16),
 
@@ -102,6 +98,7 @@ class _PerfilEditState extends State<PerfilEdit> {
               label: 'Chronora',
               icon: Icons.workspace_premium,
               keyboardType: TextInputType.number,
+              enabled: false,
             ),
             const SizedBox(height: 16),
 
@@ -113,11 +110,9 @@ class _PerfilEditState extends State<PerfilEdit> {
             ),
             const SizedBox(height: 32),
 
-            // Documento com Foto
             _buildDocumentSection(),
             const SizedBox(height: 32),
 
-            // Seção de senha
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Row(
@@ -160,7 +155,6 @@ class _PerfilEditState extends State<PerfilEdit> {
             ),
             const SizedBox(height: 32),
 
-            // Botões
             Row(
               children: [
                 Expanded(
@@ -228,18 +222,16 @@ class _PerfilEditState extends State<PerfilEdit> {
             ),
           ),
           const SizedBox(height: 8),
-          // Mostra o Chronora real do usuário
           Text(
-            widget.user.chronora ?? '299', // Valor real ou padrão
+            widget.user.timeChronos?.toString() ?? '0',
             style: const TextStyle(
               fontSize: 18,
               color: AppColors.cinza,
             ),
           ),
           const SizedBox(height: 8),
-          // Mostra a descrição real do usuário
           Text(
-            widget.user.descricao ?? 'Pintura de parede, aula de inglês...',
+            widget.user.descricao ?? 'Sem descrição',
             style: const TextStyle(
               fontSize: 14,
               color: AppColors.cinza,
@@ -373,9 +365,7 @@ class _PerfilEditState extends State<PerfilEdit> {
     final success = await _controller.updateUserProfile(
       name: nameController.text,
       email: emailController.text,
-      phone: phoneController.text,
-      chronora: chronoraController.text,
-      descricao: descricaoController.text,
+      phoneNumber: phoneController.text,
       newPassword: newPasswordController.text.isNotEmpty ? newPasswordController.text : null,
       currentPassword: currentPasswordController.text.isNotEmpty ? currentPasswordController.text : null,
     );

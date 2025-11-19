@@ -1,36 +1,52 @@
+// models/user_model.dart
 class User {
   final String id;
   final String name;
   final String email;
-  final String phone;
-  final String? profileImage;
-  final String? chronora;
+  final String phoneNumber;
+  final int? timeChronos;
   final String? descricao;
-  final String? currentPassword;
-  final String? newPassword;
 
   User({
     required this.id,
     required this.name,
     required this.email,
-    required this.phone,
-    this.profileImage,
-    this.chronora,
+    required this.phoneNumber,
+    this.timeChronos,
     this.descricao,
-    this.currentPassword,
-    this.newPassword,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
-      email: json['email'] ?? '',
-      phone: json['phone'] ?? '',
-      profileImage: json['profileImage'],
-      chronora: json['chronora']?.toString(),
-      descricao: json['descricao'],
+      id: _parseString(json['id']),
+      name: _parseString(json['name']),
+      email: _parseString(json['email']),
+      phoneNumber: _parseString(json['phoneNumber']),
+      timeChronos: _parseInt(json['timeChronos']),
+      descricao: _parseString(json['descricao']),
     );
+  }
+
+  static String _parseString(dynamic value) {
+    if (value == null) return '';
+    if (value is String) return value;
+    if (value is int) return value.toString();
+    if (value is double) return value.toString();
+    return value.toString();
+  }
+
+  static int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is String) {
+      try {
+        return int.tryParse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+    if (value is double) return value.toInt();
+    return null;
   }
 
   Map<String, dynamic> toJson() {
@@ -38,34 +54,9 @@ class User {
       'id': id,
       'name': name,
       'email': email,
-      'phone': phone,
-      'profileImage': profileImage,
-      'chronora': chronora,
+      'phoneNumber': phoneNumber,
+      'timeChronos': timeChronos,
       'descricao': descricao,
     };
-  }
-
-  User copyWith({
-    String? id,
-    String? name,
-    String? email,
-    String? phone,
-    String? profileImage,
-    String? chronora,
-    String? descricao,
-    String? currentPassword,
-    String? newPassword,
-  }) {
-    return User(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      email: email ?? this.email,
-      phone: phone ?? this.phone,
-      profileImage: profileImage ?? this.profileImage,
-      chronora: chronora ?? this.chronora,
-      descricao: descricao ?? this.descricao,
-      currentPassword: currentPassword ?? this.currentPassword,
-      newPassword: newPassword ?? this.newPassword,
-    );
   }
 }

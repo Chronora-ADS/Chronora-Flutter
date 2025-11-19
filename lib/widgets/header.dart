@@ -57,6 +57,7 @@ class _HeaderState extends State<Header> {
         });
       }
     } catch (error) {
+      print('Erro ao carregar dados do usuário: $error');
       setState(() {
         _isLoading = false;
         _coinCount = 0;
@@ -66,23 +67,47 @@ class _HeaderState extends State<Header> {
 
   Map<String, dynamic> _parseResponse(String responseBody) {
     try {
-      // Tenta fazer parse como JSON primeiro
       final jsonData = json.decode(responseBody);
 
-      // Verifica se é um objeto UserEntity completo
+      // Função auxiliar para converter dynamic para int
+      int? parseChronos(dynamic value) {
+        if (value == null) return null;
+        if (value is int) return value;
+        if (value is String) return int.tryParse(value);
+        if (value is double) return value.toInt();
+        return null;
+      }
+
       if (jsonData is Map<String, dynamic>) {
-        final chronos = jsonData['timeChronos'] ?? 0;
-        return {'timeChronos': chronos};
+        // Tenta diferentes estruturas de resposta
+        dynamic chronosData;
+        
+        if (jsonData.containsKey('timeChronos')) {
+          chronosData = jsonData['timeChronos'];
+        } else if (jsonData.containsKey('data') && jsonData['data'] is Map) {
+          chronosData = jsonData['data']['timeChronos'];
+        } else if (jsonData.containsKey('user') && jsonData['user'] is Map) {
+          chronosData = jsonData['user']['timeChronos'];
+        }
+
+        final chronos = parseChronos(chronosData);
+        return {'timeChronos': chronos ?? 0};
       }
       return {'timeChronos': 0};
     } catch (e) {
+      print('Erro ao fazer parse da resposta: $e');
       return {'timeChronos': 0};
     }
   }
 
   Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('auth_token');
+    } catch (e) {
+      print('Erro ao obter token: $e');
+      return null;
+    }
   }
 
   @override
