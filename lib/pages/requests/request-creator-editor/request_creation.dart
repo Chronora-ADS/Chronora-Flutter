@@ -4,11 +4,15 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:html' as html if (dart.library.io) 'dart:io';
 import 'dart:typed_data';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Importe os widgets da main_page
 import '../../../widgets/header.dart';
 import '../../../widgets/side_menu.dart';
 import '../../../widgets/wallet_modal.dart';
+import '../../../core/services/api_service.dart';
+import '../../../core/models/create_request_model.dart'; // Adicione este import
 
 class RequestCreationPage extends StatefulWidget {
   const RequestCreationPage({super.key});
@@ -26,25 +30,22 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   final TextEditingController _searchController = TextEditingController();
   String? _selectedModality;
   
-  // Fixed: Use late keyword to ensure initialization
   late List<String> _categoriesTags;
   
-  // Updated: Variables for image handling (web compatible)
   dynamic _selectedImage;
   String? _imageFileName;
   Uint8List? _imageBytes;
 
-  // New: Variables for side menu and wallet (igual na main_page)
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _categoriesTags = []; // This will never be null
+    _categoriesTags = [];
   }
 
-  // Fixed: Dispose controllers to prevent memory leaks
   @override
   void dispose() {
     _titleController.dispose();
@@ -56,7 +57,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     super.dispose();
   }
 
-  // Safe method to add categories
   void _addCategory(String category) {
     if (category.trim().isNotEmpty) {
       setState(() {
@@ -66,25 +66,20 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     }
   }
 
-  // Safe method to remove categories
   void _removeCategory(String category) {
     setState(() {
       _categoriesTags.remove(category);
     });
   }
 
-  // Updated: Web-compatible image picker
   Future<void> _pickImage() async {
     if (kIsWeb) {
-      // Web implementation
       _pickImageWeb();
     } else {
-      // Mobile implementation
       _pickImageMobile();
     }
   }
 
-  // Mobile image picker
   Future<void> _pickImageMobile() async {
     final ImagePicker picker = ImagePicker();
     try {
@@ -112,9 +107,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     }
   }
 
-  // Web image picker
   void _pickImageWeb() {
-    // Create a file input element
     final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
     uploadInput.accept = 'image/png,image/jpeg,image/jpg,image/webp,image/bmp';
     
@@ -136,13 +129,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       }
     });
     
-    // Trigger the file selection dialog
     uploadInput.click();
   }
 
-  // Updated: Method to truncate filename if too long (web compatible)
   String _getDisplayFileName(String fileName, double maxWidth) {
-    const double maxPercentage = 0.45; // 45% of button width
+    const double maxPercentage = 0.45;
     final textPainter = TextPainter(
       text: TextSpan(
         text: fileName,
@@ -160,7 +151,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       return fileName;
     }
 
-    // Truncate the filename
     final extension = fileName.split('.').last;
     final nameWithoutExtension = fileName.substring(0, fileName.lastIndexOf('.'));
     final maxNameLength = (maxWidth * maxPercentage / textPainter.width * nameWithoutExtension.length * 0.6).floor();
@@ -173,7 +163,134 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     return truncatedName;
   }
 
-  // Funções para controlar o menu lateral e carteira (igual na main_page)
+  // Método para converter imagem para base64
+  Future<String?> _convertImageToBase64() async {
+    try {
+      if (kIsWeb) {
+        if (_imageBytes != null) {
+          String base64String = base64Encode(_imageBytes!);
+          return base64String;
+        }
+      } else {
+        if (_selectedImage != null && _selectedImage is File) {
+          List<int> fileBytes = await _selectedImage.readAsBytes();
+          String base64String = base64Encode(fileBytes);
+          return base64String;
+        }
+      }
+      return null;
+    } catch (e) {
+      print('Erro ao converter imagem: $e');
+      return null;
+    }
+  }
+
+  // Método para criar o pedido no backend
+  Future<void> _createRequest() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_categoriesTags.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Adicione pelo menos uma categoria'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Recuperar o token salvo
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      
+      if (token == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Usuário não autenticado. Faça login novamente.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Converter imagem para base64 se existir
+      String? base64Image;
+      if (_selectedImage != null) {
+        base64Image = await _convertImageToBase64();
+      }
+
+      // Converter data para formato ISO (YYYY-MM-DD)
+      final deadlineParts = _deadlineController.text.split('/');
+      final formattedDeadline = deadlineParts.length == 3 
+          ? '${deadlineParts[2]}-${deadlineParts[1].padLeft(2, '0')}-${deadlineParts[0].padLeft(2, '0')}'
+          : _deadlineController.text;
+
+      // Criar o payload
+      final payload = {
+        "title": _titleController.text.trim(),
+        "description": _descriptionController.text.trim(),
+        "timeChronos": int.parse(_chronosController.text),
+        "deadline": formattedDeadline,
+        "categories": _categoriesTags,
+        "modality": _selectedModality!,
+        if (base64Image != null) "requestImage": base64Image,
+      };
+
+      print('Enviando payload para criação de pedido...');
+      final response = await ApiService.post('/requests/create', payload, token: token);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pedido criado com sucesso!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // Limpar formulário após sucesso
+        _formKey.currentState!.reset();
+        setState(() {
+          _categoriesTags.clear();
+          _selectedModality = null;
+          _selectedImage = null;
+          _imageFileName = null;
+          _imageBytes = null;
+        });
+
+        // Navegar de volta após um breve delay
+        await Future.delayed(const Duration(seconds: 1));
+        Navigator.pop(context);
+        
+      } else {
+        final error = response.body;
+        print('Erro do servidor: ${response.statusCode} - $error');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao criar pedido: ${response.statusCode} - $error'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Erro na criação do pedido: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   void _toggleDrawer() {
     setState(() {
       _isDrawerOpen = !_isDrawerOpen;
@@ -182,8 +299,8 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
 
   void _openWallet() {
     setState(() {
-      _isDrawerOpen = false; // Fecha o side menu
-      _isWalletOpen = true; // Abre a carteira
+      _isDrawerOpen = false;
+      _isWalletOpen = true;
     });
   }
 
@@ -199,13 +316,10 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       backgroundColor: const Color(0xFF0B0C0C),
       body: Stack(
         children: [
-          // Background images
           _buildBackgroundImages(),
           
-          // Main content
           Column(
             children: [
-              // Header EXATO da main_page com funcionalidade
               Header(
                 onMenuPressed: _toggleDrawer,
               ),
@@ -229,7 +343,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             ],
           ),
 
-          // Menu lateral (igual na main_page)
           if (_isDrawerOpen)
             Positioned(
               top: kToolbarHeight,
@@ -259,7 +372,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
               ),
             ),
 
-          // Modal da Carteira (igual na main_page)
           if (_isWalletOpen)
             Positioned(
               top: 0,
@@ -380,7 +492,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
 
             _buildFormField('Título', _titleController, validator: _requiredValidator),
             const SizedBox(height: 15),
-            _buildDescriptionField(), // Updated: Expanded description field
+            _buildDescriptionField(),
             const SizedBox(height: 15),
             _buildFormField('Tempo em Chronos', _chronosController, validator: _requiredValidator),
             const SizedBox(height: 15),
@@ -399,7 +511,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     );
   }
 
-  // Fixed: Added validation function
   String? _requiredValidator(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Este campo é obrigatório';
@@ -442,7 +553,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     );
   }
 
-  // New: Expanded description field that grows vertically
   Widget _buildDescriptionField() {
     return Container(
       decoration: BoxDecoration(
@@ -459,8 +569,8 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       child: TextFormField(
         controller: _descriptionController,
         validator: _requiredValidator,
-        maxLines: null, // Allows unlimited lines - expands vertically
-        minLines: 3, // Minimum 3 lines height
+        maxLines: null,
+        minLines: 3,
         keyboardType: TextInputType.multiline,
         textInputAction: TextInputAction.newline,
         decoration: InputDecoration(
@@ -577,7 +687,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           ),
         ),
         
-        // Fixed: Direct check on the late-initialized list
         if (_categoriesTags.isNotEmpty) ...[
           const SizedBox(height: 12),
           Wrap(
@@ -770,7 +879,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: _isLoading ? null : () => Navigator.pop(context),
               child: const Text(
                 'Cancelar',
                 style: TextStyle(
@@ -790,57 +899,23 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: TextButton(
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  // Fixed: Added validation for categories
-                  if (_categoriesTags.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Adicione pelo menos uma categoria'),
-                        backgroundColor: Colors.red,
+              onPressed: _isLoading ? null : _createRequest,
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
-                    );
-                    return;
-                  }
-                  
-                  // Lógica para criar o pedido
-                  print('Pedido criado com sucesso!');
-                  print('Título: ${_titleController.text}');
-                  print('Descrição: ${_descriptionController.text}');
-                  print('Chronos: ${_chronosController.text}');
-                  print('Prazo: ${_deadlineController.text}');
-                  print('Categorias: $_categoriesTags');
-                  print('Modalidade: $_selectedModality');
-                  if (_imageFileName != null) {
-                    print('Imagem selecionada: $_imageFileName');
-                    if (kIsWeb) {
-                      print('Image bytes length: ${_imageBytes?.length}');
-                    } else {
-                      print('Image path: ${_selectedImage?.path}');
-                    }
-                  }
-                  
-                  // TODO: Implement actual request creation logic
-                  
-                  // Show success message
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Pedido criado com sucesso!'),
-                      backgroundColor: Colors.green,
+                    )
+                  : const Text(
+                      'Criar pedido',
+                      style: TextStyle(
+                        color: Color(0xFFE9EAEC),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  );
-                  
-                  // Navigate back after successful creation
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text(
-                'Criar pedido',
-                style: TextStyle(
-                  color: Color(0xFFE9EAEC),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
             ),
           ),
         ),

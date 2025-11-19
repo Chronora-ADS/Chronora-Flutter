@@ -5,15 +5,18 @@ class ApiService {
   static const String baseUrl = 'https://chronora-java.onrender.com';
   //static const String baseUrl = 'http://localhost:8085';
 
-  static Future<http.Response> post(
-      String endpoint, Map<String, dynamic> data) async {
+  static Future<http.Response> post(String endpoint, Map<String, dynamic> data,
+      {String? token}) async {
     try {
+      final headers = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+
       final response = await http.post(
         Uri.parse('$baseUrl$endpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
+        headers: headers,
         body: jsonEncode(data),
       );
       return response;
