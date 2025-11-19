@@ -75,15 +75,6 @@ class ProfileController {
     isLoading = false;
   }
 
-  void _handleErrorResponse(dynamic response) {
-    try {
-      final errorData = jsonDecode(response.body);
-      errorMessage = errorData['message'] ?? 'Erro ao carregar perfil: ${response.statusCode}';
-    } catch (_) {
-      errorMessage = 'Erro ao carregar perfil: ${response.statusCode}';
-    }
-  }
-
   Future<bool> updateUserProfile({
     required String name,
     required String email,
@@ -134,6 +125,52 @@ class ProfileController {
       return false;
     } finally {
       isLoading = false;
+    }
+  }
+
+  Future<bool> deleteAccount() async {
+    isLoading = true;
+    errorMessage = '';
+    
+    try {
+      final token = await _getToken();
+      if (token == null) {
+        errorMessage = "Token não encontrado";
+        isLoading = false;
+        return false;
+      }
+
+      final response = await ApiService.delete(
+        '/user/delete',
+        token: token,
+      );
+
+      if (response.statusCode == 200) {
+        // Limpar token e dados do usuário
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('auth_token');
+        
+        user = null;
+        errorMessage = '';
+        return true;
+      } else {
+        _handleErrorResponse(response);
+        return false;
+      }
+    } catch (e) {
+      errorMessage = "Erro ao deletar conta: $e";
+      return false;
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  void _handleErrorResponse(dynamic response) {
+    try {
+      final errorData = jsonDecode(response.body);
+      errorMessage = errorData['message'] ?? 'Erro: ${response.statusCode}';
+    } catch (_) {
+      errorMessage = 'Erro: ${response.statusCode}';
     }
   }
 
