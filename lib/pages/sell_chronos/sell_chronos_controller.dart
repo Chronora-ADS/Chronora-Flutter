@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 class SellChronosController extends ChangeNotifier {
   static const double CHRONOS_SELL_PRICE = 2.00; // R$ por Chronos
   static const double TAX_PERCENTAGE = 0.10; // 10%
+  static const int MIN_CHRONOS_KEEP = 1; // Mínimo de Chronos que deve permanecer na carteira
   static const String TOOLTIP_TEXT =
       'O valor de venda de Chronos é equivalente a R\$2,00 reais. No final, é aplicada uma taxa de 10% sobre o total.';
 
@@ -47,7 +48,12 @@ class SellChronosController extends ChangeNotifier {
   double get totalAmount => subtotal - tax; // valor a receber pelo usuário
   int get chronosAfterSale => currentBalance - sellAmount;
 
-  bool get isAmountValid => sellAmount > 0 && sellAmount <= currentBalance;
+  // REGRA: Não pode vender todos os Chronos - deve manter pelo menos MIN_CHRONOS_KEEP
+  bool get isAmountValid => 
+      sellAmount > 0 && 
+      sellAmount <= currentBalance &&
+      chronosAfterSale >= MIN_CHRONOS_KEEP;
+  
   bool get isPixValid => true; // PIX será validado em outra tela
   bool get canProceed => isAmountValid && !isLoading;
   
@@ -70,6 +76,9 @@ class SellChronosController extends ChangeNotifier {
         sellAmount = 0;
       } else if (amount > currentBalance) {
         errorMessage = 'Saldo insuficiente para vender $amount Chronos.';
+        sellAmount = amount;
+      } else if (chronosAfterSale < MIN_CHRONOS_KEEP) {
+        errorMessage = 'Você deve manter pelo menos $MIN_CHRONOS_KEEP Chronos em sua carteira.';
         sellAmount = amount;
       } else {
         sellAmount = amount;
@@ -104,6 +113,11 @@ class SellChronosController extends ChangeNotifier {
     
     if (amount > currentBalance) {
       onError('Saldo insuficiente');
+      return;
+    }
+    
+    if (chronosAfterSale < MIN_CHRONOS_KEEP) {
+      onError('Você deve manter pelo menos $MIN_CHRONOS_KEEP Chronos em sua carteira.');
       return;
     }
     

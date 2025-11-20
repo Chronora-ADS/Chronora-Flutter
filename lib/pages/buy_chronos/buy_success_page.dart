@@ -115,6 +115,10 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
   }
 
   Widget _buildSuccessContent() {
+    // Cálculo correto da taxa (10% sobre o subtotal)
+    final subtotal = widget.totalAmount / 1.1;
+    final taxa = widget.totalAmount - subtotal;
+
     return Container(
       padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
@@ -173,7 +177,7 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Valor pago
+                // Valor pago (CORRIGIDO)
                 _buildDetailRow(
                   'Valor pago:',
                   'R\$ ${widget.totalAmount.toStringAsFixed(2)}',
@@ -189,10 +193,10 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Taxa
+                // Taxa (CORRIGIDO)
                 _buildDetailRow(
                   'Taxa (10%):',
-                  'R\$ ${(widget.totalAmount * 0.1).toStringAsFixed(2)}',
+                  'R\$ ${taxa.toStringAsFixed(2)}',
                   Icons.percent,
                 ),
               ],
@@ -219,7 +223,6 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
             height: 50,
             child: ElevatedButton(
               onPressed: () {
-                // Navega para a tela principal limpando o stack
                 Navigator.pushNamedAndRemoveUntil(
                   context, 
                   '/main', 
@@ -251,7 +254,6 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
             height: 50,
             child: OutlinedButton(
               onPressed: () {
-                // Navega de volta para a tela de compra
                 Navigator.popUntil(context, (route) => route.isFirst);
                 Navigator.pushNamed(context, '/buy-chronos');
               },

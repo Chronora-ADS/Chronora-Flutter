@@ -5,7 +5,7 @@ import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
 import 'buy_chronos_controller.dart';
-import 'buy_success_page.dart'; // Importar a nova tela de sucesso
+import 'buy_success_page.dart';
 
 class BuyChronosPage extends StatefulWidget {
   const BuyChronosPage({Key? key}) : super(key: key);
@@ -153,6 +153,7 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
         borderRadius: BorderRadius.circular(15),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Center(
@@ -188,6 +189,7 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
               ),
             ],
           ),
+
           const SizedBox(height: 15),
 
           // Campo de quantidade
@@ -225,6 +227,27 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
               ),
             ),
           ),
+          
+          // Mensagem de erro - APENAS QUANDO TENTA COMPRAR MAIS DO QUE PODE
+          if (controller.errorMessage.isNotEmpty) ...{
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red, width: 1),
+              ),
+              child: Text(
+                controller.errorMessage,
+                style: const TextStyle(
+                  color: Colors.red,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          },
+
           const SizedBox(height: 15),
 
           // Resumo com borda amarela
@@ -247,8 +270,56 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Total', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                    Text('R\$ ${controller.totalAmount.toStringAsFixed(2)}', style: TextStyle(color: const Color(0xFFC29503), fontWeight: FontWeight.bold)),
+                    // Texto "Total" com tooltip
+                    Row(
+                      children: [
+                        Text(
+                          'Total', 
+                          style: TextStyle(
+                            color: Colors.black, 
+                            fontWeight: FontWeight.bold
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        // Tooltip com ponto de interrogação
+                        Tooltip(
+                          message: 'O valor de compra de Chronos é equivalente à 25% de 10 reais. No final, é aplicado uma taxa de 10% sobre o total.',
+                          decoration: BoxDecoration(
+                            color: Colors.black,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          textStyle: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                          child: Container(
+                            width: 20,
+                            height: 20,
+                            decoration: const BoxDecoration(
+                              color: Colors.black,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Center(
+                              child: Text(
+                                '?',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'R\$ ${controller.totalAmount.toStringAsFixed(2)}', 
+                      style: TextStyle(
+                        color: const Color(0xFFC29503), 
+                        fontWeight: FontWeight.bold
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -263,9 +334,16 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
               const SizedBox(width: 8),
               Image.asset('assets/img/Coin.png', width: 18, height: 18),
               const SizedBox(width: 6),
-              Text('${controller.chronosAfterPurchase}', style: TextStyle(color: Colors.black)),
+              Text(
+                '${controller.chronosAfterPurchase}',
+                style: TextStyle(
+                  color: controller.isLimitExceeded ? Colors.red : Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
+
           const SizedBox(height: 25),
 
           // Botões
@@ -301,7 +379,9 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
                 child: Container(
                   height: 46,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFC29503),
+                    color: controller.canProceed 
+                        ? const Color(0xFFC29503)
+                        : Colors.grey,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: TextButton(
@@ -311,7 +391,6 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
                             controller.purchaseChronos(
                               amount: amount,
                               onSuccess: () {
-                                // Navegar para tela de sucesso
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
@@ -329,10 +408,12 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
                             );
                           }
                         : null,
-                    child: const Text(
+                    child: Text(
                       'Finalizar compra',
                       style: TextStyle(
-                        color: Color(0xFFE9EAEC),
+                        color: controller.canProceed 
+                            ? const Color(0xFFE9EAEC)
+                            : Colors.white70,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -366,27 +447,25 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
           // Background images
           _buildBackgroundImages(),
           
-          // Main content
+          // Main content - BARRA DE PESQUISA NO TOPO, CARD CENTRALIZADO
           Column(
             children: [
-              const SizedBox(height: 16),
+              // Barra de pesquisa no topo
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: _buildSearchBar(),
+              ),
+              
+              // Card centralizado verticalmente no meio da tela
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: [
-                      _buildSearchBar(),
-                      const SizedBox(height: 60),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Consumer<BuyChronosController>(
-                            builder: (context, controller, child) {
-                              return _buildForm(context, controller);
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Consumer<BuyChronosController>(
+                      builder: (context, controller, child) {
+                        return _buildForm(context, controller);
+                      },
+                    ),
                   ),
                 ),
               ),

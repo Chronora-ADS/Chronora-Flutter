@@ -5,7 +5,7 @@ import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
 import 'sell_chronos_controller.dart';
-import 'pix_sell_page.dart'; // ← IMPORTAR A NOVA TELA
+import 'pix_sell_page.dart';
 
 class SellChronosPage extends StatefulWidget {
   const SellChronosPage({Key? key}) : super(key: key);
@@ -153,6 +153,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
         borderRadius: BorderRadius.circular(15),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Center(
@@ -225,6 +226,19 @@ class _SellChronosPageState extends State<SellChronosPage> {
               ),
             ),
           ),
+          
+          // Mensagem de erro
+          if (controller.errorMessage.isNotEmpty) ...{
+            const SizedBox(height: 8),
+            Text(
+              controller.errorMessage,
+              style: const TextStyle(
+                color: Colors.red,
+                fontSize: 12,
+              ),
+            ),
+          },
+
           const SizedBox(height: 15),
 
           // Resumo com borda amarela
@@ -247,8 +261,56 @@ class _SellChronosPageState extends State<SellChronosPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Total a receber', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                    Text('R\$ ${controller.totalAmount.toStringAsFixed(2)}', style: TextStyle(color: const Color(0xFFC29503), fontWeight: FontWeight.bold)),
+                    // Texto "Total a receber" com tooltip
+                    Row(
+                      children: [
+                        Text(
+                          'Total a receber', 
+                          style: TextStyle(
+                            color: Colors.black, 
+                            fontWeight: FontWeight.bold
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        // Tooltip com ponto de interrogação
+                        Tooltip(
+                          message: 'O valor de venda Chronos é equivalente à 20% de 10 reais. No final, é aplicado uma taxa de 10% sobre o total.',
+                          decoration: BoxDecoration(
+                            color: Colors.black,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          textStyle: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                          child: Container(
+                            width: 20,
+                            height: 20,
+                            decoration: const BoxDecoration(
+                              color: Colors.black,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Center(
+                              child: Text(
+                                '?',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'R\$ ${controller.totalAmount.toStringAsFixed(2)}', 
+                      style: TextStyle(
+                        color: const Color(0xFFC29503), 
+                        fontWeight: FontWeight.bold
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -263,9 +325,28 @@ class _SellChronosPageState extends State<SellChronosPage> {
               const SizedBox(width: 8),
               Image.asset('assets/img/Coin.png', width: 18, height: 18),
               const SizedBox(width: 6),
-              Text('${controller.chronosAfterSale}', style: TextStyle(color: Colors.black)),
+              Text(
+                '${controller.chronosAfterSale}',
+                style: TextStyle(
+                  color: controller.chronosAfterSale < SellChronosController.MIN_CHRONOS_KEEP ? Colors.red : Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
+          
+          // Mensagem informativa sobre o mínimo
+          if (controller.chronosAfterSale >= 0) ...{
+            const SizedBox(height: 8),
+            Text(
+              'Você deve manter pelo menos ${SellChronosController.MIN_CHRONOS_KEEP} Chronos em sua carteira.',
+              style: TextStyle(
+                color: Colors.black.withOpacity(0.6),
+                fontSize: 11,
+              ),
+            ),
+          },
+
           const SizedBox(height: 25),
 
           // Botões
@@ -301,14 +382,15 @@ class _SellChronosPageState extends State<SellChronosPage> {
                 child: Container(
                   height: 46,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFC29503),
+                    color: controller.canProceed 
+                        ? const Color(0xFFC29503)
+                        : Colors.grey,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: TextButton(
                     onPressed: controller.canProceed
                         ? () {
                             int amount = int.tryParse(controller.amountController.text) ?? 0;
-                            // Navegar para tela PIX em vez de processar diretamente
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -320,10 +402,12 @@ class _SellChronosPageState extends State<SellChronosPage> {
                             );
                           }
                         : null,
-                    child: const Text(
+                    child: Text(
                       'Continuar',
                       style: TextStyle(
-                        color: Color(0xFFE9EAEC),
+                        color: controller.canProceed 
+                            ? const Color(0xFFE9EAEC)
+                            : Colors.white70,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -357,27 +441,25 @@ class _SellChronosPageState extends State<SellChronosPage> {
           // Background images
           _buildBackgroundImages(),
           
-          // Main content
+          // Main content - BARRA DE PESQUISA NO TOPO, CARD CENTRALIZADO
           Column(
             children: [
-              const SizedBox(height: 16),
+              // Barra de pesquisa no topo
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: _buildSearchBar(),
+              ),
+              
+              // Card centralizado verticalmente no meio da tela
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: [
-                      _buildSearchBar(),
-                      const SizedBox(height: 60),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Consumer<SellChronosController>(
-                            builder: (context, controller, child) {
-                              return _buildForm(context, controller);
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Consumer<SellChronosController>(
+                      builder: (context, controller, child) {
+                        return _buildForm(context, controller);
+                      },
+                    ),
                   ),
                 ),
               ),

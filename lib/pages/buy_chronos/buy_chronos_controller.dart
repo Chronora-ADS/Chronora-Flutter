@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Controller para gerenciar a compra de Chronos
-/// 
+///
 /// Responsabilidades:
 /// - Cálculos em tempo real (subtotal, taxa, total)
 /// - Validação de entrada
@@ -9,10 +9,10 @@ import 'package:flutter/material.dart';
 /// - Integração com gateway de pagamento
 class BuyChronosController extends ChangeNotifier {
   // Constantes de negócio
-  static const double CHRONOS_PRICE = 1.73; // R$ por Chronos
+  static const double CHRONOS_PRICE = 2.50; // R$ por Chronos
   static const double TAX_PERCENTAGE = 0.10; // 10%
-  static const int MAX_CHRONOS_PER_ACCOUNT = 300;
-  static const String TOOLTIP_TEXT = 
+  static const int MAX_CHRONOS_PER_ACCOUNT = 300; // Limite máximo de Chronos
+  static const String TOOLTIP_TEXT =
       'O valor em Chronos é equivalente à 25% do valor de 1 hora do salário mínimo brasileiro. '
       'No final, é aplicada uma taxa de 10% sobre o subtotal.';
 
@@ -22,20 +22,20 @@ class BuyChronosController extends ChangeNotifier {
   String errorMessage = '';
   bool isLoading = false;
   String selectedPaymentMethod = 'Cartão de Crédito';
-  
+
   // Controllers
   late TextEditingController amountController;
-  
+
   BuyChronosController() {
     amountController = TextEditingController();
   }
-  
+
   @override
   void dispose() {
     amountController.dispose();
     super.dispose();
   }
-  
+
   void initializeInitialValues() {
     amountController.clear();
     purchaseAmount = 0;
@@ -49,17 +49,20 @@ class BuyChronosController extends ChangeNotifier {
   double get taxAmount => tax;
   double get totalAmount => subtotal + tax;
   int get chronosAfterPurchase => currentBalance + purchaseAmount;
+
+  // REGRA: Não pode comprar mais de 300 Chronos no total
   bool get isLimitExceeded => chronosAfterPurchase > MAX_CHRONOS_PER_ACCOUNT;
-  bool get canProceed => 
-      purchaseAmount > 0 && 
-      !isLimitExceeded && 
-      !isLoading;
-  
+
+  // Quantidade máxima que pode comprar
+  int get maxPurchaseAmount => MAX_CHRONOS_PER_ACCOUNT - currentBalance;
+
+  bool get canProceed => purchaseAmount > 0 && !isLimitExceeded && !isLoading;
+
   void setPaymentMethod(String method) {
     selectedPaymentMethod = method;
     notifyListeners();
   }
-  
+
   void purchaseChronos({
     required int amount,
     required Function onSuccess,
@@ -69,16 +72,20 @@ class BuyChronosController extends ChangeNotifier {
       onError('Quantidade inválida');
       return;
     }
-    
+
+    // REGRA: Verifica se ultrapassa o limite de 300 Chronos
     if (chronosAfterPurchase > MAX_CHRONOS_PER_ACCOUNT) {
-      onError('Limite de $MAX_CHRONOS_PER_ACCOUNT Chronos por conta atingido');
+      onError(
+          'Limite máximo de $MAX_CHRONOS_PER_ACCOUNT Chronos por conta atingido!\n\n'
+          'Você já possui $currentBalance Chronos e tentou comprar $amount.\n'
+          'Máximo que você pode comprar: $maxPurchaseAmount Chronos');
       return;
     }
-    
+
     // Simula processamento
     isLoading = true;
     notifyListeners();
-    
+
     Future.delayed(const Duration(milliseconds: 800), () {
       currentBalance = chronosAfterPurchase;
       purchaseAmount = 0;
@@ -93,7 +100,7 @@ class BuyChronosController extends ChangeNotifier {
   /// Valida em tempo real e atualiza estado
   void updatePurchaseAmount(String value) {
     errorMessage = '';
-    
+
     // Trata entrada vazia ou inválida
     if (value.isEmpty) {
       purchaseAmount = 0;
@@ -104,15 +111,17 @@ class BuyChronosController extends ChangeNotifier {
     // Tenta converter para inteiro
     try {
       int amount = int.parse(value);
-      
+
       // Valida quantidade
       if (amount < 0) {
         errorMessage = 'A quantidade não pode ser negativa.';
         purchaseAmount = 0;
       } else if (amount == 0) {
         purchaseAmount = 0;
-      } else if (chronosAfterPurchase > MAX_CHRONOS_PER_ACCOUNT) {
-        errorMessage = 'Limite de ${MAX_CHRONOS_PER_ACCOUNT} Chronos por conta atingido.';
+      } else if (isLimitExceeded) {
+        errorMessage =
+            'Limite máximo de $MAX_CHRONOS_PER_ACCOUNT Chronos atingido!\n'
+            'Máximo que você pode comprar: $maxPurchaseAmount Chronos';
         purchaseAmount = amount;
       } else {
         purchaseAmount = amount;
@@ -121,7 +130,7 @@ class BuyChronosController extends ChangeNotifier {
       errorMessage = 'Digite apenas números inteiros.';
       purchaseAmount = 0;
     }
-    
+
     notifyListeners();
   }
 
@@ -147,7 +156,6 @@ class BuyChronosController extends ChangeNotifier {
       // Aqui redirecionaria para gateway real (Mercado Pago/PagSeguro)
       // Por enquanto, mostra sucesso
       _showSuccessDialog(context);
-
     } catch (e) {
       errorMessage = 'Erro ao processar compra: $e';
       isLoading = false;
