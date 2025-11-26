@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../core/constants/app_colors.dart';
 import '../core/services/profile_controller.dart';
+import '../widgets/side_menu.dart';
+import '../widgets/wallet_modal.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -27,6 +29,10 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isLoading = false;
   File? _documentFile;
   String _documentFileName = '';
+
+  // Variáveis para controle do menu e carteira
+  bool _isDrawerOpen = false;
+  bool _isWalletOpen = false;
 
   @override
   void initState() {
@@ -61,6 +67,26 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     setState(() {});
+  }
+
+  // Funções para controle do menu lateral
+  void _toggleDrawer() {
+    setState(() {
+      _isDrawerOpen = !_isDrawerOpen;
+    });
+  }
+
+  void _openWallet() {
+    setState(() {
+      _isDrawerOpen = false; // Fecha o side menu
+      _isWalletOpen = true; // Abre a carteira
+    });
+  }
+
+  void _closeWallet() {
+    setState(() {
+      _isWalletOpen = false;
+    });
   }
 
   Future<void> _pickDocument() async {
@@ -178,346 +204,401 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.preto,
-      body: Column(
+      body: Stack(
         children: [
-          // Header igual ao da MainPage
-          _buildHeader(),
-          
-          // Campo de pesquisa
-          Container(
-            margin: const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 16),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Pintura de parede, aula de inglês...',
-                hintStyle: const TextStyle(color: AppColors.textoPlaceholder),
-                filled: true,
-                fillColor: AppColors.branco,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                prefixIcon: const Icon(Icons.search, color: AppColors.textoPlaceholder),
-              ),
-            ),
-          ),
-
-          // Conteúdo do perfil
-          Expanded(
-            child: _controller.isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.amareloClaro),
+          // Conteúdo principal
+          Column(
+            children: [
+              // Header com menu funcional
+              _buildHeader(),
+              
+              // Campo de pesquisa
+              Container(
+                margin: const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 16),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Pintura de parede, aula de inglês...',
+                    hintStyle: const TextStyle(color: AppColors.textoPlaceholder),
+                    filled: true,
+                    fillColor: AppColors.branco,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide.none,
                     ),
-                  )
-                : _controller.user == null
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              color: Colors.red,
-                              size: 64,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Erro ao carregar perfil',
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _controller.errorMessage,
-                              style: TextStyle(
-                                color: Colors.grey[700],
-                                fontSize: 14,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 24),
-                            ElevatedButton(
-                              onPressed: _loadUserProfile,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.amareloClaro,
-                              ),
-                              child: const Text(
-                                'Tentar novamente',
-                                style: TextStyle(color: Colors.black),
-                              ),
-                            ),
-                          ],
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    prefixIcon: const Icon(Icons.search, color: AppColors.textoPlaceholder),
+                  ),
+                ),
+              ),
+
+              // Conteúdo do perfil
+              Expanded(
+                child: _controller.isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.amareloClaro),
                         ),
                       )
-                    : SingleChildScrollView(
-                        padding: const EdgeInsets.all(16),
-                        child: Center(
-                          child: Container(
-                            width: MediaQuery.of(context).size.width * 0.9,
-                            child: Card(
-                              color: AppColors.branco,
-                              elevation: 4,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(20),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Informações Pessoais
-                                    const Text(
-                                      'Informações Pessoais',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.preto,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 20),
-
-                                    // Nome
-                                    _buildInfoRow('Nome', nameController, Icons.person),
-                                    const SizedBox(height: 16),
-
-                                    // Email
-                                    _buildInfoRow('Email', emailController, Icons.email, enabled: false),
-                                    const SizedBox(height: 16),
-
-                                    // Telefone
-                                    _buildInfoRow('Telefone', phoneController, Icons.phone),
-                                    const SizedBox(height: 24),
-
-                                    // Documento com Foto
-                                    const Text(
-                                      'Documento com Foto',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.preto,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-
-                                    GestureDetector(
-                                      onTap: _pickDocument,
-                                      child: Container(
-                                        width: double.infinity,
-                                        height: 100,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.cinza.withOpacity(0.1),
-                                          border: Border.all(
-                                            color: AppColors.cinza,
-                                            width: 2,
+                    : _controller.user == null
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.error_outline,
+                                  color: Colors.red,
+                                  size: 64,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Erro ao carregar perfil',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  _controller.errorMessage,
+                                  style: TextStyle(
+                                    color: Colors.grey[700],
+                                    fontSize: 14,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 24),
+                                ElevatedButton(
+                                  onPressed: _loadUserProfile,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.amareloClaro,
+                                  ),
+                                  child: const Text(
+                                    'Tentar novamente',
+                                    style: TextStyle(color: Colors.black),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : SingleChildScrollView(
+                            padding: const EdgeInsets.all(16),
+                            child: Center(
+                              child: Container(
+                                width: MediaQuery.of(context).size.width * 0.9,
+                                child: Card(
+                                  color: AppColors.branco,
+                                  elevation: 4,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // Informações Pessoais
+                                        const Text(
+                                          'Informações Pessoais',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.preto,
                                           ),
-                                          borderRadius: BorderRadius.circular(12),
                                         ),
-                                        child: _documentFile != null
-                                            ? Stack(
-                                                children: [
-                                                  Center(
-                                                    child: Image.file(
-                                                      _documentFile!,
-                                                      fit: BoxFit.cover,
-                                                      width: double.infinity,
-                                                      height: double.infinity,
-                                                    ),
-                                                  ),
-                                                  Positioned(
-                                                    top: 8,
-                                                    right: 8,
-                                                    child: GestureDetector(
-                                                      onTap: () {
-                                                        setState(() {
-                                                          _documentFile = null;
-                                                          _documentFileName = '';
-                                                        });
-                                                      },
-                                                      child: Container(
-                                                        padding: const EdgeInsets.all(4),
-                                                        decoration: const BoxDecoration(
-                                                          color: Colors.red,
-                                                          shape: BoxShape.circle,
-                                                        ),
-                                                        child: const Icon(
-                                                          Icons.close,
-                                                          color: Colors.white,
-                                                          size: 16,
+                                        const SizedBox(height: 12),
+
+                                        // Nome
+                                        _buildInfoRow('Nome', nameController, Icons.person),
+                                        const SizedBox(height: 12),
+
+                                        // Email
+                                        _buildInfoRow('Email', emailController, Icons.email, enabled: false),
+                                        const SizedBox(height: 12),
+
+                                        // Telefone
+                                        _buildInfoRow('Telefone', phoneController, Icons.phone),
+                                        const SizedBox(height: 16),
+
+                                        // Alterar Senha
+                                        const Text(
+                                          'Alterar Senha',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.preto,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+
+                                        _buildPasswordField('Senha Atual', currentPasswordController, Icons.lock),
+                                        const SizedBox(height: 8),
+
+                                        _buildPasswordField('Nova Senha', newPasswordController, Icons.lock_outline),
+                                        const SizedBox(height: 8),
+
+                                        _buildPasswordField('Confirmar Nova Senha', confirmPasswordController, Icons.lock_outline),
+
+                                        const SizedBox(height: 16),
+
+                                        // Documento com Foto
+                                        const Text(
+                                          'Documento com Foto',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.preto,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+
+                                        GestureDetector(
+                                          onTap: _pickDocument,
+                                          child: Container(
+                                            width: double.infinity,
+                                            height: 80,
+                                            decoration: BoxDecoration(
+                                              color: AppColors.cinza.withOpacity(0.1),
+                                              border: Border.all(
+                                                color: AppColors.cinza,
+                                                width: 2,
+                                              ),
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: _documentFile != null
+                                                ? Stack(
+                                                    children: [
+                                                      Center(
+                                                        child: Image.file(
+                                                          _documentFile!,
+                                                          fit: BoxFit.cover,
+                                                          width: double.infinity,
+                                                          height: double.infinity,
                                                         ),
                                                       ),
-                                                    ),
+                                                      Positioned(
+                                                        top: 4,
+                                                        right: 4,
+                                                        child: GestureDetector(
+                                                          onTap: () {
+                                                            setState(() {
+                                                              _documentFile = null;
+                                                              _documentFileName = '';
+                                                            });
+                                                          },
+                                                          child: Container(
+                                                            padding: const EdgeInsets.all(3),
+                                                            decoration: const BoxDecoration(
+                                                              color: Colors.red,
+                                                              shape: BoxShape.circle,
+                                                            ),
+                                                            child: const Icon(
+                                                              Icons.close,
+                                                              color: Colors.white,
+                                                              size: 14,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  )
+                                                : Column(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    children: [
+                                                      Icon(
+                                                        Icons.upload_file,
+                                                        size: 24,
+                                                        color: AppColors.cinza,
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      const Text(
+                                                        'Clique para selecionar um arquivo',
+                                                        style: TextStyle(
+                                                          color: AppColors.cinza,
+                                                          fontSize: 10,
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
-                                                ],
-                                              )
-                                            : Column(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                children: [
-                                                  Icon(
-                                                    Icons.upload_file,
-                                                    size: 32,
-                                                    color: AppColors.cinza,
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  const Text(
-                                                    'Clique para selecionar um arquivo',
-                                                    style: TextStyle(
-                                                      color: AppColors.cinza,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      _documentFile != null 
-                                          ? 'Arquivo selecionado: $_documentFileName'
-                                          : 'Nenhum arquivo selecionado',
-                                      style: TextStyle(
-                                        color: AppColors.cinza,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-
-                                    const SizedBox(height: 24),
-
-                                    // Alterar Senha
-                                    const Text(
-                                      'Alterar Senha',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.preto,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-
-                                    _buildPasswordField('Senha Atual', currentPasswordController, Icons.lock),
-                                    const SizedBox(height: 12),
-
-                                    _buildPasswordField('Nova Senha', newPasswordController, Icons.lock_outline),
-                                    const SizedBox(height: 12),
-
-                                    _buildPasswordField('Confirmar Nova Senha', confirmPasswordController, Icons.lock_outline),
-
-                                    const SizedBox(height: 24),
-
-                                    // Botões de Ação
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: OutlinedButton(
-                                            onPressed: _isLoading ? null : () {
-                                              // Reset para os valores originais
-                                              nameController.text = _controller.user!.name;
-                                              emailController.text = _controller.user!.email;
-                                              phoneController.text = _controller.user!.phoneNumber;
-                                              currentPasswordController.clear();
-                                              newPasswordController.clear();
-                                              confirmPasswordController.clear();
-                                              _documentFile = null;
-                                              _documentFileName = '';
-                                            },
-                                            style: OutlinedButton.styleFrom(
-                                              side: const BorderSide(color: AppColors.amareloClaro),
-                                              padding: const EdgeInsets.symmetric(vertical: 12),
-                                            ),
-                                            child: const Text(
-                                              'Cancelar',
-                                              style: TextStyle(
-                                                color: AppColors.amareloClaro,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
                                           ),
                                         ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: ElevatedButton(
-                                            onPressed: _isLoading ? null : _updateProfile,
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: AppColors.amareloClaro,
-                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          _documentFile != null 
+                                              ? 'Arquivo selecionado: $_documentFileName'
+                                              : 'Nenhum arquivo selecionado',
+                                          style: TextStyle(
+                                            color: AppColors.cinza,
+                                            fontSize: 9,
+                                          ),
+                                        ),
+
+                                        const SizedBox(height: 16),
+
+                                        // Botões de Ação
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: OutlinedButton(
+                                                onPressed: _isLoading ? null : () {
+                                                  // Reset para os valores originais
+                                                  nameController.text = _controller.user!.name;
+                                                  emailController.text = _controller.user!.email;
+                                                  phoneController.text = _controller.user!.phoneNumber;
+                                                  currentPasswordController.clear();
+                                                  newPasswordController.clear();
+                                                  confirmPasswordController.clear();
+                                                  _documentFile = null;
+                                                  _documentFileName = '';
+                                                },
+                                                style: OutlinedButton.styleFrom(
+                                                  side: const BorderSide(color: AppColors.amareloClaro),
+                                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                                ),
+                                                child: const Text(
+                                                  'Cancelar',
+                                                  style: TextStyle(
+                                                    color: AppColors.amareloClaro,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: ElevatedButton(
+                                                onPressed: _isLoading ? null : _updateProfile,
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: AppColors.amareloClaro,
+                                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                                ),
+                                                child: _isLoading
+                                                    ? const SizedBox(
+                                                        height: 16,
+                                                        width: 16,
+                                                        child: CircularProgressIndicator(
+                                                          valueColor: AlwaysStoppedAnimation(AppColors.preto),
+                                                          strokeWidth: 2,
+                                                        ),
+                                                      )
+                                                    : const Text(
+                                                        'Atualizar perfil',
+                                                        style: TextStyle(
+                                                          color: AppColors.preto,
+                                                          fontWeight: FontWeight.bold,
+                                                          fontSize: 14,
+                                                        ),
+                                                      ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+
+                                        const SizedBox(height: 8),
+
+                                        // Botão Deletar Conta
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: OutlinedButton(
+                                            onPressed: _isLoading ? null : _deleteAccount,
+                                            style: OutlinedButton.styleFrom(
+                                              side: const BorderSide(color: Colors.red),
+                                              padding: const EdgeInsets.symmetric(vertical: 10),
                                             ),
                                             child: _isLoading
                                                 ? const SizedBox(
-                                                    height: 18,
-                                                    width: 18,
+                                                    height: 16,
+                                                    width: 16,
                                                     child: CircularProgressIndicator(
-                                                      valueColor: AlwaysStoppedAnimation(AppColors.preto),
+                                                      valueColor: AlwaysStoppedAnimation(Colors.red),
                                                       strokeWidth: 2,
                                                     ),
                                                   )
                                                 : const Text(
-                                                    'Atualizar perfil',
+                                                    'Deletar conta',
                                                     style: TextStyle(
-                                                      color: AppColors.preto,
+                                                      color: Colors.red,
                                                       fontWeight: FontWeight.bold,
+                                                      fontSize: 14,
                                                     ),
                                                   ),
                                           ),
                                         ),
                                       ],
                                     ),
-
-                                    const SizedBox(height: 12),
-
-                                    // Botão Deletar Conta
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: OutlinedButton(
-                                        onPressed: _isLoading ? null : _deleteAccount,
-                                        style: OutlinedButton.styleFrom(
-                                          side: const BorderSide(color: Colors.red),
-                                          padding: const EdgeInsets.symmetric(vertical: 12),
-                                        ),
-                                        child: _isLoading
-                                            ? const SizedBox(
-                                                height: 18,
-                                                width: 18,
-                                                child: CircularProgressIndicator(
-                                                  valueColor: AlwaysStoppedAnimation(Colors.red),
-                                                  strokeWidth: 2,
-                                                ),
-                                              )
-                                            : const Text(
-                                                'Deletar conta',
-                                                style: TextStyle(
-                                                  color: Colors.red,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
+              ),
+            ],
+          ),
+
+          // Menu lateral
+          if (_isDrawerOpen)
+            Positioned(
+              top: kToolbarHeight,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.6,
+                      child: SideMenu(
+                        onWalletPressed: _openWallet,
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _toggleDrawer,
+                        child: Container(
+                          color: Colors.transparent,
                         ),
                       ),
-          ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Modal da Carteira
+          if (_isWalletOpen)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: WalletModal(
+                      onClose: _closeWallet,
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  // Header igual ao da MainPage
+  // Header com menu funcional
   Widget _buildHeader() {
     return AppBar(
       backgroundColor: AppColors.amareloClaro,
       leading: IconButton(
         icon: const Icon(Icons.menu, color: AppColors.preto),
-        onPressed: () {
-          // TODO: Implementar abertura do menu lateral
-          Scaffold.of(context).openDrawer();
-        },
+        onPressed: _toggleDrawer, // Agora usa a função correta
       ),
       centerTitle: true,
       title: Row(
@@ -554,8 +635,8 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildInfoRow(String label, TextEditingController controller, IconData icon, {bool enabled = true}) {
     return Row(
       children: [
-        Icon(icon, color: AppColors.cinza, size: 20),
-        const SizedBox(width: 12),
+        Icon(icon, color: AppColors.cinza, size: 18),
+        const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -564,21 +645,21 @@ class _ProfilePageState extends State<ProfilePage> {
                 label,
                 style: TextStyle(
                   color: AppColors.preto,
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               TextField(
                 controller: controller,
                 enabled: enabled,
                 style: const TextStyle(
                   color: AppColors.preto,
-                  fontSize: 16,
+                  fontSize: 14,
                 ),
                 decoration: InputDecoration(
                   isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 4),
                   enabledBorder: const UnderlineInputBorder(
                     borderSide: BorderSide(color: AppColors.cinza),
                   ),
@@ -600,8 +681,8 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildPasswordField(String label, TextEditingController controller, IconData icon) {
     return Row(
       children: [
-        Icon(icon, color: AppColors.cinza, size: 20),
-        const SizedBox(width: 12),
+        Icon(icon, color: AppColors.cinza, size: 18),
+        const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -610,21 +691,21 @@ class _ProfilePageState extends State<ProfilePage> {
                 label,
                 style: TextStyle(
                   color: AppColors.preto,
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               TextField(
                 controller: controller,
                 obscureText: true,
                 style: const TextStyle(
                   color: AppColors.preto,
-                  fontSize: 16,
+                  fontSize: 14,
                 ),
                 decoration: InputDecoration(
                   isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 4),
                   enabledBorder: const UnderlineInputBorder(
                     borderSide: BorderSide(color: AppColors.cinza),
                   ),
