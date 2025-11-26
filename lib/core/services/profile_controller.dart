@@ -36,15 +36,6 @@ class ProfileController {
       if (response.statusCode == 200) {
         final userData = jsonDecode(response.body);
         
-        // Debug para ver a estrutura da resposta
-        if (kDebugMode) {
-          debugPrint('[ProfileController] Estrutura da resposta: ${userData.runtimeType}');
-          if (userData is Map) {
-            debugPrint('[ProfileController] Chaves: ${userData.keys}');
-          }
-        }
-        
-        // Tenta diferentes estruturas de resposta
         Map<String, dynamic> parsedData;
         
         if (userData is Map && userData.containsKey('data')) {
@@ -52,7 +43,7 @@ class ProfileController {
         } else if (userData is Map && userData.containsKey('user')) {
           parsedData = userData['user'] as Map<String, dynamic>;
         } else if (userData is Map) {
-          parsedData = userData.cast<String, dynamic>();
+          parsedData = userData as Map<String, dynamic>;
         } else {
           throw FormatException('Formato de resposta inválido');
         }
@@ -146,7 +137,6 @@ class ProfileController {
       );
 
       if (response.statusCode == 200) {
-        // Limpar token e dados do usuário
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('auth_token');
         
