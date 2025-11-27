@@ -670,7 +670,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         ],
       ),
       child: DropdownButtonFormField<String>(
-        value: _selectedModality,
+        initialValue: _selectedModality,
         validator: (value) => value == null ? 'Selecione uma modalidade' : null,
         decoration: InputDecoration(
           hintText: 'Modalidade',

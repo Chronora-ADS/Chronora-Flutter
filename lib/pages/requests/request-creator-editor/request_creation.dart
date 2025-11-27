@@ -12,7 +12,7 @@ import '../../../widgets/header.dart';
 import '../../../widgets/side_menu.dart';
 import '../../../widgets/wallet_modal.dart';
 import '../../../core/services/api_service.dart';
-import '../../../core/models/create_request_model.dart'; // Adicione este import
+import '../../../core/models/create_request_model.dart';
 
 class RequestCreationPage extends StatefulWidget {
   const RequestCreationPage({super.key});
@@ -185,7 +185,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     }
   }
 
-  // Método para criar o pedido no backend
+  // Método para criar o pedido no backend - CORRIGIDO
   Future<void> _createRequest() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -193,6 +193,16 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Adicione pelo menos uma categoria'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_selectedModality == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecione uma modalidade'),
           backgroundColor: Colors.red,
         ),
       );
@@ -215,6 +225,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             backgroundColor: Colors.red,
           ),
         );
+        setState(() { _isLoading = false; });
         return;
       }
 
@@ -224,25 +235,119 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         base64Image = await _convertImageToBase64();
       }
 
-      // Converter data para formato ISO (YYYY-MM-DD)
-      final deadlineParts = _deadlineController.text.split('/');
-      final formattedDeadline = deadlineParts.length == 3 
-          ? '${deadlineParts[2]}-${deadlineParts[1].padLeft(2, '0')}-${deadlineParts[0].padLeft(2, '0')}'
-          : _deadlineController.text;
+      // VALIDAÇÃO E FORMATAÇÃO CORRETA DA DATA
+      final deadlineText = _deadlineController.text.trim();
+      if (deadlineText.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Data de prazo é obrigatória'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() { _isLoading = false; });
+        return;
+      }
 
-      // Criar o payload
-      final payload = {
-        "title": _titleController.text.trim(),
-        "description": _descriptionController.text.trim(),
-        "timeChronos": int.parse(_chronosController.text),
-        "deadline": formattedDeadline,
-        "categories": _categoriesTags,
-        "modality": _selectedModality!,
-        if (base64Image != null) "requestImage": base64Image,
-      };
+      // Converter data do formato DD/MM/YYYY para YYYY-MM-DD
+      final deadlineParts = deadlineText.split('/');
+      if (deadlineParts.length != 3) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Formato de data inválido. Use DD/MM/YYYY'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() { _isLoading = false; });
+        return;
+      }
+
+      final String formattedDeadline;
+      try {
+        final day = deadlineParts[0].padLeft(2, '0');
+        final month = deadlineParts[1].padLeft(2, '0');
+        final year = deadlineParts[2];
+        
+        // Validar se é uma data válida
+        final date = DateTime.parse('$year-$month-$day');
+        if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('A data não pode ser no passado'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() { _isLoading = false; });
+          return;
+        }
+        
+        formattedDeadline = '$year-$month-$day';
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Data inválida'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() { _isLoading = false; });
+        return;
+      }
+
+      // VALIDAÇÃO DO TEMPO EM CHRONOS
+      final chronosText = _chronosController.text.trim();
+      if (chronosText.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tempo em Chronos é obrigatório'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() { _isLoading = false; });
+        return;
+      }
+
+      final int timeChronos;
+      try {
+        timeChronos = int.parse(chronosText);
+        if (timeChronos <= 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Tempo em Chronos deve ser maior que zero'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() { _isLoading = false; });
+          return;
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tempo em Chronos deve ser um número válido'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() { _isLoading = false; });
+        return;
+      }
+
+      // CRIAR O MODELO CORRETAMENTE
+      final requestModel = CreateRequestModel(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        timeChronos: timeChronos,
+        deadline: formattedDeadline,
+        categories: _categoriesTags,
+        modality: _selectedModality!,
+        serviceImage: base64Image,
+      );
 
       print('Enviando payload para criação de pedido...');
-      final response = await ApiService.post('/requests/create', payload, token: token);
+      print('Payload: ${requestModel.toJson()}');
+
+      final response = await ApiService.post(
+        '/service/post', 
+        token: token,
+        requestModel.toJson()
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -269,9 +374,19 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       } else {
         final error = response.body;
         print('Erro do servidor: ${response.statusCode} - $error');
+        
+        String errorMessage = 'Erro ao criar pedido';
+        if (response.statusCode == 400) {
+          errorMessage = 'Dados inválidos. Verifique as informações preenchidas.';
+        } else if (response.statusCode == 401) {
+          errorMessage = 'Não autorizado. Faça login novamente.';
+        } else if (response.statusCode == 500) {
+          errorMessage = 'Erro interno do servidor. Tente novamente.';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erro ao criar pedido: ${response.statusCode} - $error'),
+            content: Text('$errorMessage (${response.statusCode})'),
             backgroundColor: Colors.red,
           ),
         );
@@ -280,7 +395,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       print('Erro na criação do pedido: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erro: $e'),
+          content: Text('Erro: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -494,7 +609,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             const SizedBox(height: 15),
             _buildDescriptionField(),
             const SizedBox(height: 15),
-            _buildFormField('Tempo em Chronos', _chronosController, validator: _requiredValidator),
+            _buildFormField('Tempo em Chronos', _chronosController, validator: _chronosValidator),
             const SizedBox(height: 15),
             _buildDateField('Prazo'),
             const SizedBox(height: 15),
@@ -514,6 +629,17 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   String? _requiredValidator(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Este campo é obrigatório';
+    }
+    return null;
+  }
+
+  String? _chronosValidator(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Este campo é obrigatório';
+    }
+    final number = int.tryParse(value);
+    if (number == null || number <= 0) {
+      return 'Digite um número válido maior que zero';
     }
     return null;
   }
@@ -609,7 +735,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       child: TextFormField(
         controller: _deadlineController,
         readOnly: true,
-        validator: _requiredValidator,
+        validator: _dateValidator,
         decoration: InputDecoration(
           hintText: placeholder,
           hintStyle: TextStyle(
@@ -643,12 +769,42 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           );
           if (picked != null) {
             setState(() {
-              _deadlineController.text = "${picked.day}/${picked.month}/${picked.year}";
+              _deadlineController.text = 
+                  "${picked.day.toString().padLeft(2, '0')}/"
+                  "${picked.month.toString().padLeft(2, '0')}/"
+                  "${picked.year}";
             });
           }
         },
       ),
     );
+  }
+
+  String? _dateValidator(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Data é obrigatória';
+    }
+    
+    // Validar formato DD/MM/YYYY
+    final parts = value.split('/');
+    if (parts.length != 3) {
+      return 'Use o formato DD/MM/YYYY';
+    }
+    
+    try {
+      final day = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final year = int.parse(parts[2]);
+      
+      final date = DateTime(year, month, day);
+      if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
+        return 'Data não pode ser no passado';
+      }
+    } catch (e) {
+      return 'Data inválida';
+    }
+    
+    return null;
   }
 
   Widget _buildCategoriesField() {
