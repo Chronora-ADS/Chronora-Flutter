@@ -187,9 +187,16 @@ class _MainPageState extends State<MainPage> {
                             ),
                             const SizedBox(height: 16),
                             ElevatedButton(
-                              onPressed: () {
-                                Navigator.pushNamed(
-                                    context, '/request-creation');
+                              onPressed: () async {
+                                final result = await Navigator.pushNamed(
+                                  context, 
+                                  '/request-creation'
+                                );
+                                
+                                // Se retornou true, atualiza os serviços
+                                if (result == true) {
+                                  await _fetchServices();
+                                }
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.branco,

@@ -367,9 +367,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           _imageBytes = null;
         });
 
-        // Navegar de volta após um breve delay
-        await Future.delayed(const Duration(seconds: 1));
-        Navigator.pop(context);
+        Navigator.pop(context, true);
         
       } else {
         final error = response.body;
@@ -919,7 +917,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         ],
       ),
       child: DropdownButtonFormField<String>(
-        value: _selectedModality,
+        initialValue: _selectedModality,
         validator: (value) => value == null ? 'Selecione uma modalidade' : null,
         decoration: InputDecoration(
           hintText: 'Modalidade',

@@ -9,9 +9,6 @@ import 'dart:html' as html if (dart.library.io) 'dart:io';
 import 'dart:typed_data';
 
 // Importe os widgets da main_page
-import '../../../widgets/header.dart';
-import '../../../widgets/side_menu.dart';
-import '../../../widgets/wallet_modal.dart';
 
 class RequestEditingPage extends StatefulWidget {
   const RequestEditingPage({super.key});
