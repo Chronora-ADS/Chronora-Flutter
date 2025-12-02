@@ -391,6 +391,7 @@ class _MainPageState extends State<MainPage> {
           service: services[index],
           onEdit: () {
             // Navega para a página de edição com o serviço
+            print(services[index]);
             Navigator.pushNamed(
               context,
               '/request-editing',
