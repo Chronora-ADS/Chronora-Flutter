@@ -2,27 +2,34 @@ import 'package:chronora/core/constants/app_colors.dart';
 import 'package:chronora/core/models/main_page_requests_model.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
-// No ServiceCard widget, adicione um GestureDetector ou InkWell para capturar o clique
+
 class ServiceCard extends StatelessWidget {
   final Service service;
-  final VoidCallback? onEdit; // Nova propriedade
+  final VoidCallback? onEdit;
+  final ValueChanged<bool>? onCardEdited; // Nova propriedade para capturar edição
 
   const ServiceCard({
     super.key,
     required this.service,
     this.onEdit,
+    this.onCardEdited, // Adiciona este parâmetro
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
+      onTap: () async {  // Torna a função async
         // Navega para a página de edição quando o card é clicado
-        Navigator.pushNamed(
+        final result = await Navigator.pushNamed(
           context,
           '/request-editing',
-          arguments: service, // Passa o serviço como argumento
+          arguments: service,
         );
+        
+        // Se a edição foi bem-sucedida (retornou true), notifica
+        if (result == true && onCardEdited != null) {
+          onCardEdited!(true);
+        }
       },
       child: Container(
         decoration: BoxDecoration(
@@ -73,7 +80,7 @@ class ServiceCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      // Botão de edição (opcional)
+                      // Botão de edição
                       if (onEdit != null)
                         IconButton(
                           onPressed: onEdit,

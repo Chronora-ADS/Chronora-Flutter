@@ -388,17 +388,27 @@ class _MainPageState extends State<MainPage> {
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           child: ServiceCard(
-          service: services[index],
-          onEdit: () {
-            // Navega para a página de edição com o serviço
-            print(services[index]);
-            Navigator.pushNamed(
-              context,
-              '/request-editing',
-              arguments: services[index], // Mudança importante
-            );
-          },
-        ),
+            service: services[index],
+            onEdit: () async {
+              // Navega para a página de edição com o serviço
+              final result = await Navigator.pushNamed(
+                context,
+                '/request-editing',
+                arguments: services[index],
+              );
+              
+              // Se retornou true, atualiza os serviços
+              if (result == true) {
+                await _fetchServices();
+              }
+            },
+            onCardEdited: (edited) async {
+              // Quando o card é editado pelo clique direto
+              if (edited) {
+                await _fetchServices();
+              }
+            },
+          ),
         );
       },
     );

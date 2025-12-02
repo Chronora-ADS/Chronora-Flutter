@@ -42,4 +42,24 @@ class ApiService {
       throw Exception('Erro de conexão: $e');
     }
   }
+
+  static Future<http.Response> put(String endpoint, Map<String, dynamic> data,
+    {String? token}) async {
+    try {
+      final headers = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+
+      final response = await http.put(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: headers,
+        body: jsonEncode(data),
+      );
+      return response;
+    } catch (e) {
+      throw Exception('Erro de conexão: $e');
+    }
+  }
 }

@@ -58,11 +58,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     print('Categorias: ${service.categoryEntities.map((c) => c.name).toList()}');
     
     // Garante que o serviceId seja setado
-    if (service.id != null) {
-      _serviceId = service.id;
-      print('ServiceId definido: $_serviceId');
-    }
-    
+    _serviceId = service.id;
+    print('ServiceId definido: $_serviceId');
+      
     // Preenche os campos básicos
     _titleController.text = service.title;
     _descriptionController.text = service.description;
@@ -141,8 +139,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           .toList();
     });
     
-    // Preenche modalidade
-    _selectedModality = serviceDetail.modality;
+    // Normaliza a modalidade para corresponder aos valores do dropdown
+    String normalizedModality = _normalizeModality(serviceDetail.modality);
+    _selectedModality = normalizedModality;
     
     // Carrega imagem se existir
     if (serviceDetail.serviceImage != null && serviceDetail.serviceImage!.isNotEmpty) {
@@ -155,6 +154,21 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       } catch (e) {
         print('Erro ao decodificar imagem: $e');
       }
+    }
+  }
+
+  // Método para normalizar a modalidade
+  String _normalizeModality(String modality) {
+    switch (modality.toUpperCase()) {
+      case 'PRESENCIAL':
+        return 'Presencial';
+      case 'REMOTO':
+        return 'Remoto';
+      case 'HÍBRIDO':
+      case 'HIBRIDO':
+        return 'Híbrido';
+      default:
+        return 'Presencial'; // Valor padrão
     }
   }
 
@@ -258,7 +272,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     } else {
       // Se já tinha no widget, processa imediatamente
       print('Populando formulário a partir do service...');
-      _populateFormFromService(serviceToProcess!);
+      _populateFormFromService(serviceToProcess);
     }
   }
 
@@ -557,16 +571,16 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         'title': _titleController.text.trim(),
         'description': _descriptionController.text.trim(),
         'timeChronos': timeChronos,
+        'modality': _selectedModality!,
         'deadline': formattedDeadline,
         'categories': _categoriesTags,
-        'modality': _selectedModality!,
         if (base64Image != null) 'serviceImage': base64Image,
       };
 
       print('Enviando payload para edição de pedido...');
       print('Payload: $editModel');
 
-      final response = await ApiService.post(
+      final response = await ApiService.put(
         '/service/put', // Note: endpoint diferente para edição
         token: token,
         editModel
@@ -579,6 +593,16 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
             backgroundColor: Colors.green,
           ),
         );
+
+                // Limpar formulário após sucesso
+        _formKey.currentState!.reset();
+        setState(() {
+          _categoriesTags.clear();
+          _selectedModality = null;
+          _selectedImage = null;
+          _imageFileName = null;
+          _imageBytes = null;
+        });
 
         // Retorna true indicando sucesso
         Navigator.pop(context, true);
@@ -604,6 +628,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
             backgroundColor: Colors.red,
           ),
         );
+        Navigator.pop(context, false);
       }
     } catch (e) {
       print('Erro na edição do pedido: $e');
