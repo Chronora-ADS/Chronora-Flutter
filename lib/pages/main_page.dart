@@ -387,7 +387,17 @@ class _MainPageState extends State<MainPage> {
       itemBuilder: (context, index) {
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
-          child: ServiceCard(service: services[index]),
+          child: ServiceCard(
+          service: services[index],
+          onEdit: () {
+            // Navega para a página de edição com o serviço
+            Navigator.pushNamed(
+              context,
+              '/request-editing',
+              arguments: services[index].id,
+            );
+          },
+        ),
         );
       },
     );

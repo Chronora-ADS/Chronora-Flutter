@@ -7,11 +7,22 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:html' as html if (dart.library.io) 'dart:io';
 import 'dart:typed_data';
-
-// Importe os widgets da main_page
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:chronora/core/services/api_service.dart';
+import 'package:chronora/core/models/service_detail_model.dart';
+import 'package:chronora/core/models/main_page_requests_model.dart';
 
 class RequestEditingPage extends StatefulWidget {
-  const RequestEditingPage({super.key});
+  final Service? service;
+  final int? serviceId;
+
+  const RequestEditingPage({
+    super.key,
+    this.service,
+    this.serviceId,
+  });
+
   @override
   _RequestEditingPageState createState() => _RequestEditingPageState();
 }
@@ -26,25 +37,197 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   final TextEditingController _searchController = TextEditingController();
   String? _selectedModality;
 
-  // Fixed: Use late keyword to ensure initialization
   late List<String> _categoriesTags;
-
-  // Updated: Variables for image handling (web compatible)
+  
   dynamic _selectedImage;
   String? _imageFileName;
   Uint8List? _imageBytes;
 
-  // New: Variables for side menu and wallet (igual na main_page)
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
+  bool _isLoading = false;
+  bool _isFetchingData = false;
+  String? _errorMessage;
+
+  int? _serviceId;
 
   @override
   void initState() {
     super.initState();
-    _categoriesTags = []; // This will never be null
+    _categoriesTags = [];
+    
+    print('=== INIT STATE EDIT PAGE ===');
+    print('Service recebido: ${widget.service != null}');
+    print('ServiceId recebido: ${widget.serviceId}');
+    
+    // Inicializa com os dados do serviço se for fornecido
+    if (widget.service != null) {
+      print('Populando formulário a partir do service...');
+      _populateFormFromService(widget.service!);
+    } else if (widget.serviceId != null) {
+      print('Buscando dados do serviço por ID: ${widget.serviceId}');
+      _serviceId = widget.serviceId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _fetchServiceData();
+      });
+    } else {
+      print('Nenhum serviço ou ID fornecido!');
+    }
   }
 
-  // Fixed: Dispose controllers to prevent memory leaks
+  // Método para popular o formulário com dados do serviço
+  void _populateFormFromService(Service service) {
+    print('=== POPULANDO FORMULÁRIO A PARTIR DE SERVICE ===');
+    print('Título: ${service.title}');
+    print('Chronos: ${service.timeChronos}');
+    print('Categorias: ${service.categoryEntities.map((c) => c.name).toList()}');
+    
+    // Preenche os campos básicos
+    _titleController.text = service.title;
+    _chronosController.text = service.timeChronos.toString();
+    
+    // Se tiver imagem, converte de base64
+    if (service.serviceImage.isNotEmpty) {
+      try {
+        final imageBytes = base64.decode(service.serviceImage);
+        setState(() {
+          _imageBytes = imageBytes;
+          _selectedImage = _imageBytes;
+          _imageFileName = 'imagem_servico.jpg';
+        });
+        print('Imagem carregada com sucesso');
+      } catch (e) {
+        print('Erro ao decodificar imagem: $e');
+      }
+    }
+    
+    // Preenche categorias
+    final categoryNames = service.categoryEntities
+        .map((category) => category.name)
+        .where((name) => name.isNotEmpty)
+        .toList();
+    
+    print('Categorias extraídas: $categoryNames');
+    
+    setState(() {
+      _categoriesTags = categoryNames;
+    });
+    
+    print('=== FIM DA POPULAÇÃO ===');
+    
+    // NOTA: Para description, deadline e modality,
+    // você precisará buscar via API (método _fetchServiceData)
+    // Se não tiver essas informações, busque via API
+    if (service.id != null) {
+      _serviceId = service.id;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _fetchServiceData();
+      });
+    }
+  }
+
+  // Método para buscar os dados completos do serviço por ID
+  Future<void> _fetchServiceData() async {
+    if (_serviceId == null) return;
+
+    setState(() {
+      _isFetchingData = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      
+      if (token == null) {
+        throw Exception('Usuário não autenticado');
+      }
+
+      final response = await ApiService.get(
+        '/service/get/$_serviceId',
+        token: token,
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        final serviceDetail = ServiceDetailModel.fromJson(responseData);
+        
+        // Preenche o formulário com os dados do serviço
+        _populateFormFromServiceDetail(serviceDetail);
+      } else {
+        throw Exception('Erro ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      print('Erro ao buscar dados do serviço: $e');
+      setState(() {
+        _errorMessage = 'Erro ao carregar dados do serviço: $e';
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao carregar dados: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isFetchingData = false;
+      });
+    }
+  }
+
+  // Método para popular o formulário com ServiceDetailModel
+  void _populateFormFromServiceDetail(ServiceDetailModel serviceDetail) {
+    print('=== POPULANDO FORMULÁRIO ===');
+    print('Título: ${serviceDetail.title}');
+    print('Descrição: ${serviceDetail.description}');
+    print('Chronos: ${serviceDetail.timeChronos}');
+    print('Deadline: ${serviceDetail.deadline}');
+    print('Modalidade: ${serviceDetail.modality}');
+    print('Categorias: ${serviceDetail.categoryEntities.map((c) => c.name).toList()}');
+    print('ServiceImage presente: ${serviceDetail.serviceImage != null && serviceDetail.serviceImage!.isNotEmpty}');
+    
+    // Preenche os campos do formulário
+    _titleController.text = serviceDetail.title;
+    _descriptionController.text = serviceDetail.description;
+    _chronosController.text = serviceDetail.timeChronos.toString();
+    
+    // Formata a data
+    final deadlineDate = serviceDetail.deadline;
+    if (deadlineDate.isNotEmpty) {
+      final parts = deadlineDate.split('-');
+      if (parts.length == 3) {
+        _deadlineController.text = '${parts[2]}/${parts[1]}/${parts[0]}';
+      } else {
+        _deadlineController.text = deadlineDate;
+      }
+    }
+    
+    // Preenche categorias - extraindo apenas os nomes
+    setState(() {
+      _categoriesTags = serviceDetail.categoryEntities
+          .map((category) => category.name)
+          .where((name) => name.isNotEmpty)
+          .toList();
+    });
+    
+    // Preenche modalidade
+    _selectedModality = serviceDetail.modality;
+    
+    // Carrega imagem se existir
+    if (serviceDetail.serviceImage != null && serviceDetail.serviceImage!.isNotEmpty) {
+      try {
+        setState(() {
+          _imageBytes = base64.decode(serviceDetail.serviceImage!);
+          _selectedImage = _imageBytes;
+          _imageFileName = 'imagem_servico.jpg';
+        });
+      } catch (e) {
+        print('Erro ao decodificar imagem: $e');
+      }
+    }
+  }
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -56,7 +239,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     super.dispose();
   }
 
-  // Safe method to add categories
   void _addCategory(String category) {
     if (category.trim().isNotEmpty) {
       setState(() {
@@ -66,25 +248,20 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     }
   }
 
-  // Safe method to remove categories
   void _removeCategory(String category) {
     setState(() {
       _categoriesTags.remove(category);
     });
   }
 
-  // Updated: Web-compatible image picker
   Future<void> _pickImage() async {
     if (kIsWeb) {
-      // Web implementation
       _pickImageWeb();
     } else {
-      // Mobile implementation
       _pickImageMobile();
     }
   }
 
-  // Mobile image picker
   Future<void> _pickImageMobile() async {
     final ImagePicker picker = ImagePicker();
     try {
@@ -112,9 +289,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     }
   }
 
-  // Web image picker
   void _pickImageWeb() {
-    // Create a file input element
     final html.FileUploadInputElement uploadInput =
         html.FileUploadInputElement();
     uploadInput.accept = 'image/png,image/jpeg,image/jpg,image/webp,image/bmp';
@@ -137,13 +312,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       }
     });
 
-    // Trigger the file selection dialog
     uploadInput.click();
   }
 
-  // Updated: Method to truncate filename if too long (web compatible)
   String _getDisplayFileName(String fileName, double maxWidth) {
-    const double maxPercentage = 0.45; // 45% of button width
+    const double maxPercentage = 0.45;
     final textPainter = TextPainter(
       text: TextSpan(
         text: fileName,
@@ -161,7 +334,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       return fileName;
     }
 
-    // Truncate the filename
     final extension = fileName.split('.').last;
     final nameWithoutExtension =
         fileName.substring(0, fileName.lastIndexOf('.'));
@@ -181,7 +353,238 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     return truncatedName;
   }
 
-  // Funções para controlar o menu lateral e carteira (igual na main_page)
+  // Método para converter imagem para base64
+  Future<String?> _convertImageToBase64() async {
+    try {
+      if (kIsWeb) {
+        if (_imageBytes != null) {
+          String base64String = base64Encode(_imageBytes!);
+          return base64String;
+        }
+      } else {
+        if (_selectedImage != null && _selectedImage is File) {
+          List<int> fileBytes = await _selectedImage.readAsBytes();
+          String base64String = base64Encode(fileBytes);
+          return base64String;
+        }
+      }
+      return null;
+    } catch (e) {
+      print('Erro ao converter imagem: $e');
+      return null;
+    }
+  }
+
+  // Método para editar o pedido no backend
+  Future<void> _editRequest() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_categoriesTags.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Adicione pelo menos uma categoria'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_selectedModality == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecione uma modalidade'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      
+      if (token == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Usuário não autenticado. Faça login novamente.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() { _isLoading = false; });
+        return;
+      }
+
+      // Converter imagem para base64 se existir
+      String? base64Image;
+      if (_selectedImage != null) {
+        base64Image = await _convertImageToBase64();
+      }
+
+      // Formatação da data
+      final deadlineText = _deadlineController.text.trim();
+      if (deadlineText.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Data de prazo é obrigatória'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() { _isLoading = false; });
+        return;
+      }
+
+      final deadlineParts = deadlineText.split('/');
+      if (deadlineParts.length != 3) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Formato de data inválido. Use DD/MM/YYYY'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() { _isLoading = false; });
+        return;
+      }
+
+      final String formattedDeadline;
+      try {
+        final day = deadlineParts[0].padLeft(2, '0');
+        final month = deadlineParts[1].padLeft(2, '0');
+        final year = deadlineParts[2];
+        
+        final date = DateTime.parse('$year-$month-$day');
+        if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('A data não pode ser no passado'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() { _isLoading = false; });
+          return;
+        }
+        
+        formattedDeadline = '$year-$month-$day';
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Data inválida'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() { _isLoading = false; });
+        return;
+      }
+
+      // Validação do tempo em Chronos
+      final chronosText = _chronosController.text.trim();
+      if (chronosText.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tempo em Chronos é obrigatório'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() { _isLoading = false; });
+        return;
+      }
+
+      final int timeChronos;
+      try {
+        timeChronos = int.parse(chronosText);
+        if (timeChronos <= 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Tempo em Chronos deve ser maior que zero'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() { _isLoading = false; });
+          return;
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tempo em Chronos deve ser um número válido'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() { _isLoading = false; });
+        return;
+      }
+
+      // Cria o modelo para edição
+      final editModel = {
+        'id': _serviceId, // ID do serviço a ser editado
+        'title': _titleController.text.trim(),
+        'description': _descriptionController.text.trim(),
+        'timeChronos': timeChronos,
+        'deadline': formattedDeadline,
+        'categories': _categoriesTags,
+        'modality': _selectedModality!,
+        if (base64Image != null) 'serviceImage': base64Image,
+      };
+
+      print('Enviando payload para edição de pedido...');
+      print('Payload: $editModel');
+
+      final response = await ApiService.post(
+        '/service/put', // Note: endpoint diferente para edição
+        token: token,
+        editModel
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Pedido editado com sucesso!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Retorna true indicando sucesso
+        Navigator.pop(context, true);
+        
+      } else {
+        final error = response.body;
+        print('Erro do servidor: ${response.statusCode} - $error');
+        
+        String errorMessage = 'Erro ao editar pedido';
+        if (response.statusCode == 400) {
+          errorMessage = 'Dados inválidos. Verifique as informações preenchidas.';
+        } else if (response.statusCode == 401) {
+          errorMessage = 'Não autorizado. Faça login novamente.';
+        } else if (response.statusCode == 404) {
+          errorMessage = 'Serviço não encontrado.';
+        } else if (response.statusCode == 500) {
+          errorMessage = 'Erro interno do servidor. Tente novamente.';
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$errorMessage (${response.statusCode})'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Erro na edição do pedido: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   void _toggleDrawer() {
     setState(() {
       _isDrawerOpen = !_isDrawerOpen;
@@ -190,8 +593,8 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
   void _openWallet() {
     setState(() {
-      _isDrawerOpen = false; // Fecha o side menu
-      _isWalletOpen = true; // Abre a carteira
+      _isDrawerOpen = false;
+      _isWalletOpen = true;
     });
   }
 
@@ -203,17 +606,82 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Se estiver carregando dados do serviço, mostra loading
+    if (_isFetchingData) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF0B0C0C),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFC29503)),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Carregando dados do serviço...',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Se houve erro ao carregar dados
+    if (_errorMessage != null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF0B0C0C),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  color: Colors.red,
+                  size: 60,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  _errorMessage!,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFC29503),
+                  ),
+                  child: const Text(
+                    'Voltar',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF0B0C0C),
       body: Stack(
         children: [
-          // Background images
           _buildBackgroundImages(),
 
           // Main content
           Column(
             children: [
-              // Header EXATO da main_page com funcionalidade
               Header(
                 onMenuPressed: _toggleDrawer,
               ),
@@ -237,7 +705,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
             ],
           ),
 
-          // Menu lateral (igual na main_page)
+          // Menu lateral
           if (_isDrawerOpen)
             Positioned(
               top: kToolbarHeight,
@@ -267,7 +735,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
               ),
             ),
 
-          // Modal da Carteira (igual na main_page)
+          // Modal da Carteira
           if (_isWalletOpen)
             Positioned(
               top: 0,
@@ -386,13 +854,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
             ),
             const SizedBox(height: 25),
 
-            _buildFormField('Título', _titleController,
-                validator: _requiredValidator),
+            _buildFormField('Título', _titleController, validator: _requiredValidator),
             const SizedBox(height: 15),
-            _buildDescriptionField(), // Updated: Expanded description field
+            _buildDescriptionField(),
             const SizedBox(height: 15),
-            _buildFormField('Tempo em Chronos', _chronosController,
-                validator: _requiredValidator),
+            _buildFormField('Tempo em Chronos', _chronosController, validator: _chronosValidator),
             const SizedBox(height: 15),
             _buildDateField('Prazo'),
             const SizedBox(height: 15),
@@ -409,10 +875,20 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     );
   }
 
-  // Fixed: Added validation function
   String? _requiredValidator(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Este campo é obrigatório';
+    }
+    return null;
+  }
+
+  String? _chronosValidator(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Este campo é obrigatório';
+    }
+    final number = int.tryParse(value);
+    if (number == null || number <= 0) {
+      return 'Digite um número válido maior que zero';
     }
     return null;
   }
@@ -453,7 +929,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     );
   }
 
-  // New: Expanded description field that grows vertically
   Widget _buildDescriptionField() {
     return Container(
       decoration: BoxDecoration(
@@ -470,8 +945,8 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       child: TextFormField(
         controller: _descriptionController,
         validator: _requiredValidator,
-        maxLines: null, // Allows unlimited lines - expands vertically
-        minLines: 3, // Minimum 3 lines height
+        maxLines: null,
+        minLines: 3,
         keyboardType: TextInputType.multiline,
         textInputAction: TextInputAction.newline,
         decoration: InputDecoration(
@@ -511,7 +986,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       child: TextFormField(
         controller: _deadlineController,
         readOnly: true,
-        validator: _requiredValidator,
+        validator: _dateValidator,
         decoration: InputDecoration(
           hintText: placeholder,
           hintStyle: TextStyle(
@@ -545,13 +1020,41 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           );
           if (picked != null) {
             setState(() {
-              _deadlineController.text =
-                  "${picked.day}/${picked.month}/${picked.year}";
+              _deadlineController.text = 
+                  "${picked.day.toString().padLeft(2, '0')}/"
+                  "${picked.month.toString().padLeft(2, '0')}/"
+                  "${picked.year}";
             });
           }
         },
       ),
     );
+  }
+
+  String? _dateValidator(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Data é obrigatória';
+    }
+    
+    final parts = value.split('/');
+    if (parts.length != 3) {
+      return 'Use o formato DD/MM/YYYY';
+    }
+    
+    try {
+      final day = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final year = int.parse(parts[2]);
+      
+      final date = DateTime(year, month, day);
+      if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
+        return 'Data não pode ser no passado';
+      }
+    } catch (e) {
+      return 'Data inválida';
+    }
+    
+    return null;
   }
 
   Widget _buildCategoriesField() {
@@ -589,8 +1092,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
             onFieldSubmitted: _addCategory,
           ),
         ),
-
-        // Fixed: Direct check on the late-initialized list
+        
         if (_categoriesTags.isNotEmpty) ...[
           const SizedBox(height: 12),
           Wrap(
@@ -667,7 +1169,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         ],
       ),
       child: DropdownButtonFormField<String>(
-        initialValue: _selectedModality,
+        value: _selectedModality,
         validator: (value) => value == null ? 'Selecione uma modalidade' : null,
         decoration: InputDecoration(
           hintText: 'Modalidade',
@@ -784,7 +1286,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: _isLoading ? null : () => Navigator.pop(context),
               child: const Text(
                 'Cancelar',
                 style: TextStyle(
@@ -804,57 +1306,23 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: TextButton(
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  // Fixed: Added validation for categories
-                  if (_categoriesTags.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Adicione pelo menos uma categoria'),
-                        backgroundColor: Colors.red,
+              onPressed: _isLoading ? null : _editRequest,
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
-                    );
-                    return;
-                  }
-
-                  // Lógica para editar o pedido
-                  print('Pedido editado com sucesso!');
-                  print('Título: ${_titleController.text}');
-                  print('Descrição: ${_descriptionController.text}');
-                  print('Chronos: ${_chronosController.text}');
-                  print('Prazo: ${_deadlineController.text}');
-                  print('Categorias: $_categoriesTags');
-                  print('Modalidade: $_selectedModality');
-                  if (_imageFileName != null) {
-                    print('Imagem selecionada: $_imageFileName');
-                    if (kIsWeb) {
-                      print('Image bytes length: ${_imageBytes?.length}');
-                    } else {
-                      print('Image path: ${_selectedImage?.path}');
-                    }
-                  }
-
-                  // TODO: Implement actual request editing logic
-
-                  // Show success message
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Pedido editado com sucesso!'),
-                      backgroundColor: Colors.green,
+                    )
+                  : const Text(
+                      'Salvar Alterações',
+                      style: TextStyle(
+                        color: Color(0xFFE9EAEC),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  );
-
-                  // Navigate back after successful editing
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text(
-                'Editar pedido',
-                style: TextStyle(
-                  color: Color(0xFFE9EAEC),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
             ),
           ),
         ),

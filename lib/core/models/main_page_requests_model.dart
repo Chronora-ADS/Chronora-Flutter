@@ -1,4 +1,5 @@
 class Service {
+  final int id;
   final String title;
   final String serviceImage;
   final int timeChronos;
@@ -6,6 +7,7 @@ class Service {
   final List<CategoryEntity> categoryEntities;
 
   Service({
+    required this.id,
     required this.title,
     required this.serviceImage,
     required this.timeChronos,
@@ -26,6 +28,7 @@ class Service {
     }
 
     return Service(
+      id: json['id'],
       title: json['title'] ?? 'Título não disponível',
       serviceImage: json['serviceImage'] ?? '',
       timeChronos: json['timeChronos'] ?? 0,
