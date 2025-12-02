@@ -53,6 +53,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     print('=== POPULANDO FORMULÁRIO A PARTIR DE SERVICE ===');
     print('Service ID: ${service.id}');
     print('Título: ${service.title}');
+    print('Título: ${service.description}');
     print('Chronos: ${service.timeChronos}');
     print('Categorias: ${service.categoryEntities.map((c) => c.name).toList()}');
     
@@ -64,6 +65,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     
     // Preenche os campos básicos
     _titleController.text = service.title;
+    _descriptionController.text = service.description;
     _chronosController.text = service.timeChronos.toString();
     
     // Se tiver imagem, converte de base64
