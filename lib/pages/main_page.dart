@@ -395,7 +395,7 @@ class _MainPageState extends State<MainPage> {
             Navigator.pushNamed(
               context,
               '/request-editing',
-              arguments: services[index].id,
+              arguments: services[index], // Mudança importante
             );
           },
         ),

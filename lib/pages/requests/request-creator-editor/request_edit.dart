@@ -15,12 +15,10 @@ import 'package:chronora/core/models/main_page_requests_model.dart';
 
 class RequestEditingPage extends StatefulWidget {
   final Service? service;
-  final int? serviceId;
 
   const RequestEditingPage({
     super.key,
     this.service,
-    this.serviceId,
   });
 
   @override
@@ -48,39 +46,21 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   bool _isLoading = false;
   bool _isFetchingData = false;
   String? _errorMessage;
-
   int? _serviceId;
-
-  @override
-  void initState() {
-    super.initState();
-    _categoriesTags = [];
-    
-    print('=== INIT STATE EDIT PAGE ===');
-    print('Service recebido: ${widget.service != null}');
-    print('ServiceId recebido: ${widget.serviceId}');
-    
-    // Inicializa com os dados do serviço se for fornecido
-    if (widget.service != null) {
-      print('Populando formulário a partir do service...');
-      _populateFormFromService(widget.service!);
-    } else if (widget.serviceId != null) {
-      print('Buscando dados do serviço por ID: ${widget.serviceId}');
-      _serviceId = widget.serviceId;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _fetchServiceData();
-      });
-    } else {
-      print('Nenhum serviço ou ID fornecido!');
-    }
-  }
 
   // Método para popular o formulário com dados do serviço
   void _populateFormFromService(Service service) {
     print('=== POPULANDO FORMULÁRIO A PARTIR DE SERVICE ===');
+    print('Service ID: ${service.id}');
     print('Título: ${service.title}');
     print('Chronos: ${service.timeChronos}');
     print('Categorias: ${service.categoryEntities.map((c) => c.name).toList()}');
+    
+    // Garante que o serviceId seja setado
+    if (service.id != null) {
+      _serviceId = service.id;
+      print('ServiceId definido: $_serviceId');
+    }
     
     // Preenche os campos básicos
     _titleController.text = service.title;
@@ -118,62 +98,10 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     // NOTA: Para description, deadline e modality,
     // você precisará buscar via API (método _fetchServiceData)
     // Se não tiver essas informações, busque via API
-    if (service.id != null) {
-      _serviceId = service.id;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _fetchServiceData();
-      });
-    }
-  }
-
-  // Método para buscar os dados completos do serviço por ID
-  Future<void> _fetchServiceData() async {
-    if (_serviceId == null) return;
-
-    setState(() {
-      _isFetchingData = true;
-      _errorMessage = null;
+    _serviceId = service.id;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchServiceData();
     });
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-      
-      if (token == null) {
-        throw Exception('Usuário não autenticado');
-      }
-
-      final response = await ApiService.get(
-        '/service/get/$_serviceId',
-        token: token,
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        final serviceDetail = ServiceDetailModel.fromJson(responseData);
-        
-        // Preenche o formulário com os dados do serviço
-        _populateFormFromServiceDetail(serviceDetail);
-      } else {
-        throw Exception('Erro ${response.statusCode}: ${response.body}');
-      }
-    } catch (e) {
-      print('Erro ao buscar dados do serviço: $e');
-      setState(() {
-        _errorMessage = 'Erro ao carregar dados do serviço: $e';
-      });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro ao carregar dados: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() {
-        _isFetchingData = false;
-      });
-    }
   }
 
   // Método para popular o formulário com ServiceDetailModel
@@ -228,37 +156,107 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     }
   }
 
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _chronosController.dispose();
-    _deadlineController.dispose();
-    _categoriesController.dispose();
-    _searchController.dispose();
-    super.dispose();
-  }
+  // Método para buscar os dados completos do serviço por ID
+  Future<void> _fetchServiceData() async {
+    if (_serviceId == null) return;
 
-  void _addCategory(String category) {
-    if (category.trim().isNotEmpty) {
+    setState(() {
+      _isFetchingData = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      
+      if (token == null) {
+        throw Exception('Usuário não autenticado');
+      }
+
+      final response = await ApiService.get(
+        '/service/get/$_serviceId',
+        token: token,
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        final serviceDetail = ServiceDetailModel.fromJson(responseData);
+        
+        // Preenche o formulário com os dados do serviço
+        _populateFormFromServiceDetail(serviceDetail);
+      } else {
+        throw Exception('Erro ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      print('Erro ao buscar dados do serviço: $e');
       setState(() {
-        _categoriesTags.add(category.trim());
-        _categoriesController.clear();
+        _errorMessage = 'Erro ao carregar dados do serviço: $e';
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao carregar dados: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isFetchingData = false;
       });
     }
   }
 
-  void _removeCategory(String category) {
-    setState(() {
-      _categoriesTags.remove(category);
-    });
+
+  @override
+  void initState() {
+    super.initState();
+    _categoriesTags = [];
+    
+    print('=== INIT STATE EDIT PAGE ===');
+    print('Service recebido via widget: ${widget.service != null}');
+    
+    // Adicione este método para extrair o serviço de diferentes formas
+    _extractAndProcessService();
   }
 
-  Future<void> _pickImage() async {
-    if (kIsWeb) {
-      _pickImageWeb();
+  // Método para extrair o serviço de diferentes fontes
+  void _extractAndProcessService() {
+    Service? serviceToProcess;
+    
+    // 1. Primeiro verifica se veio pelo widget
+    if (widget.service != null) {
+      serviceToProcess = widget.service;
+      print('Service extraído do widget');
+    }
+    
+    // 2. Se não veio pelo widget, verifica se foi passado como argumento da rota
+    if (serviceToProcess == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final arguments = ModalRoute.of(context)?.settings.arguments;
+        
+        if (arguments is Service) {
+          serviceToProcess = arguments;
+          print('Service extraído dos argumentos da rota (direto)');
+        } else if (arguments is Map && arguments['service'] is Service) {
+          serviceToProcess = arguments['service'] as Service;
+          print('Service extraído dos argumentos da rota (Map)');
+        }
+        
+        // Se encontrou algum serviço, processa
+        if (serviceToProcess != null) {
+          print('Populando formulário a partir do service...');
+          _populateFormFromService(serviceToProcess!);
+        } else {
+          print('Nenhum serviço encontrado!');
+          setState(() {
+            _errorMessage = 'Nenhum serviço encontrado para edição.';
+          });
+        }
+      });
     } else {
-      _pickImageMobile();
+      // Se já tinha no widget, processa imediatamente
+      print('Populando formulário a partir do service...');
+      _populateFormFromService(serviceToProcess!);
     }
   }
 
@@ -314,6 +312,41 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
     uploadInput.click();
   }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _chronosController.dispose();
+    _deadlineController.dispose();
+    _categoriesController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _addCategory(String category) {
+    if (category.trim().isNotEmpty) {
+      setState(() {
+        _categoriesTags.add(category.trim());
+        _categoriesController.clear();
+      });
+    }
+  }
+
+  void _removeCategory(String category) {
+    setState(() {
+      _categoriesTags.remove(category);
+    });
+  }
+
+  Future<void> _pickImage() async {
+    if (kIsWeb) {
+      _pickImageWeb();
+    } else {
+      _pickImageMobile();
+    }
+  }
+
 
   String _getDisplayFileName(String fileName, double maxWidth) {
     const double maxPercentage = 0.45;
@@ -604,161 +637,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // Se estiver carregando dados do serviço, mostra loading
-    if (_isFetchingData) {
-      return Scaffold(
-        backgroundColor: const Color(0xFF0B0C0C),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFC29503)),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Carregando dados do serviço...',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Se houve erro ao carregar dados
-    if (_errorMessage != null) {
-      return Scaffold(
-        backgroundColor: const Color(0xFF0B0C0C),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.error_outline,
-                  color: Colors.red,
-                  size: 60,
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  _errorMessage!,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFC29503),
-                  ),
-                  child: const Text(
-                    'Voltar',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF0B0C0C),
-      body: Stack(
-        children: [
-          _buildBackgroundImages(),
-
-          // Main content
-          Column(
-            children: [
-              Header(
-                onMenuPressed: _toggleDrawer,
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: [
-                      _buildSearchBar(),
-                      const SizedBox(height: 60),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: _buildForm(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          // Menu lateral
-          if (_isDrawerOpen)
-            Positioned(
-              top: kToolbarHeight,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(
-                        onWalletPressed: _openWallet,
-                      ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(
-                          color: Colors.transparent,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // Modal da Carteira
-          if (_isWalletOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: WalletModal(
-                      onClose: _closeWallet,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildBackgroundImages() {
     return Stack(
       children: [
@@ -827,50 +705,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         onChanged: (value) {
           print('Texto da busca: $value');
         },
-      ),
-    );
-  }
-
-  Widget _buildForm() {
-    return Container(
-      padding: const EdgeInsets.all(25),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE9EAEC),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Center(
-              child: Text(
-                'Edição do pedido',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(height: 25),
-
-            _buildFormField('Título', _titleController, validator: _requiredValidator),
-            const SizedBox(height: 15),
-            _buildDescriptionField(),
-            const SizedBox(height: 15),
-            _buildFormField('Tempo em Chronos', _chronosController, validator: _chronosValidator),
-            const SizedBox(height: 15),
-            _buildDateField('Prazo'),
-            const SizedBox(height: 15),
-            _buildCategoriesField(),
-            const SizedBox(height: 15),
-            _buildModalityDropdown(),
-            const SizedBox(height: 25),
-            _buildImageButton(),
-            const SizedBox(height: 30),
-            _buildActionButtons(),
-          ],
-        ),
       ),
     );
   }
@@ -969,6 +803,33 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     );
   }
 
+
+  String? _dateValidator(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Data é obrigatória';
+    }
+    
+    final parts = value.split('/');
+    if (parts.length != 3) {
+      return 'Use o formato DD/MM/YYYY';
+    }
+    
+    try {
+      final day = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final year = int.parse(parts[2]);
+      
+      final date = DateTime(year, month, day);
+      if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
+        return 'Data não pode ser no passado';
+      }
+    } catch (e) {
+      return 'Data inválida';
+    }
+    
+    return null;
+  }
+
   Widget _buildDateField(String placeholder) {
     return Container(
       height: 46,
@@ -1031,30 +892,53 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     );
   }
 
-  String? _dateValidator(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Data é obrigatória';
-    }
-    
-    final parts = value.split('/');
-    if (parts.length != 3) {
-      return 'Use o formato DD/MM/YYYY';
-    }
-    
-    try {
-      final day = int.parse(parts[0]);
-      final month = int.parse(parts[1]);
-      final year = int.parse(parts[2]);
-      
-      final date = DateTime(year, month, day);
-      if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
-        return 'Data não pode ser no passado';
-      }
-    } catch (e) {
-      return 'Data inválida';
-    }
-    
-    return null;
+  Widget _buildPaintbrushIcon() {
+    return Image.asset(
+      'assets/img/Paintbrush.png',
+      width: 24,
+      height: 24,
+      color: Colors.white,
+      errorBuilder: (context, error, stackTrace) {
+        return const Icon(
+          Icons.category,
+          color: Colors.white,
+          size: 24,
+        );
+      },
+    );
+  }
+
+  Widget _buildTag(String tagText) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFC29503),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildPaintbrushIcon(),
+          const SizedBox(width: 6),
+          Text(
+            tagText,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: () => _removeCategory(tagText),
+            child: const Icon(
+              Icons.close,
+              color: Colors.white,
+              size: 16,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCategoriesField() {
@@ -1105,54 +989,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     );
   }
 
-  Widget _buildTag(String tagText) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFC29503),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildPaintbrushIcon(),
-          const SizedBox(width: 6),
-          Text(
-            tagText,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(width: 6),
-          GestureDetector(
-            onTap: () => _removeCategory(tagText),
-            child: const Icon(
-              Icons.close,
-              color: Colors.white,
-              size: 16,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPaintbrushIcon() {
-    return Image.asset(
-      'assets/img/Paintbrush.png',
-      width: 24,
-      height: 24,
-      color: Colors.white,
-      errorBuilder: (context, error, stackTrace) {
-        return const Icon(
-          Icons.category,
-          color: Colors.white,
-          size: 24,
-        );
-      },
-    );
-  }
 
   Widget _buildModalityDropdown() {
     return Container(
@@ -1169,7 +1005,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         ],
       ),
       child: DropdownButtonFormField<String>(
-        value: _selectedModality,
+        initialValue: _selectedModality,
         validator: (value) => value == null ? 'Selecione uma modalidade' : null,
         decoration: InputDecoration(
           hintText: 'Modalidade',
@@ -1327,6 +1163,211 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildForm() {
+    return Container(
+      padding: const EdgeInsets.all(25),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE9EAEC),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Center(
+              child: Text(
+                'Edição do pedido',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 25),
+
+            _buildFormField('Título', _titleController, validator: _requiredValidator),
+            const SizedBox(height: 15),
+            _buildDescriptionField(),
+            const SizedBox(height: 15),
+            _buildFormField('Tempo em Chronos', _chronosController, validator: _chronosValidator),
+            const SizedBox(height: 15),
+            _buildDateField('Prazo'),
+            const SizedBox(height: 15),
+            _buildCategoriesField(),
+            const SizedBox(height: 15),
+            _buildModalityDropdown(),
+            const SizedBox(height: 25),
+            _buildImageButton(),
+            const SizedBox(height: 30),
+            _buildActionButtons(),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  bool get _isReadyToShowForm {
+    return !_isFetchingData && 
+          _errorMessage == null && 
+          (_serviceId != null || widget.service != null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // No build, use:
+    if (!_isReadyToShowForm && !_isFetchingData && _errorMessage == null) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF0B0C0C),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFC29503)),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Preparando formulário...',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Se houve erro ao carregar dados
+    if (_errorMessage != null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF0B0C0C),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  color: Colors.red,
+                  size: 60,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  _errorMessage!,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFC29503),
+                  ),
+                  child: const Text(
+                    'Voltar',
+                    style: TextStyle(color: Colors.white),
+                  ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  return Scaffold(
+    backgroundColor: const Color(0xFF0B0C0C),
+    body: Stack(
+      children: [
+        _buildBackgroundImages(),
+
+        // Main content
+        Column(
+          children: [
+            Header(
+              onMenuPressed: _toggleDrawer,
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    _buildSearchBar(),
+                    const SizedBox(height: 60),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: _buildForm(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        // Menu lateral
+        if (_isDrawerOpen)
+          Positioned(
+            top: kToolbarHeight,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              color: Colors.black.withOpacity(0.5),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.6,
+                    child: SideMenu(
+                      onWalletPressed: _openWallet,
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: _toggleDrawer,
+                      child: Container(
+                        color: Colors.transparent,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // Modal da Carteira
+        if (_isWalletOpen)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              color: Colors.black.withOpacity(0.5),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: WalletModal(
+                    onClose: _closeWallet,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

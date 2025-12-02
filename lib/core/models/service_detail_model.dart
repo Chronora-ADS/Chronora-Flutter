@@ -1,5 +1,4 @@
 // core/models/service_detail_model.dart
-import 'dart:convert';
 import 'category_entity.dart';
 import 'user_creator.dart';
 
