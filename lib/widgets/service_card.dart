@@ -21,25 +21,78 @@ class ServiceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Service Image
-          Container(
-            height: 120,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(30),
-                topRight: Radius.circular(30),
+          // Service Image com informações sobrepostas
+          Stack(
+            children: [
+              Container(
+                height: 300,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(30),
+                    topRight: Radius.circular(30),
+                  ),
+                  image: service.serviceImage.isNotEmpty
+                      ? DecorationImage(
+                          image:
+                              MemoryImage(base64.decode(service.serviceImage)),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: service.serviceImage.isEmpty
+                    ? const Icon(Icons.image, size: 50, color: Colors.grey)
+                    : null,
               ),
-              image: service.serviceImage.isNotEmpty
-                  ? DecorationImage(
-                      image: MemoryImage(base64.decode(service.serviceImage)),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
-            ),
-            child: service.serviceImage.isEmpty
-                ? const Icon(Icons.image, size: 50, color: Colors.grey)
-                : null,
+
+              // Informações sobrepostas no canto superior direito
+              Positioned(
+                top: 16,
+                right: 16,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // Prazo
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.amareloUmPoucoEscuro,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        _formatDate(service.deadline),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.branco,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Modalidade
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.amareloUmPoucoEscuro,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        service.modality,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.branco,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
 
           // Service Info
@@ -48,6 +101,7 @@ class ServiceCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Título
                 Text(
                   service.title,
                   style: const TextStyle(
@@ -57,26 +111,33 @@ class ServiceCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
+
                 const SizedBox(height: 8),
+
+                // Postado por
                 Text(
                   'Postado por ${service.userCreator.name}',
                   style: const TextStyle(fontSize: 14),
                 ),
+
                 const SizedBox(height: 8),
+
                 // Chronos
                 Row(
                   children: [
                     Image.asset('assets/img/Coin.png', width: 16),
                     const SizedBox(width: 4),
                     Text(
-                      '${service.timeChronos} chronos',
+                      '${service.timeChronos}',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 8),
+
                 // Categories
                 if (service.categoryEntities.isNotEmpty) ...[
                   Wrap(
@@ -114,5 +175,10 @@ class ServiceCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  // Função para formatar a data
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 }
