@@ -153,7 +153,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Cadastro realizado com sucesso!')),
         );
-        Navigator.pushReplacementNamed(context, AppRoutes.main);
+        Navigator.pushReplacementNamed(context, AppRoutes.login);
       } else {
         final error = response.body;
         print('Erro do servidor: ${response.statusCode} - $error');
