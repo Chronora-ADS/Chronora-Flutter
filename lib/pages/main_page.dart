@@ -235,16 +235,22 @@ class _MainPageState extends State<MainPage> {
                         ),
 
                         const SizedBox(height: 24),
-                        Container(
-                          width: double.infinity,
-                          height: 1,
-                          color: AppColors.branco.withOpacity(0.3),
+                        Align(
+                            alignment: Alignment.center,
+                            child: Container(
+                                width: MediaQuery.of(context).size.width * 0.8,
+                                height: 3,
+                                color: AppColors.branco,
+                            ),
                         ),
                         const SizedBox(height: 8),
-                        Container(
-                          width: double.infinity,
-                          height: 1,
-                          color: AppColors.branco.withOpacity(0.3),
+                        Align(
+                            alignment: Alignment.center,
+                            child: Container(
+                                width: MediaQuery.of(context).size.width * 0.5,
+                                height: 3,
+                                color: AppColors.branco,
+                            ),
                         ),
                         const SizedBox(height: 24),
 
