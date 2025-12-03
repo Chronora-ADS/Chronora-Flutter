@@ -1,5 +1,7 @@
 class Service {
+  final int id;
   final String title;
+  final String description;
   final String serviceImage;
   final int timeChronos;
   final UserCreator userCreator;
@@ -8,7 +10,9 @@ class Service {
   final String modality;
 
   Service({
+    required this.id,
     required this.title,
+    required this.description,
     required this.serviceImage,
     required this.timeChronos,
     required this.userCreator,
@@ -41,7 +45,9 @@ class Service {
     }
 
     return Service(
+      id: json['id'],
       title: json['title'] ?? 'Título não disponível',
+      description: json['description'] ?? 'Descrição não disponível',
       serviceImage: json['serviceImage'] ?? '',
       timeChronos: json['timeChronos'] ?? 0,
       userCreator: userCreator,

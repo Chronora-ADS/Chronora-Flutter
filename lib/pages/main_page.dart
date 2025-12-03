@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:chronora/core/models/service_model.dart';
+import 'package:chronora/core/models/main_page_requests_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 
@@ -187,9 +187,16 @@ class _MainPageState extends State<MainPage> {
                             ),
                             const SizedBox(height: 16),
                             ElevatedButton(
-                              onPressed: () {
-                                Navigator.pushNamed(
-                                    context, '/request-creation');
+                              onPressed: () async {
+                                final result = await Navigator.pushNamed(
+                                  context, 
+                                  '/request-creation'
+                                );
+                                
+                                // Se retornou true, atualiza os serviços
+                                if (result == true) {
+                                  await _fetchServices();
+                                }
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.branco,
@@ -386,7 +393,28 @@ class _MainPageState extends State<MainPage> {
       itemBuilder: (context, index) {
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
-          child: ServiceCard(service: services[index]),
+          child: ServiceCard(
+            service: services[index],
+            onEdit: () async {
+              // Navega para a página de edição com o serviço
+              final result = await Navigator.pushNamed(
+                context,
+                '/request-editing',
+                arguments: services[index],
+              );
+              
+              // Se retornou true, atualiza os serviços
+              if (result == true) {
+                await _fetchServices();
+              }
+            },
+            onCardEdited: (edited) async {
+              // Quando o card é editado pelo clique direto
+              if (edited) {
+                await _fetchServices();
+              }
+            },
+          ),
         );
       },
     );
