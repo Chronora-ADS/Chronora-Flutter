@@ -1,3 +1,4 @@
+// services/api_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -6,14 +7,20 @@ class ApiService {
   static const String baseUrl = 'http://localhost:8085';
 
   static Future<http.Response> post(
-      String endpoint, Map<String, dynamic> data) async {
+    String endpoint, 
+    Map<String, dynamic> data,
+    {String? token}
+  ) async {
     try {
+      final headers = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+
       final response = await http.post(
         Uri.parse('$baseUrl$endpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
+        headers: headers,
         body: jsonEncode(data),
       );
       return response;
@@ -22,7 +29,10 @@ class ApiService {
     }
   }
 
-  static Future<http.Response> get(String endpoint, {String? token}) async {
+  static Future<http.Response> get(
+    String endpoint, 
+    {String? token}
+  ) async {
     try {
       final headers = {
         'Content-Type': 'application/json',
@@ -40,18 +50,19 @@ class ApiService {
     }
   }
 
-  static Future<http.Response> patch(
-    String endpoint,
-    Map<String, dynamic> data, {
-    String? token,
-  }) async {
+  static Future<http.Response> put(
+    String endpoint, 
+    Map<String, dynamic> data,
+    {String? token}
+  ) async {
     try {
       final headers = {
         'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
         if (token != null) 'Authorization': 'Bearer $token',
       };
 
-      final response = await http.patch(
+      final response = await http.put(
         Uri.parse('$baseUrl$endpoint'),
         headers: headers,
         body: jsonEncode(data),
@@ -63,12 +74,13 @@ class ApiService {
   }
 
   static Future<http.Response> delete(
-    String endpoint, {
-    String? token,
-  }) async {
+    String endpoint, 
+    {String? token}
+  ) async {
     try {
       final headers = {
         'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
         if (token != null) 'Authorization': 'Bearer $token',
       };
 

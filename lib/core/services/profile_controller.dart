@@ -43,7 +43,7 @@ class ProfileController {
         } else if (userData is Map && userData.containsKey('user')) {
           parsedData = userData['user'] as Map<String, dynamic>;
         } else if (userData is Map) {
-          parsedData = userData as Map<String, dynamic>;
+          parsedData = userData.cast<String, dynamic>();
         } else {
           throw FormatException('Formato de resposta inválido');
         }
@@ -96,7 +96,7 @@ class ProfileController {
         debugPrint('[ProfileController] Atualizando perfil: $body');
       }
 
-      final response = await ApiService.patch(
+      final response = await ApiService.put(
         '/user/update',
         body,
         token: token,
