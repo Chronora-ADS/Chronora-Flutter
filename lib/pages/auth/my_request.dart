@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
-import '../../widgets/header.dart';
-import '../../widgets/side_menu.dart';
+import 'package:chronora/core/constants/app_colors.dart';
+import 'package:chronora/widgets/header.dart';
+import 'package:chronora/widgets/side_menu.dart'; 
+import 'dart:convert';
 
 class MeusPedidos extends StatefulWidget {
   const MeusPedidos({Key? key}) : super(key: key);
@@ -20,15 +21,54 @@ class _MeusPedidosState extends State<MeusPedidos> {
   final List<Map<String, dynamic>> _pedidosAceitos = [
     {
       'titulo': 'Título do pedido Lorem Ipsum dolor',
-      'descricao': 'Pintura de parede, aula de inglês...',
-      'postador': 'Lorem Ipsum da Silva',
+      'descricao_breve': 'Pintura de parede, aula de inglês...',
+      'descricao_completa': 'Uma descrição muito longa de Lorem ipsum dolor sit amet. Vivamus dolor dolor, bibendum a conque eu, fringilla et sem. Phasellus non sem.',
+      'postador': 'João Silva Santos',
       'horario': '15:41',
       'prazo': '30/10/2025',
       'modalidade': 'À distância',
-      'chronos': 6,
+      'tempo_chronos': 6,
       'temAcompanhamento': true,
       'temMotivacao': true,
       'status': 'Aceito',
+      'avaliacao': '4.9',
+      'categoria_principal': 'Aulas',
+      'subcategoria': 'Inglês',
+      'serviceImage': '', // Base64 da imagem
+    },
+    {
+      'titulo': 'Conserto de Computador',
+      'descricao_breve': 'Manutenção de hardware e software',
+      'descricao_completa': 'Preciso de ajuda para consertar meu computador que não está ligando.',
+      'postador': 'Maria Oliveira',
+      'horario': '09:30',
+      'prazo': '15/11/2025',
+      'modalidade': 'Presencial',
+      'tempo_chronos': 8,
+      'temAcompanhamento': false,
+      'temMotivacao': true,
+      'status': 'Em Andamento',
+      'avaliacao': '4.7',
+      'categoria_principal': 'Tecnologia',
+      'subcategoria': 'Informática',
+      'serviceImage': '',
+    },
+    {
+      'titulo': 'Aulas de Piano Intermediário',
+      'descricao_breve': 'Aulas semanais de piano',
+      'descricao_completa': 'Preciso de professor de piano para nível intermediário.',
+      'postador': 'Carlos Música',
+      'horario': '14:00',
+      'prazo': '20/12/2025',
+      'modalidade': 'Presencial',
+      'tempo_chronos': 12,
+      'temAcompanhamento': true,
+      'temMotivacao': false,
+      'status': 'Finalizado',
+      'avaliacao': '5.0',
+      'categoria_principal': 'Aulas',
+      'subcategoria': 'Música',
+      'serviceImage': '',
     },
   ];
 
@@ -36,15 +76,37 @@ class _MeusPedidosState extends State<MeusPedidos> {
   final List<Map<String, dynamic>> _pedidosCriados = [
     {
       'titulo': 'Reparo Hidráulico Residencial',
-      'descricao': 'Reparo em vazamento na cozinha',
-      'postador': 'João Pereira',
+      'descricao_breve': 'Reparo em vazamento na cozinha',
+      'descricao_completa': 'Preciso de um encanador para consertar um vazamento na pia da cozinha.',
+      'postador': 'Carlos Mendes',
       'horario': '09:15',
       'prazo': '30/10/2025',
       'modalidade': 'Presencial',
-      'chronos': 10,
+      'tempo_chronos': 10,
       'temAcompanhamento': false,
       'temMotivacao': true,
-      'status': 'Pendente',
+      'status': 'Disponível',
+      'avaliacao': '5.0',
+      'categoria_principal': 'Reparos Domésticos',
+      'subcategoria': 'Hidráulica',
+      'serviceImage': '',
+    },
+    {
+      'titulo': 'Design de Logo para Empresa',
+      'descricao_breve': 'Criação de identidade visual',
+      'descricao_completa': 'Preciso de um designer para criar um logo para minha nova empresa de tecnologia.',
+      'postador': 'Ana Costa',
+      'horario': '14:20',
+      'prazo': '25/11/2025',
+      'modalidade': 'À distância',
+      'tempo_chronos': 15,
+      'temAcompanhamento': true,
+      'temMotivacao': false,
+      'status': 'Aceito',
+      'avaliacao': '4.8',
+      'categoria_principal': 'Design',
+      'subcategoria': 'Gráfico',
+      'serviceImage': '',
     },
   ];
 
@@ -56,6 +118,32 @@ class _MeusPedidosState extends State<MeusPedidos> {
 
   void _openWallet() {
     // Implementar abertura da carteira se necessário
+  }
+
+  // Função para iniciar pedido
+  void _iniciarPedido(Map<String, dynamic> pedido) {
+    setState(() {
+      pedido['status'] = 'Em Andamento';
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Pedido "${pedido['titulo']}" iniciado!'),
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
+
+  // Função para finalizar pedido
+  void _finalizarPedido(Map<String, dynamic> pedido) {
+    setState(() {
+      pedido['status'] = 'Finalizado';
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Pedido "${pedido['titulo']}" finalizado!'),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   @override
@@ -77,7 +165,7 @@ class _MeusPedidosState extends State<MeusPedidos> {
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Pintura de parede, aula de inglês...',
+                    hintText: 'Buscar meus pedidos...',
                     filled: true,
                     fillColor: AppColors.branco,
                     border: OutlineInputBorder(
@@ -86,6 +174,10 @@ class _MeusPedidosState extends State<MeusPedidos> {
                     ),
                     prefixIcon: const Icon(Icons.search),
                   ),
+                  onChanged: (value) {
+                    // Implementar busca nos pedidos
+                    setState(() {});
+                  },
                 ),
               ),
 
@@ -93,7 +185,7 @@ class _MeusPedidosState extends State<MeusPedidos> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center, // CENTRALIZADO
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     ElevatedButton.icon(
                       onPressed: _mostrarFiltros,
@@ -106,7 +198,7 @@ class _MeusPedidosState extends State<MeusPedidos> {
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.branco, // COR BRANCA
+                        backgroundColor: AppColors.branco,
                         foregroundColor: AppColors.amareloUmPoucoEscuro,
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                         shape: RoundedRectangleBorder(
@@ -189,31 +281,17 @@ class _MeusPedidosState extends State<MeusPedidos> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Prazo
-                        _buildSectionHeader('Prazo: 30/10/2025'),
-                        
-                        // Modalidade
+                        // Contador de pedidos
                         Padding(
                           padding: const EdgeInsets.only(bottom: 16),
-                          child: Row(
-                            children: [
-                              Icon(
-                                _abaAtual == 0
-                                    ? Icons.language
-                                    : Icons.location_on,
-                                color: AppColors.amareloClaro,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _abaAtual == 0 ? 'À distância' : 'Presencial',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: AppColors.branco,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            _abaAtual == 0 
+                              ? '${_pedidosAceitos.length} pedidos aceitos' 
+                              : '${_pedidosCriados.length} pedidos criados',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.branco.withOpacity(0.7),
+                            ),
                           ),
                         ),
 
@@ -261,184 +339,387 @@ class _MeusPedidosState extends State<MeusPedidos> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: AppColors.amareloClaro,
+  Widget _buildCardPedido(Map<String, dynamic> pedido) {
+    return GestureDetector(
+      onTap: () {
+        // Navegar para a tela de ver pedido
+        Navigator.pushNamed(
+          context,
+          '/view-request',
+          arguments: {
+            'pedido': pedido,
+            'ehProprietario': _abaAtual == 1,
+          },
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: AppColors.branco,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.amareloClaro.withOpacity(0.3),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Imagem do serviço
+            if (pedido['serviceImage'] != null && pedido['serviceImage'].toString().isNotEmpty)
+              Container(
+                height: 120,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
+                  ),
+                  image: DecorationImage(
+                    image: MemoryImage(base64.decode(pedido['serviceImage'])),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              )
+            else
+              // Placeholder para imagem
+              Container(
+                height: 120,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: AppColors.amareloClaro.withOpacity(0.1),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.image,
+                    size: 40,
+                    color: AppColors.amareloClaro.withOpacity(0.3),
+                  ),
+                ),
+              ),
+
+            // Header com título e status
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _getStatusColor(pedido['status']).withOpacity(0.1),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      pedido['titulo'],
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.preto,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(pedido['status']),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      pedido['status'],
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.branco,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Informações do pedido
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Descrição breve
+                  Text(
+                    pedido['descricao_breve'],
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.preto.withOpacity(0.7),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Informações do postador
+                  Row(
+                    children: [
+                      Icon(Icons.person, color: AppColors.preto.withOpacity(0.6), size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Postado por ${pedido['postador']}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.preto.withOpacity(0.6),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Icon(Icons.access_time, color: AppColors.preto.withOpacity(0.6), size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        'às ${pedido['horario']}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.preto.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Prazo e Modalidade
+                  Row(
+                    children: [
+                      Icon(Icons.calendar_today, color: AppColors.amareloClaro, size: 14),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Prazo: ${pedido['prazo']}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.preto,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Icon(
+                        pedido['modalidade'] == 'À distância' 
+                          ? Icons.language 
+                          : Icons.location_on,
+                        color: AppColors.amareloClaro,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        pedido['modalidade'],
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.preto,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Chronos
+                  Row(
+                    children: [
+                      Image.asset(
+                        'assets/img/Coin.png',
+                        width: 18,
+                        height: 18,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${pedido['tempo_chronos']} Chronos',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.preto,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Categorias
+                  if (pedido['categoria_principal'] != null || pedido['subcategoria'] != null)
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        if (pedido['categoria_principal'] != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.amareloClaro.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: AppColors.amareloClaro),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Image.asset(
+                                  'assets/img/Paintbrush.png',
+                                  width: 12,
+                                  height: 12,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  pedido['categoria_principal'],
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.preto,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+
+                  // Botões de ação específicos para pedidos aceitos
+                  if (_abaAtual == 0) ...[
+                    const SizedBox(height: 12),
+                    _buildBotaoAcao(pedido),
+                  ],
+                ],
+              ),
+            ),
+
+            // Rodapé com link para ver detalhes
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.preto.withOpacity(0.05),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(12),
+                  bottomRight: Radius.circular(12),
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  'Clique para ver detalhes',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.amareloUmPoucoEscuro,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildCardPedido(Map<String, dynamic> pedido) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: AppColors.branco,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.amareloClaro.withOpacity(0.3),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Título
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              pedido['titulo'],
-              style: const TextStyle(
-                fontSize: 18,
+  Widget _buildBotaoAcao(Map<String, dynamic> pedido) {
+    switch (pedido['status']) {
+      case 'Aceito':
+        return SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () => _iniciarPedido(pedido),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              'Iniciar Pedido',
+              style: TextStyle(
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: AppColors.preto,
+                color: Colors.white,
               ),
             ),
           ),
-
-          // Informações do postador
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Icon(Icons.person, color: AppColors.preto.withOpacity(0.6), size: 16),
-                const SizedBox(width: 4),
-                Text(
-                  'Postado por ${pedido['postador']}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.preto.withOpacity(0.6),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Icon(Icons.access_time, color: AppColors.preto.withOpacity(0.6), size: 16),
-                const SizedBox(width: 4),
-                Text(
-                  'às ${pedido['horario']}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.preto.withOpacity(0.6),
-                  ),
-                ),
-              ],
+        );
+      
+      case 'Em Andamento':
+        return SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () => _finalizarPedido(pedido),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              'Finalizar Pedido',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
           ),
-
-          // Chronos
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        );
+      
+      case 'Finalizado':
+        return Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey[300]!),
+          ),
+          child: Center(
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset(
-                  'assets/img/Coin.png',
-                  width: 20,
-                  height: 20,
-                ),
-                const SizedBox(width: 8),
+                Icon(Icons.check_circle, color: Colors.green, size: 16),
+                const SizedBox(width: 6),
                 Text(
-                  '${pedido['chronos']} Chronos',
-                  style: const TextStyle(
-                    fontSize: 16,
+                  'Pedido Finalizado',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[700],
                     fontWeight: FontWeight.bold,
-                    color: AppColors.preto,
                   ),
                 ),
               ],
             ),
           ),
+        );
+      
+      default:
+        return const SizedBox.shrink();
+    }
+  }
 
-          // Acompanhamento e Motivação
-          if (pedido['temAcompanhamento'] || pedido['temMotivacao'])
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  if (pedido['temAcompanhamento'])
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.amareloClaro.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: AppColors.amareloClaro),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.check_circle, color: AppColors.amareloClaro, size: 14),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Acompanhamento',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.preto,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  if (pedido['temMotivacao'])
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.amareloClaro.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: AppColors.amareloClaro),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.emoji_events, color: AppColors.amareloClaro, size: 14),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Motivação',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.preto,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-            ),
-
-          // Status do pedido
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: pedido['status'] == 'Aceito'
-                  ? Colors.green.withOpacity(0.1)
-                  : Colors.orange.withOpacity(0.1),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(12),
-                bottomRight: Radius.circular(12),
-              ),
-            ),
-            child: Center(
-              child: Text(
-                pedido['status'],
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: pedido['status'] == 'Aceito'
-                      ? Colors.green
-                      : Colors.orange,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'aceito':
+        return Colors.orange;
+      case 'em andamento':
+        return Colors.blue;
+      case 'finalizado':
+        return Colors.green;
+      case 'disponível':
+        return Colors.orange;
+      case 'pendente':
+        return Colors.orange;
+      default:
+        return AppColors.amareloClaro;
+    }
   }
 
   void _mostrarFiltros() {
@@ -462,8 +743,8 @@ class _MeusPedidosState extends State<MeusPedidos> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Filtros',
+                Text(
+                  'Filtrar Meus Pedidos',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -472,7 +753,7 @@ class _MeusPedidosState extends State<MeusPedidos> {
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, size: 28),
+                  icon: Icon(Icons.close, size: 28, color: AppColors.preto),
                 ),
               ],
             ),
@@ -482,42 +763,79 @@ class _MeusPedidosState extends State<MeusPedidos> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildFiltroItem('Avaliação do usuário', _buildAvaliacaoFiltro()),
+                    _buildFiltroItem('Status', _buildStatusFiltro()),
                     const SizedBox(height: 20),
-                    _buildFiltroItem('Tempo', _buildTempoFiltro()),
+                    _buildFiltroItem('Modalidade', _buildModalidadeFiltro()),
+                    const SizedBox(height: 20),
+                    _buildFiltroItem('Prazo', _buildPrazoFiltro()),
+                    const SizedBox(height: 20),
+                    _buildFiltroItem('Valor em Chronos', _buildValorFiltro()),
                     const SizedBox(height: 20),
                     _buildFiltroItem('Categorias', _buildCategoriasFiltro()),
                     const SizedBox(height: 20),
                     _buildFiltroItem('Ordenação', _buildOrdenacaoFiltro()),
-                    const SizedBox(height: 20),
-                    _buildCheckboxFiltro('Acompanhamento', false),
                     const SizedBox(height: 10),
-                    _buildCheckboxFiltro('Motivação', false),
+                    _buildCheckboxFiltro('Com Acompanhamento', false),
+                    const SizedBox(height: 10),
+                    _buildCheckboxFiltro('Com Motivação', false),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.amareloUmPoucoEscuro,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      // Limpar filtros
+                      Navigator.pop(context);
+                    },
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: AppColors.amareloUmPoucoEscuro,
+                        width: 2,
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Limpar Filtros',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.amareloUmPoucoEscuro,
+                      ),
+                    ),
                   ),
                 ),
-                child: const Text(
-                  'Aplicar Filtros',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.branco,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // Aplicar filtros
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.amareloUmPoucoEscuro,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Aplicar Filtros',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.branco,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
           ],
         ),
@@ -531,7 +849,7 @@ class _MeusPedidosState extends State<MeusPedidos> {
       children: [
         Text(
           titulo,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: AppColors.preto,
@@ -543,39 +861,113 @@ class _MeusPedidosState extends State<MeusPedidos> {
     );
   }
 
-  Widget _buildAvaliacaoFiltro() {
+  Widget _buildStatusFiltro() {
+    final statusList = ['Todos', 'Disponível', 'Pendente', 'Aceito', 'Em Andamento', 'Finalizado'];
+    
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: statusList.map((status) {
+        return ChoiceChip(
+          label: Text(status),
+          selected: status == 'Todos',
+          onSelected: (selected) {},
+          selectedColor: AppColors.amareloClaro,
+          labelStyle: TextStyle(
+            color: status == 'Todos' ? AppColors.branco : AppColors.preto,
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildModalidadeFiltro() {
     return Row(
       children: [
-        const Icon(Icons.star, color: Colors.amber, size: 20),
-        const Icon(Icons.star, color: Colors.amber, size: 20),
-        const Icon(Icons.star, color: Colors.amber, size: 20),
-        const Icon(Icons.star, color: Colors.amber, size: 20),
-        const Icon(Icons.star_border, color: Colors.grey, size: 20),
-        const SizedBox(width: 8),
-        const Text('4.0 estrelas'),
+        Expanded(
+          child: OutlinedButton(
+            onPressed: () {},
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: AppColors.amareloUmPoucoEscuro),
+              backgroundColor: Colors.transparent,
+            ),
+            child: const Text('Presencial'),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: OutlinedButton(
+            onPressed: () {},
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: AppColors.amareloUmPoucoEscuro),
+              backgroundColor: Colors.transparent,
+            ),
+            child: const Text('À distância'),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildTempoFiltro() {
+  Widget _buildPrazoFiltro() {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Data inicial:',
+              style: TextStyle(color: AppColors.preto.withOpacity(0.7)),
+            ),
+            Text(
+              '30/10/2025',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: AppColors.preto,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Data final:',
+              style: TextStyle(color: AppColors.preto.withOpacity(0.7)),
+            ),
+            Text(
+              '30/11/2025',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: AppColors.preto,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildValorFiltro() {
     return Column(
       children: [
         Slider(
-          value: 5.0,
-          min: 1,
-          max: 10,
+          value: 50.0,
+          min: 0,
+          max: 100,
           onChanged: (value) {},
           activeColor: AppColors.amareloClaro,
         ),
-        const Text('1-5 Chronos'),
+        const Text('0-100 Chronos'),
       ],
     );
   }
 
   Widget _buildCategoriasFiltro() {
     return DropdownButtonFormField<String>(
-      value: 'Pinturas gerais',
-      items: ['Pinturas gerais', 'Aula de inglês', 'Reparos domésticos', 'Consultoria', 'Design']
+      value: 'Todas',
+      items: ['Todas', 'Pinturas gerais', 'Aula de inglês', 'Reparos domésticos', 'Tecnologia', 'Design', 'Música']
           .map((categoria) {
         return DropdownMenuItem(
           value: categoria,
@@ -588,7 +980,7 @@ class _MeusPedidosState extends State<MeusPedidos> {
         fillColor: AppColors.branco,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.amareloUmPoucoEscuro),
+          borderSide: BorderSide(color: AppColors.amareloUmPoucoEscuro),
         ),
       ),
     );
@@ -597,7 +989,7 @@ class _MeusPedidosState extends State<MeusPedidos> {
   Widget _buildOrdenacaoFiltro() {
     return DropdownButtonFormField<String>(
       value: 'Mais recentes',
-      items: ['Mais recentes', 'Mais antigos', 'Mais Chronos', 'Menos Chronos']
+      items: ['Mais recentes', 'Mais antigos', 'Mais Chronos', 'Menos Chronos', 'Prazo próximo']
           .map((opcao) {
         return DropdownMenuItem(
           value: opcao,
@@ -610,19 +1002,27 @@ class _MeusPedidosState extends State<MeusPedidos> {
         fillColor: AppColors.branco,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.amareloUmPoucoEscuro),
+          borderSide: BorderSide(color: AppColors.amareloUmPoucoEscuro),
         ),
       ),
     );
   }
 
   Widget _buildCheckboxFiltro(String label, bool value) {
-    return CheckboxListTile(
-      title: Text(label),
-      value: value,
-      onChanged: (newValue) {},
-      controlAffinity: ListTileControlAffinity.leading,
-      contentPadding: EdgeInsets.zero,
+    return Row(
+      children: [
+        Checkbox(
+          value: value,
+          onChanged: (newValue) {},
+          activeColor: AppColors.amareloClaro,
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            color: AppColors.preto,
+          ),
+        ),
+      ],
     );
   }
 }
