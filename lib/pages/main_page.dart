@@ -7,10 +7,10 @@ import '../core/constants/app_colors.dart';
 import '../core/services/api_service.dart';
 import '../widgets/backgrounds/background_default_widget.dart';
 import '../widgets/header.dart';
-import '../widgets/service_card.dart';
 import '../widgets/filters_modal.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/wallet_modal.dart';
+import '../widgets/service_card.dart'; // Alterado de card_pedido.dart para service_card.dart
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -25,6 +25,8 @@ class _MainPageState extends State<MainPage> {
   bool _isWalletOpen = false;
 
   List<Service> services = [];
+  List<Service> filteredServices = [];
+
   bool isLoading = true;
   String errorMessage = '';
 
@@ -36,6 +38,7 @@ class _MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
     _fetchServices();
+    _searchController.addListener(_filterServices);
   }
 
   Future<String?> _getToken() async {
@@ -48,6 +51,7 @@ class _MainPageState extends State<MainPage> {
       final String? token = await _getToken();
 
       if (token == null) {
+        if (!mounted) return;
         setState(() {
           isLoading = false;
           errorMessage =
@@ -56,7 +60,8 @@ class _MainPageState extends State<MainPage> {
         return;
       }
 
-      final response = await ApiService.get('/service/get/all', token: token);
+      final response =
+          await ApiService.get('/service/get/all', token: token);
 
       if (response.statusCode == 200) {
         final dynamic responseData = json.decode(response.body);
@@ -64,35 +69,48 @@ class _MainPageState extends State<MainPage> {
 
         if (responseData is Map<String, dynamic>) {
           if (responseData.containsKey('services')) {
-            data = responseData['services'] as List<dynamic>;
+            data = responseData['services'];
           } else if (responseData.containsKey('data')) {
-            data = responseData['data'] as List<dynamic>;
+            data = responseData['data'];
           } else if (responseData.containsKey('content')) {
-            data = responseData['content'] as List<dynamic>;
-          } else {
-            print('Estrutura inesperada: $responseData');
+            data = responseData['content'];
           }
         } else if (responseData is List<dynamic>) {
           data = responseData;
         }
 
+        if (!mounted) return;
         setState(() {
           services = data.map((item) => Service.fromJson(item)).toList();
+          filteredServices = services;
           isLoading = false;
         });
       } else {
+        if (!mounted) return;
         setState(() {
           isLoading = false;
-          errorMessage = "Erro ${response.statusCode} ao carregar os serviços.";
+          errorMessage =
+              "Erro ${response.statusCode} ao carregar os serviços.";
         });
       }
     } catch (error) {
-      print('Erro na requisição: $error');
+      debugPrint('Erro na requisição: $error');
+      if (!mounted) return;
       setState(() {
         isLoading = false;
         errorMessage = "Falha ao carregar os serviços: $error";
       });
     }
+  }
+
+  void _filterServices() {
+    final query = _searchController.text.toLowerCase();
+
+    setState(() {
+      filteredServices = services.where((service) {
+        return service.title.toLowerCase().contains(query);
+      }).toList();
+    });
   }
 
   void _showFiltersModal() {
@@ -117,8 +135,8 @@ class _MainPageState extends State<MainPage> {
 
   void _openWallet() {
     setState(() {
-      _isDrawerOpen = false; // Fecha o side menu
-      _isWalletOpen = true; // Abre a carteira
+      _isDrawerOpen = false;
+      _isWalletOpen = true;
     });
   }
 
@@ -130,257 +148,136 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0B0C0C),
-      body: Stack(
-        children: [
-          // Conteúdo principal
-          Column(
-            children: [
-              Header(
-                onMenuPressed: _toggleDrawer,
-              ),
-              Expanded(
-                child: BackgroundDefaultWidget(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.only(
-                      top: 16,
-                      left: 16,
-                      right: 16,
-                      bottom: 16,
-                    ),
-                    child: Column(
-                      children: [
-                        // Search Bar
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          child: TextField(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0B0C0C),
+        body: Stack(
+          children: [
+            Column(
+              children: [
+                Header(
+                  onMenuPressed: _toggleDrawer,
+                ),
+                Expanded(
+                  child: BackgroundDefaultWidget(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          // Search
+                          TextField(
                             controller: _searchController,
                             decoration: InputDecoration(
-                              hintText: 'Pintura de parede, aula de inglês...',
-                              hintStyle: const TextStyle(
-                                  color: AppColors.textoPlaceholder),
+                              hintText:
+                                  'Pintura de parede, aula de inglês...',
                               filled: true,
-                              fillColor: AppColors.branco,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(20),
                                 borderSide: BorderSide.none,
                               ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              prefixIcon: const Icon(Icons.search,
-                                  color: AppColors.textoPlaceholder),
+                              prefixIcon:
+                                  const Icon(Icons.search),
                             ),
                           ),
-                        ),
 
-                        // Make Request Section
-                        Column(
-                          children: [
-                            const Text(
-                              'As horas acumuladas no seu banco representam oportunidades reais de ação.',
-                              style: TextStyle(
-                                color: AppColors.branco,
-                                fontSize: 16,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: () {
-                                Navigator.pushNamed(
-                                    context, '/request-creation');
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.branco,
-                                foregroundColor: AppColors.preto,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text(
-                                    'Crie um pedido',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Image.asset(
-                                    'assets/img/Plus.png',
-                                    width: 20,
-                                    height: 20,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'ou realize o de alguém',
-                              style: TextStyle(
-                                color: AppColors.branco,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
+                          const SizedBox(height: 24),
 
-                        const SizedBox(height: 24),
-                        Container(
-                          width: double.infinity,
-                          height: 1,
-                          color: AppColors.branco.withOpacity(0.3),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          width: double.infinity,
-                          height: 1,
-                          color: AppColors.branco.withOpacity(0.3),
-                        ),
-                        const SizedBox(height: 24),
-
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
+                          ElevatedButton.icon(
                             onPressed: _showFiltersModal,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.branco,
-                              foregroundColor: AppColors.preto,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            icon: const Icon(Icons.filter_list, size: 20),
-                            label: const Text(
-                              'Filtros',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            icon:
+                                const Icon(Icons.filter_list),
+                            label: const Text('Filtros'),
                           ),
-                        ),
 
-                        const SizedBox(height: 24),
+                          const SizedBox(height: 24),
 
-                        _buildServicesList(),
-                      ],
+                          _buildServicesList(),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-
-          // Menu lateral
-          if (_isDrawerOpen)
-            Positioned(
-              top: kToolbarHeight,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(
-                        onWalletPressed: _openWallet, // Usa a nova função
-                      ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(
-                          color: Colors.transparent,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              ],
             ),
 
-          // Modal da Carteira
-          if (_isWalletOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
+            if (_isDrawerOpen)
+              Positioned(
+                top: kToolbarHeight,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  color: Colors.black54,
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width *
+                            0.6,
+                        child: SideMenu(
+                          onWalletPressed: _openWallet,
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: _toggleDrawer,
+                          child:
+                              const SizedBox(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            if (_isWalletOpen)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black54,
+                  child: Center(
                     child: WalletModal(
-                      onClose: _closeWallet, // Usa a nova função
+                      onClose: _closeWallet,
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildServicesList() {
     if (isLoading) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 40),
-        child: Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.amareloClaro),
-          ),
-        ),
+      return const Center(
+        child: CircularProgressIndicator(),
       );
     }
 
     if (errorMessage.isNotEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40),
-        child: Center(
-          child: Text(
-            errorMessage,
-            style: const TextStyle(
-              color: AppColors.branco,
-              fontSize: 16,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ),
+      return Center(
+        child: Text(errorMessage),
       );
     }
 
-    if (services.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 40),
-        child: Center(
-          child: Text(
-            'Nenhum serviço encontrado.',
-            style: TextStyle(
-              color: AppColors.branco,
-              fontSize: 16,
-            ),
-          ),
-        ),
+    if (filteredServices.isEmpty) {
+      return const Center(
+        child: Text('Nenhum pedido encontrado.'),
       );
     }
 
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: services.length,
+      itemCount: filteredServices.length,
       itemBuilder: (context, index) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          child: ServiceCard(service: services[index]),
+        final service = filteredServices[index];
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: ServiceCard( // Alterado de CardPedido para ServiceCard
+            service: service,
+          ),
         );
       },
     );
