@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../core/constants/app_colors.dart';
-import '../widgets/header.dart';
-import '../widgets/side_menu.dart';
+import '../../core/constants/app_colors.dart';
+import '../../widgets/header.dart';
+import '../../widgets/side_menu.dart';
 
 class MeusPedidos extends StatefulWidget {
   const MeusPedidos({Key? key}) : super(key: key);
