@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
-import 'sell_chronos_controller.dart';
-import 'sell_success_page.dart'; // Importar a nova tela de sucesso
+import 'sell_success_page.dart';
 
 class PixSellPage extends StatefulWidget {
   final int chronosAmount;
@@ -24,14 +22,18 @@ class PixSellPage extends StatefulWidget {
 class _PixSellPageState extends State<PixSellPage> {
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
+  late TextEditingController _pixKeyController;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<SellChronosController>(context, listen: false)
-          .initializeInitialValues();
-    });
+    _pixKeyController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _pixKeyController.dispose();
+    super.dispose();
   }
 
   void _toggleDrawer() {
@@ -152,7 +154,7 @@ class _PixSellPageState extends State<PixSellPage> {
     );
   }
 
-  Widget _buildForm(BuildContext context, SellChronosController controller) {
+  Widget _buildForm(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
@@ -160,6 +162,7 @@ class _PixSellPageState extends State<PixSellPage> {
         borderRadius: BorderRadius.circular(15),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min, // Importante: manter tamanho mínimo
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Center(
@@ -230,7 +233,7 @@ class _PixSellPageState extends State<PixSellPage> {
               ],
             ),
             child: TextField(
-              controller: controller.pixKeyController,
+              controller: _pixKeyController,
               onChanged: (value) {
                 setState(() {});
               },
@@ -269,29 +272,19 @@ class _PixSellPageState extends State<PixSellPage> {
             width: double.infinity,
             height: 46,
             child: ElevatedButton(
-              onPressed: controller.pixKeyController.text.isNotEmpty
+              onPressed: _pixKeyController.text.isNotEmpty
                   ? () {
-                      final pixKey = controller.pixKeyController.text;
+                      final pixKey = _pixKeyController.text;
                       if (_validatePixKey(pixKey)) {
-                        controller.sellChronos(
-                          amount: widget.chronosAmount,
-                          pixKey: pixKey,
-                          onSuccess: () {
-                            // Navegar para tela de sucesso
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => SellSuccessPage(
-                                  chronosAmount: widget.chronosAmount,
-                                  totalAmount: widget.totalAmount,
-                                  pixKey: pixKey,
-                                ),
-                              ),
-                            );
-                          },
-                          onError: (err) {
-                            showErrorDialog(err);
-                          },
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SellSuccessPage(
+                              chronosAmount: widget.chronosAmount,
+                              totalAmount: widget.totalAmount,
+                              pixKey: pixKey,
+                            ),
+                          ),
                         );
                       } else {
                         showErrorDialog('Chave PIX inválida. Verifique os dados informados.');
@@ -375,18 +368,14 @@ class _PixSellPageState extends State<PixSellPage> {
   bool _validatePixKey(String key) {
     if (key.isEmpty) return false;
     
-    // Verificação de e-mail
     final emailRegex = RegExp(r"^[\w-.]+@[\w-]+\.[a-zA-Z]{2,}");
     if (emailRegex.hasMatch(key)) return true;
     
-    // Verificação de CPF (apenas números, 11 dígitos)
     final digitsOnly = key.replaceAll(RegExp(r'[^0-9]'), '');
     if (digitsOnly.length == 11) return true;
     
-    // Verificação de telefone (10-13 dígitos)
     if (digitsOnly.length >= 10 && digitsOnly.length <= 13) return true;
     
-    // Verificação de chave aleatória (UUID-like)
     final randomKey = RegExp(r'^[a-zA-Z0-9_-]{8,64}$');
     if (randomKey.hasMatch(key)) return true;
     
@@ -403,27 +392,21 @@ class _PixSellPageState extends State<PixSellPage> {
           // Background images
           _buildBackgroundImages(),
           
-          // Main content
+          // Main content - BARRA DE PESQUISA NO TOPO, CARD CENTRALIZADO
           Column(
             children: [
-              const SizedBox(height: 16),
+              // Barra de pesquisa no topo
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: _buildSearchBar(),
+              ),
+              
+              // Card centralizado verticalmente no meio da tela
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: [
-                      _buildSearchBar(),
-                      const SizedBox(height: 40),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Consumer<SellChronosController>(
-                            builder: (context, controller, child) {
-                              return _buildForm(context, controller);
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _buildForm(context),
                   ),
                 ),
               ),

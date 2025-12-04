@@ -62,4 +62,22 @@ class ApiService {
       throw Exception('Erro de conexão: $e');
     }
   }
+
+  static Future<http.Response> putWithHeaders(String endpoint, Map<String, String> headers) async {
+    try {
+      final finalHeaders = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        ...headers, // Mescla os headers fornecidos
+      };
+
+      final response = await http.put(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: finalHeaders,
+      );
+      return response;
+    } catch (e) {
+      throw Exception('Erro de conexão: $e');
+    }
+  }
 }

@@ -24,6 +24,43 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
 
+  // Método auxiliar para criar linhas de detalhe
+  Widget _buildDetailRow(String label, String value, IconData icon) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          color: const Color(0xFFC29503),
+          size: 20,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.black.withOpacity(0.7),
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   void _toggleDrawer() {
     setState(() {
       _isDrawerOpen = !_isDrawerOpen;
@@ -115,10 +152,15 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
   }
 
   Widget _buildSuccessContent() {
-    // Cálculo correto da taxa (10% sobre o subtotal)
-    final subtotal = widget.totalAmount / 1.1;
-    final taxa = widget.totalAmount - subtotal;
-
+    // Preço por Chronos (deve ser o mesmo da página de compra)
+    const double CHRONOS_PRICE = 2.50;
+    const double TAX_PERCENTAGE = 0.10; // 10%
+    
+    // Cálculos corretos:
+    final subtotal = widget.chronosAmount * CHRONOS_PRICE; // Quantidade × Preço unitário
+    final taxa = subtotal * TAX_PERCENTAGE; // 10% do subtotal
+    final total = subtotal + taxa; // Este deve ser igual ao widget.totalAmount
+    
     return Container(
       padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
@@ -177,10 +219,34 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Valor pago (CORRIGIDO)
+                // Preço unitário (OPCIONAL - pode remover se não quiser mostrar)
                 _buildDetailRow(
-                  'Valor pago:',
-                  'R\$ ${widget.totalAmount.toStringAsFixed(2)}',
+                  'Preço por Chronos:',
+                  'R\$ ${CHRONOS_PRICE.toStringAsFixed(2)}',
+                  Icons.monetization_on,
+                ),
+                const SizedBox(height: 16),
+                
+                // Subtotal
+                _buildDetailRow(
+                  'Subtotal:',
+                  'R\$ ${subtotal.toStringAsFixed(2)}',
+                  Icons.calculate,
+                ),
+                const SizedBox(height: 16),
+                
+                // Taxa
+                _buildDetailRow(
+                  'Taxa (10%):',
+                  'R\$ ${taxa.toStringAsFixed(2)}',
+                  Icons.percent,
+                ),
+                const SizedBox(height: 16),
+                
+                // Total (CORRIGIDO - usa o cálculo local)
+                _buildDetailRow(
+                  'Total pago:',
+                  'R\$ ${total.toStringAsFixed(2)}',
                   Icons.attach_money,
                 ),
                 const SizedBox(height: 16),
@@ -190,14 +256,6 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
                   'Método de pagamento:',
                   widget.paymentMethod,
                   Icons.payment,
-                ),
-                const SizedBox(height: 16),
-                
-                // Taxa (CORRIGIDO)
-                _buildDetailRow(
-                  'Taxa (10%):',
-                  'R\$ ${taxa.toStringAsFixed(2)}',
-                  Icons.percent,
                 ),
               ],
             ),
@@ -281,42 +339,7 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value, IconData icon) {
-    return Row(
-      children: [
-        Icon(
-          icon,
-          color: const Color(0xFFC29503),
-          size: 20,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: Colors.black.withOpacity(0.7),
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
+  // MÉTODO BUILD QUE ESTAVA FALTANDO
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -330,20 +353,18 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
           // Main content
           Column(
             children: [
-              const SizedBox(height: 16),
+              // Barra de pesquisa no topo
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: _buildSearchBar(),
+              ),
+              
+              // Card centralizado verticalmente no meio da tela
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: [
-                      _buildSearchBar(),
-                      const SizedBox(height: 40),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: _buildSuccessContent(),
-                        ),
-                      ),
-                    ],
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _buildSuccessContent(),
                   ),
                 ),
               ),
