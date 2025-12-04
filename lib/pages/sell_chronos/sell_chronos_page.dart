@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/services/api_service.dart';
 import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
@@ -16,11 +19,12 @@ class SellChronosController extends ChangeNotifier {
   static const String TOOLTIP_TEXT =
       'O valor de venda de Chronos é equivalente a R\$2,00 reais. No final, é aplicada uma taxa de 10% sobre o total.';
 
-  int currentBalance = 299; // saldo atual do usuário (pode ser carregado do backend)
+  int currentBalance = 0; // Inicializa com 0, será carregado do backend
   int sellAmount = 0;
   String pixKey = '';
   String errorMessage = '';
   bool isLoading = false;
+  bool isLoadingBalance = true; // Novo estado para carregamento do saldo
   
   // Controllers
   late TextEditingController amountController;
@@ -29,6 +33,7 @@ class SellChronosController extends ChangeNotifier {
   SellChronosController() {
     amountController = TextEditingController();
     pixKeyController = TextEditingController();
+    _loadCurrentBalance(); // Carrega saldo ao criar controller
   }
   
   @override
@@ -36,6 +41,64 @@ class SellChronosController extends ChangeNotifier {
     amountController.dispose();
     pixKeyController.dispose();
     super.dispose();
+  }
+  
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('auth_token');
+  }
+
+  /// Carrega o saldo atual do usuário do backend
+  Future<void> _loadCurrentBalance() async {
+    try {
+      final String? token = await _getToken();
+
+      if (token == null) {
+        _updateState(() {
+          isLoadingBalance = false;
+          currentBalance = 0;
+        });
+        return;
+      }
+
+      final response = await ApiService.get('/user/get', token: token);
+
+      if (response.statusCode == 200) {
+        final userData = _parseResponse(response.body);
+        _updateState(() {
+          currentBalance = userData['timeChronos'] ?? 0;
+          isLoadingBalance = false;
+        });
+      } else {
+        _updateState(() {
+          isLoadingBalance = false;
+          currentBalance = 0;
+        });
+      }
+    } catch (error) {
+      _updateState(() {
+        isLoadingBalance = false;
+        currentBalance = 0;
+      });
+    }
+  }
+
+  Map<String, dynamic> _parseResponse(String responseBody) {
+    try {
+      final jsonData = json.decode(responseBody);
+      if (jsonData is Map<String, dynamic>) {
+        final chronos = jsonData['timeChronos'] ?? 0;
+        return {'timeChronos': chronos};
+      }
+      return {'timeChronos': 0};
+    } catch (e) {
+      return {'timeChronos': 0};
+    }
+  }
+
+  void _updateState(void Function() callback) {
+    callback();
+    notifyListeners();
   }
   
   void initializeInitialValues() {
@@ -60,7 +123,7 @@ class SellChronosController extends ChangeNotifier {
       chronosAfterSale >= MIN_CHRONOS_KEEP;
   
   bool get isPixValid => true; // PIX será validado em outra tela
-  bool get canProceed => isAmountValid && !isLoading;
+  bool get canProceed => isAmountValid && !isLoading && !isLoadingBalance;
   
   void updateSellAmount(String value) {
     errorMessage = '';
@@ -105,12 +168,12 @@ class SellChronosController extends ChangeNotifier {
     notifyListeners();
   }
   
-  void sellChronos({
+  Future<void> sellChronos({
     required int amount,
     required String pixKey,
     required Function onSuccess,
     required Function(String) onError,
-  }) {
+  }) async {
     if (amount <= 0) {
       onError('Quantidade inválida');
       return;
@@ -134,7 +197,14 @@ class SellChronosController extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
     
-    Future.delayed(const Duration(milliseconds: 900), () {
+    try {
+      // TODO: Integrar com backend real
+      // await _sellChronosBackend(amount, pixKey);
+      
+      // Simulação temporária
+      await Future.delayed(const Duration(milliseconds: 900));
+      
+      // Atualiza saldo local após sucesso
       currentBalance = chronosAfterSale;
       sellAmount = 0;
       pixKey = '';
@@ -143,7 +213,11 @@ class SellChronosController extends ChangeNotifier {
       isLoading = false;
       notifyListeners();
       onSuccess();
-    });
+    } catch (e) {
+      isLoading = false;
+      notifyListeners();
+      onError('Erro ao processar venda: ${e.toString()}');
+    }
   }
 
   bool _validatePixBasic(String key) {
@@ -163,225 +237,6 @@ class SellChronosController extends ChangeNotifier {
 
     return false;
   }
-
-  /// Processa a venda (simulado)
-  Future<void> processSale(BuildContext context) async {
-    if (!canProceed) return;
-    isLoading = true;
-    notifyListeners();
-
-    try {
-      // Simular chamada HTTPS de confirmação da chave PIX e processamento
-      await Future.delayed(const Duration(milliseconds: 900));
-
-      // Atualiza saldo local
-      currentBalance = chronosAfterSale;
-      sellAmount = 0;
-      pixKey = '';
-
-      isLoading = false;
-      notifyListeners();
-
-      // Mostrar confirmação
-      _showSuccessDialog(context);
-    } catch (e) {
-      errorMessage = 'Erro ao processar venda: $e';
-      isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  void cancelSale() {
-    sellAmount = 0;
-    pixKey = '';
-    errorMessage = '';
-    notifyListeners();
-  }
-
-  void _showSuccessDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFFFFC300), width: 2),
-        ),
-        title: const Text(
-          '✓ Venda realizada com sucesso!',
-          style: TextStyle(
-            color: Color(0xFFFFC300),
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Novo saldo: 🕰️ $currentBalance Chronos',
-              style: const TextStyle(
-                color: Color(0xFFE9EAEC),
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Você será redirecionado em 3 segundos...',
-              style: TextStyle(
-                color: const Color(0xFFE9EAEC).withOpacity(0.7),
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'Fechar',
-              style: TextStyle(color: Color(0xFFFFC300)),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    Future.delayed(const Duration(seconds: 3), () {
-      if (context.mounted) Navigator.of(context).pop();
-    });
-  }
-}
-
-class SellChronosPageStyle {
-  static const Color darkBg = Color(0xFF0B0C0C);
-  static const Color darkCard = Color(0xFF1A1A1A);
-  static const Color accentYellow = Color(0xFFFFC300);
-  static const Color textPrimary = Color(0xFFE9EAEC);
-  static const Color textSecondary = Color(0xFFB5BFAE);
-  static const Color borderGray = Color(0xFF2A2A2A);
-  static const Color errorRed = Color(0xFFFF6B6B);
-
-  static BoxDecoration cardDecoration() => BoxDecoration(
-        color: darkCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderGray, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      );
-
-  static InputDecoration inputDecoration({
-    required String label,
-    required String hint,
-    bool hasError = false,
-  }) =>
-      InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(
-          color: accentYellow,
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
-        hintText: hint,
-        hintStyle: TextStyle(
-          color: textSecondary.withOpacity(0.6),
-          fontSize: 14,
-        ),
-        filled: true,
-        fillColor: borderGray.withOpacity(0.2),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-            color: hasError ? errorRed : borderGray,
-            width: 1.5,
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-            color: hasError ? errorRed : borderGray,
-            width: 1.5,
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(
-            color: accentYellow,
-            width: 2,
-          ),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      );
-
-  static const TextStyle headerTitle = TextStyle(
-    color: textPrimary,
-    fontSize: 20,
-    fontWeight: FontWeight.bold,
-    fontFamily: 'Roboto',
-  );
-
-  static const TextStyle calculationLabel = TextStyle(
-    color: textSecondary,
-    fontSize: 13,
-    fontWeight: FontWeight.w500,
-    fontFamily: 'Roboto',
-  );
-
-  static const TextStyle calculationValue = TextStyle(
-    color: textPrimary,
-    fontSize: 14,
-    fontWeight: FontWeight.w600,
-    fontFamily: 'Roboto',
-  );
-
-  static const TextStyle calculationTax = TextStyle(
-    color: accentYellow,
-    fontSize: 14,
-    fontWeight: FontWeight.w600,
-    fontFamily: 'Roboto',
-  );
-
-  static ButtonStyle cancelButtonStyle() => ElevatedButton.styleFrom(
-        backgroundColor: borderGray.withOpacity(0.5),
-        foregroundColor: textPrimary,
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: BorderSide(color: borderGray, width: 1),
-        ),
-      );
-
-  static ButtonStyle sellButtonStyle({required bool enabled}) =>
-      ElevatedButton.styleFrom(
-        backgroundColor: enabled ? accentYellow : accentYellow.withOpacity(0.3),
-        foregroundColor: enabled ? darkBg : textSecondary.withOpacity(0.5),
-        elevation: enabled ? 4 : 0,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      );
-
-  static const TextStyle errorText = TextStyle(
-    color: errorRed,
-    fontSize: 12,
-    fontWeight: FontWeight.w500,
-    fontFamily: 'Roboto',
-  );
-
-  static const double paddingMedium = 16.0;
-  static const double gapSmall = 8.0;
-  static const double gapMedium = 12.0;
-  static const double gapLarge = 16.0;
 }
 
 class SellChronosPage extends StatefulWidget {
@@ -529,9 +384,9 @@ class _SellChronosPageState extends State<SellChronosPage> {
     );
   }
 
-  Widget _buildForm(BuildContext context, SellChronosController controller) {
+  Widget _buildForm(BuildContext context) {
     return ListenableBuilder(
-      listenable: controller,
+      listenable: _controller,
       builder: (context, child) {
         return Container(
           padding: const EdgeInsets.all(25),
@@ -567,13 +422,23 @@ class _SellChronosPageState extends State<SellChronosPage> {
                   const SizedBox(width: 8),
                   Image.asset('assets/img/Coin.png', width: 18, height: 18),
                   const SizedBox(width: 6),
-                  Text(
-                    '${controller.currentBalance}',
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
+                  if (_controller.isLoadingBalance)
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                      ),
+                    )
+                  else
+                    Text(
+                      '${_controller.currentBalance}',
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
                 ],
               ),
               const SizedBox(height: 15),
@@ -593,12 +458,13 @@ class _SellChronosPageState extends State<SellChronosPage> {
                   ],
                 ),
                 child: TextField(
-                  controller: controller.amountController,
-                  onChanged: controller.updateSellAmount,
+                  controller: _controller.amountController,
+                  onChanged: _controller.isLoadingBalance ? null : _controller.updateSellAmount,
+                  enabled: !_controller.isLoadingBalance,
                   keyboardType: TextInputType.number,
                   style: const TextStyle(color: Colors.black),
                   decoration: InputDecoration(
-                    hintText: 'Quantidade de venda',
+                    hintText: _controller.isLoadingBalance ? 'Carregando saldo...' : 'Quantidade de venda',
                     hintStyle: TextStyle(
                       color: Colors.black.withOpacity(0.7),
                     ),
@@ -615,10 +481,10 @@ class _SellChronosPageState extends State<SellChronosPage> {
               ),
               
               // Mensagem de erro
-              if (controller.errorMessage.isNotEmpty) ...{
+              if (_controller.errorMessage.isNotEmpty) ...{
                 const SizedBox(height: 8),
                 Text(
-                  controller.errorMessage,
+                  _controller.errorMessage,
                   style: const TextStyle(
                     color: Colors.red,
                     fontSize: 12,
@@ -639,9 +505,9 @@ class _SellChronosPageState extends State<SellChronosPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _labelValueRow('Subtotal', 'R\$ ${controller.subtotal.toStringAsFixed(2)}'),
+                    _labelValueRow('Subtotal', 'R\$ ${_controller.subtotal.toStringAsFixed(2)}'),
                     const SizedBox(height: 8),
-                    _labelValueRow('Taxa (10%)', 'R\$ ${controller.taxAmount.toStringAsFixed(2)}'),
+                    _labelValueRow('Taxa (10%)', 'R\$ ${_controller.taxAmount.toStringAsFixed(2)}'),
                     const SizedBox(height: 10),
                     Divider(color: Colors.grey.withOpacity(0.5)),
                     const SizedBox(height: 10),
@@ -692,7 +558,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
                           ],
                         ),
                         Text(
-                          'R\$ ${controller.totalAmount.toStringAsFixed(2)}', 
+                          'R\$ ${_controller.totalAmount.toStringAsFixed(2)}', 
                           style: TextStyle(
                             color: const Color(0xFFC29503), 
                             fontWeight: FontWeight.bold
@@ -713,9 +579,9 @@ class _SellChronosPageState extends State<SellChronosPage> {
                   Image.asset('assets/img/Coin.png', width: 18, height: 18),
                   const SizedBox(width: 6),
                   Text(
-                    '${controller.chronosAfterSale}',
+                    '${_controller.chronosAfterSale}',
                     style: TextStyle(
-                      color: controller.chronosAfterSale < SellChronosController.MIN_CHRONOS_KEEP ? Colors.red : Colors.black,
+                      color: _controller.chronosAfterSale < SellChronosController.MIN_CHRONOS_KEEP ? Colors.red : Colors.black,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -723,7 +589,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
               ),
               
               // Mensagem informativa sobre o mínimo
-              if (controller.chronosAfterSale >= 0) ...{
+              if (_controller.chronosAfterSale >= 0) ...{
                 const SizedBox(height: 8),
                 Text(
                   'Você deve manter pelo menos ${SellChronosController.MIN_CHRONOS_KEEP} Chronos em sua carteira.',
@@ -752,7 +618,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
                       ),
                       child: TextButton(
                         onPressed: () {
-                          controller.reset();
+                          Navigator.pop(context); // Volta para página anterior
                         },
                         child: const Text(
                           'Cancelar',
@@ -769,21 +635,21 @@ class _SellChronosPageState extends State<SellChronosPage> {
                     child: Container(
                       height: 46,
                       decoration: BoxDecoration(
-                        color: controller.canProceed 
+                        color: _controller.canProceed 
                             ? const Color(0xFFC29503)
                             : Colors.grey,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: TextButton(
-                        onPressed: controller.canProceed
+                        onPressed: _controller.canProceed
                             ? () {
-                                int amount = int.tryParse(controller.amountController.text) ?? 0;
+                                int amount = int.tryParse(_controller.amountController.text) ?? 0;
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => PixSellPage(
                                       chronosAmount: amount,
-                                      totalAmount: controller.totalAmount,
+                                      totalAmount: _controller.totalAmount,
                                     ),
                                   ),
                                 );
@@ -792,7 +658,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
                         child: Text(
                           'Continuar',
                           style: TextStyle(
-                            color: controller.canProceed 
+                            color: _controller.canProceed 
                                 ? const Color(0xFFE9EAEC)
                                 : Colors.white70,
                             fontWeight: FontWeight.bold,
@@ -844,7 +710,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
                 child: Center(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _buildForm(context, _controller),
+                    child: _buildForm(context),
                   ),
                 ),
               ),

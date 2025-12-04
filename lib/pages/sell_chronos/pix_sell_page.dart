@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/services/api_service.dart';
 import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
@@ -23,6 +26,7 @@ class _PixSellPageState extends State<PixSellPage> {
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
   late TextEditingController _pixKeyController;
+  bool _isProcessing = false;
 
   @override
   void initState() {
@@ -34,6 +38,44 @@ class _PixSellPageState extends State<PixSellPage> {
   void dispose() {
     _pixKeyController.dispose();
     super.dispose();
+  }
+
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('auth_token');
+  }
+
+  /// Faz a requisição PUT para vender Chronos
+  Future<void> _sellChronosBackend(int amount, String pixKey) async {
+    final String? token = await _getToken();
+    
+    if (token == null) {
+      throw Exception('Token de autenticação não encontrado');
+    }
+
+    try {
+      final response = await ApiService.put(
+        '/user/put/sell-chronos',
+        {
+          'Chronos': amount.toString(),
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        token: token,
+      );
+
+      if (response.statusCode != 200) {
+        try {
+          final errorData = json.decode(response.body);
+          final errorMessage = errorData['message'] ?? 'Erro ao processar venda';
+          throw Exception(errorMessage);
+        } catch (e) {
+          throw Exception('Erro ${response.statusCode}: ${response.body}');
+        }
+      }
+    } catch (error) {
+      rethrow;
+    }
   }
 
   void _toggleDrawer() {
@@ -162,7 +204,7 @@ class _PixSellPageState extends State<PixSellPage> {
         borderRadius: BorderRadius.circular(15),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min, // Importante: manter tamanho mínimo
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Center(
@@ -237,10 +279,11 @@ class _PixSellPageState extends State<PixSellPage> {
               onChanged: (value) {
                 setState(() {});
               },
+              enabled: !_isProcessing,
               keyboardType: TextInputType.text,
               style: const TextStyle(color: Colors.black),
               decoration: InputDecoration(
-                hintText: 'Digite sua chave PIX (CPF, e-mail, telefone, chave aleatória)',
+                hintText: _isProcessing ? 'Processando venda...' : 'Digite sua chave PIX (CPF, e-mail, telefone, chave aleatória)',
                 hintStyle: TextStyle(
                   color: Colors.black.withOpacity(0.7),
                   fontSize: 12,
@@ -272,39 +315,65 @@ class _PixSellPageState extends State<PixSellPage> {
             width: double.infinity,
             height: 46,
             child: ElevatedButton(
-              onPressed: _pixKeyController.text.isNotEmpty
-                  ? () {
+              onPressed: _isProcessing || _pixKeyController.text.isEmpty
+                  ? null
+                  : () async {
                       final pixKey = _pixKeyController.text;
                       if (_validatePixKey(pixKey)) {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => SellSuccessPage(
-                              chronosAmount: widget.chronosAmount,
-                              totalAmount: widget.totalAmount,
-                              pixKey: pixKey,
+                        setState(() {
+                          _isProcessing = true;
+                        });
+                        
+                        try {
+                          // Faz a requisição para o backend
+                          await _sellChronosBackend(widget.chronosAmount, pixKey);
+                          
+                          // Se der sucesso, navega para a página de sucesso
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SellSuccessPage(
+                                chronosAmount: widget.chronosAmount,
+                                totalAmount: widget.totalAmount,
+                                pixKey: pixKey,
+                              ),
                             ),
-                          ),
-                        );
+                          );
+                        } catch (e) {
+                          setState(() {
+                            _isProcessing = false;
+                          });
+                          showErrorDialog('Erro ao processar venda: ${e.toString()}');
+                        }
                       } else {
                         showErrorDialog('Chave PIX inválida. Verifique os dados informados.');
                       }
-                    }
-                  : null,
+                    },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFC29503),
+                backgroundColor: _isProcessing || _pixKeyController.text.isEmpty
+                    ? Colors.grey
+                    : const Color(0xFFC29503),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text(
-                'Finalizar Venda',
-                style: TextStyle(
-                  color: Color(0xFFE9EAEC),
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              child: _isProcessing
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFE9EAEC)),
+                      ),
+                    )
+                  : const Text(
+                      'Finalizar Venda',
+                      style: TextStyle(
+                        color: Color(0xFFE9EAEC),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
             ),
           ),
 
@@ -315,7 +384,7 @@ class _PixSellPageState extends State<PixSellPage> {
             width: double.infinity,
             height: 46,
             child: OutlinedButton(
-              onPressed: () {
+              onPressed: _isProcessing ? null : () {
                 Navigator.pop(context);
               },
               style: OutlinedButton.styleFrom(
