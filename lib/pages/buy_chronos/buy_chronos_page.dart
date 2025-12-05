@@ -273,7 +273,7 @@ class BuyChronosPageStyle {
   static const String hexagonPattern = 'assets/patterns/hexagon-pattern.svg';
 
   // ========== HEADER STYLES ==========
-  static BoxDecoration headerDecoration() => BoxDecoration(
+  static BoxDecoration headerDecoration() => const BoxDecoration(
     color: darkCard,
     border: Border(
       bottom: BorderSide(color: borderGray, width: 1),
@@ -309,11 +309,11 @@ class BuyChronosPageStyle {
     fillColor: borderGray.withOpacity(0.3),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: borderGray, width: 1),
+      borderSide: const BorderSide(color: borderGray, width: 1),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: borderGray, width: 1),
+      borderSide: const BorderSide(color: borderGray, width: 1),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
@@ -430,7 +430,7 @@ class BuyChronosPageStyle {
     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(10),
-      side: BorderSide(color: borderGray, width: 1),
+      side: const BorderSide(color: borderGray, width: 1),
     ),
   );
 
@@ -480,7 +480,7 @@ class BuyChronosPageStyle {
 }
 
 class BuyChronosPage extends StatefulWidget {
-  const BuyChronosPage({Key? key}) : super(key: key);
+  const BuyChronosPage({super.key});
 
   @override
   State<BuyChronosPage> createState() => _BuyChronosPageState();
@@ -524,18 +524,18 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: AppColors.preto,
-          title: Text(
+          title: const Text(
             'Erro',
             style: TextStyle(color: AppColors.branco),
           ),
           content: Text(
             message,
-            style: TextStyle(color: AppColors.branco),
+            style: const TextStyle(color: AppColors.branco),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
+              child: const Text(
                 'OK',
                 style: TextStyle(color: AppColors.amareloClaro),
               ),
@@ -653,7 +653,7 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
               Image.asset('assets/img/Coin.png', width: 18, height: 18),
               const SizedBox(width: 6),
               if (controller.isLoadingBalance)
-                SizedBox(
+                const SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
@@ -756,7 +756,7 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
                     // Texto "Total" com tooltip
                     Row(
                       children: [
-                        Text(
+                        const Text(
                           'Total', 
                           style: TextStyle(
                             color: Colors.black, 
@@ -798,8 +798,8 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
                     ),
                     Text(
                       'R\$ ${controller.totalAmount.toStringAsFixed(2)}', 
-                      style: TextStyle(
-                        color: const Color(0xFFC29503), 
+                      style: const TextStyle(
+                        color: Color(0xFFC29503), 
                         fontWeight: FontWeight.bold
                       ),
                     ),
@@ -916,7 +916,7 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: TextStyle(color: Colors.black.withOpacity(0.7))),
-        Text(value, style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        Text(value, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
       ],
     );
   }

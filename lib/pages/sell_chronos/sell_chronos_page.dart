@@ -240,7 +240,7 @@ class SellChronosController extends ChangeNotifier {
 }
 
 class SellChronosPage extends StatefulWidget {
-  const SellChronosPage({Key? key}) : super(key: key);
+  const SellChronosPage({super.key});
 
   @override
   State<SellChronosPage> createState() => _SellChronosPageState();
@@ -291,18 +291,18 @@ class _SellChronosPageState extends State<SellChronosPage> {
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: AppColors.preto,
-          title: Text(
+          title: const Text(
             'Erro',
             style: TextStyle(color: AppColors.branco),
           ),
           content: Text(
             message,
-            style: TextStyle(color: AppColors.branco),
+            style: const TextStyle(color: AppColors.branco),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
+              child: const Text(
                 'OK',
                 style: TextStyle(color: AppColors.amareloClaro),
               ),
@@ -423,7 +423,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
                   Image.asset('assets/img/Coin.png', width: 18, height: 18),
                   const SizedBox(width: 6),
                   if (_controller.isLoadingBalance)
-                    SizedBox(
+                    const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
@@ -517,7 +517,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
                         // Texto "Total a receber" com tooltip
                         Row(
                           children: [
-                            Text(
+                            const Text(
                               'Total a receber', 
                               style: TextStyle(
                                 color: Colors.black, 
@@ -559,8 +559,8 @@ class _SellChronosPageState extends State<SellChronosPage> {
                         ),
                         Text(
                           'R\$ ${_controller.totalAmount.toStringAsFixed(2)}', 
-                          style: TextStyle(
-                            color: const Color(0xFFC29503), 
+                          style: const TextStyle(
+                            color: Color(0xFFC29503), 
                             fontWeight: FontWeight.bold
                           ),
                         ),
@@ -681,7 +681,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: TextStyle(color: Colors.black.withOpacity(0.7))),
-        Text(value, style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        Text(value, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
       ],
     );
   }

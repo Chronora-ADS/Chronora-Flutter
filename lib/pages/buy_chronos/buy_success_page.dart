@@ -10,11 +10,11 @@ class BuySuccessPage extends StatefulWidget {
   final String paymentMethod;
 
   const BuySuccessPage({
-    Key? key,
+    super.key,
     required this.chronosAmount,
     required this.totalAmount,
     required this.paymentMethod,
-  }) : super(key: key);
+  });
 
   @override
   State<BuySuccessPage> createState() => _BuySuccessPageState();
@@ -153,12 +153,12 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
 
   Widget _buildSuccessContent() {
     // Preço por Chronos (deve ser o mesmo da página de compra)
-    const double CHRONOS_PRICE = 2.50;
-    const double TAX_PERCENTAGE = 0.10; // 10%
+    const double chronosPrice = 2.50;
+    const double taxPercentage = 0.10; // 10%
     
     // Cálculos corretos:
-    final subtotal = widget.chronosAmount * CHRONOS_PRICE; // Quantidade × Preço unitário
-    final taxa = subtotal * TAX_PERCENTAGE; // 10% do subtotal
+    final subtotal = widget.chronosAmount * chronosPrice; // Quantidade × Preço unitário
+    final taxa = subtotal * taxPercentage; // 10% do subtotal
     final total = subtotal + taxa; // Este deve ser igual ao widget.totalAmount
     
     return Container(
@@ -174,8 +174,8 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
           Container(
             width: 80,
             height: 80,
-            decoration: BoxDecoration(
-              color: const Color(0xFF4CAF50),
+            decoration: const BoxDecoration(
+              color: Color(0xFF4CAF50),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -222,7 +222,7 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
                 // Preço unitário (OPCIONAL - pode remover se não quiser mostrar)
                 _buildDetailRow(
                   'Preço por Chronos:',
-                  'R\$ ${CHRONOS_PRICE.toStringAsFixed(2)}',
+                  'R\$ ${chronosPrice.toStringAsFixed(2)}',
                   Icons.monetization_on,
                 ),
                 const SizedBox(height: 16),

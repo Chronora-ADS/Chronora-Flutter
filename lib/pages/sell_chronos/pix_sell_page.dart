@@ -13,10 +13,10 @@ class PixSellPage extends StatefulWidget {
   final double totalAmount;
 
   const PixSellPage({
-    Key? key,
+    super.key,
     required this.chronosAmount,
     required this.totalAmount,
-  }) : super(key: key);
+  });
 
   @override
   State<PixSellPage> createState() => _PixSellPageState();
@@ -54,14 +54,13 @@ class _PixSellPageState extends State<PixSellPage> {
     }
 
     try {
-      final response = await ApiService.put(
+      final response = await ApiService.putWithHeaders(
         '/user/put/sell-chronos',
         {
           'Chronos': amount.toString(),
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        token: token,
       );
 
       if (response.statusCode != 200) {
@@ -103,18 +102,18 @@ class _PixSellPageState extends State<PixSellPage> {
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: AppColors.preto,
-          title: Text(
+          title: const Text(
             'Erro',
             style: TextStyle(color: AppColors.branco),
           ),
           content: Text(
             message,
-            style: TextStyle(color: AppColors.branco),
+            style: const TextStyle(color: AppColors.branco),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
+              child: const Text(
                 'OK',
                 style: TextStyle(color: AppColors.amareloClaro),
               ),

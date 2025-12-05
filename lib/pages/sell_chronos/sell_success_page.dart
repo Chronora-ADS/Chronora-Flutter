@@ -10,11 +10,11 @@ class SellSuccessPage extends StatefulWidget {
   final String pixKey;
 
   const SellSuccessPage({
-    Key? key,
+    super.key,
     required this.chronosAmount,
     required this.totalAmount,
     required this.pixKey,
-  }) : super(key: key);
+  });
 
   @override
   State<SellSuccessPage> createState() => _SellSuccessPageState();
@@ -128,8 +128,8 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
           Container(
             width: 80,
             height: 80,
-            decoration: BoxDecoration(
-              color: const Color(0xFF4CAF50),
+            decoration: const BoxDecoration(
+              color: Color(0xFF4CAF50),
               shape: BoxShape.circle,
             ),
             child: const Icon(
