@@ -1,6 +1,8 @@
 import 'package:chronora/pages/auth/account_creation_page.dart';
 import 'package:chronora/pages/auth/login_page.dart';
 import 'package:chronora/pages/main_page.dart';
+import 'package:chronora/pages/buy_chronos/buy_chronos_page.dart';
+import 'package:chronora/pages/sell_chronos/sell_chronos_page.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_creation.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_edit.dart';
 import 'package:flutter/material.dart';
@@ -19,10 +21,10 @@ class AppRoutes {
       login: (context) => const LoginPage(),
       accountCreation: (context) => const AccountCreationPage(),
       main: (context) => const MainPage(),
+      buyChronos: (context) => const BuyChronosPage(),
+      sellChronos: (context) => const SellChronosPage(),
       requestCreation: (context) => const RequestCreationPage(),
       requestEditing: (context) => const RequestEditingPage(),
-      // buyChronos: (context) => const BuyChronosPage(),
-      // sellChronos: (context) => const SellChronosPage(),
     };
   }
 }
