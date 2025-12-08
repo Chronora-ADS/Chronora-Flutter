@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:core';
-import 'package:chronora/core/models/service_model.dart';
+import 'package:chronora/core/models/main_page_requests_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 
@@ -191,9 +191,16 @@ class _MainPageState extends State<MainPage> {
                             ),
                             const SizedBox(height: 16),
                             ElevatedButton(
-                              onPressed: () {
-                                Navigator.pushNamed(
-                                    context, '/request-creation');
+                              onPressed: () async {
+                                final result = await Navigator.pushNamed(
+                                  context, 
+                                  '/request-creation'
+                                );
+                                
+                                // Se retornou true, atualiza os serviços
+                                if (result == true) {
+                                  await _fetchServices();
+                                }
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.branco,
@@ -232,16 +239,22 @@ class _MainPageState extends State<MainPage> {
                         ),
 
                         const SizedBox(height: 24),
-                        Container(
-                          width: double.infinity,
-                          height: 1,
-                          color: AppColors.branco.withOpacity(0.3),
+                        Align(
+                            alignment: Alignment.center,
+                            child: Container(
+                                width: MediaQuery.of(context).size.width * 0.8,
+                                height: 3,
+                                color: AppColors.branco,
+                            ),
                         ),
                         const SizedBox(height: 8),
-                        Container(
-                          width: double.infinity,
-                          height: 1,
-                          color: AppColors.branco.withOpacity(0.3),
+                        Align(
+                            alignment: Alignment.center,
+                            child: Container(
+                                width: MediaQuery.of(context).size.width * 0.5,
+                                height: 3,
+                                color: AppColors.branco,
+                            ),
                         ),
                         const SizedBox(height: 24),
 
@@ -385,7 +398,28 @@ class _MainPageState extends State<MainPage> {
       itemBuilder: (context, index) {
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
-          child: ServiceCard(service: services[index]),
+          child: ServiceCard(
+            service: services[index],
+            onEdit: () async {
+              // Navega para a página de edição com o serviço
+              final result = await Navigator.pushNamed(
+                context,
+                '/request-editing',
+                arguments: services[index],
+              );
+              
+              // Se retornou true, atualiza os serviços
+              if (result == true) {
+                await _fetchServices();
+              }
+            },
+            onCardEdited: (edited) async {
+              // Quando o card é editado pelo clique direto
+              if (edited) {
+                await _fetchServices();
+              }
+            },
+          ),
         );
       },
     );

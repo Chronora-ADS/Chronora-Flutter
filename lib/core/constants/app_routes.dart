@@ -2,6 +2,10 @@ import 'package:chronora/pages/auth/account_creation_page.dart';
 import 'package:chronora/pages/auth/login_page.dart';
 import 'package:chronora/pages/main_page.dart';
 import 'package:chronora/pages/profile_page.dart';
+import 'package:chronora/pages/buy_chronos/buy_chronos_page.dart';
+import 'package:chronora/pages/sell_chronos/sell_chronos_page.dart';
+import 'package:chronora/pages/requests/request-creator-editor/request_creation.dart';
+import 'package:chronora/pages/requests/request-creator-editor/request_edit.dart';
 import 'package:flutter/material.dart';
 
 class AppRoutes {
@@ -9,6 +13,10 @@ class AppRoutes {
   static const String accountCreation = '/account-creation';
   static const String main = '/main';
   static const String profile = '/profile';
+  static const String requestCreation = '/request-creation';
+  static const String requestEditing = '/request-editing';
+  static const String buyChronos = '/buy-chronos';
+  static const String sellChronos = '/sell-chronos';
 
   static Map<String, WidgetBuilder> get routes {
     return {
@@ -16,6 +24,10 @@ class AppRoutes {
       accountCreation: (context) => const AccountCreationPage(),
       main: (context) => const MainPage(),
       profile: (context) => const ProfilePage(),
+      buyChronos: (context) => const BuyChronosPage(),
+      sellChronos: (context) => const SellChronosPage(),
+      requestCreation: (context) => const RequestCreationPage(),
+      requestEditing: (context) => const RequestEditingPage(),
     };
   }
 }

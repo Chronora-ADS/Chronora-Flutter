@@ -1,6 +1,6 @@
 // services/api_service.dart
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:http/http.dart' as http; //
 
 class ApiService {
   // static const String baseUrl = 'https://chronora-java.onrender.com';
@@ -87,6 +87,23 @@ class ApiService {
       final response = await http.delete(
         Uri.parse('$baseUrl$endpoint'),
         headers: headers,
+      );
+      return response;
+    } catch (e) {
+      throw Exception('Erro de conexão: $e');
+    }
+  }
+  static Future<http.Response> putWithHeaders(String endpoint, Map<String, String> headers) async {
+    try {
+      final finalHeaders = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        ...headers, // Mescla os headers fornecidos
+      };
+
+      final response = await http.put(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: finalHeaders,
       );
       return response;
     } catch (e) {
