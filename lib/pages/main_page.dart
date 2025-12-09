@@ -25,6 +25,7 @@ class _MainPageState extends State<MainPage> {
   bool _isWalletOpen = false;
 
   List<Service> services = [];
+  List<Service> filteredServices = [];
   bool isLoading = true;
   String errorMessage = '';
 
@@ -78,6 +79,8 @@ class _MainPageState extends State<MainPage> {
 
         setState(() {
           services = data.map((item) => Service.fromJson(item)).toList();
+          // Atualiza a lista filtrada também
+          filteredServices = services;
           isLoading = false;
         });
       } else {
@@ -91,6 +94,32 @@ class _MainPageState extends State<MainPage> {
       setState(() {
         isLoading = false;
         errorMessage = "Falha ao carregar os serviços: $error";
+      });
+    }
+  }
+
+  void _filterServices() {
+    final query = _searchController.text.toLowerCase().trim();
+
+    if (query.isEmpty) {
+      setState(() {
+        filteredServices = services;
+      });
+    } else {
+      setState(() {
+        filteredServices = services.where((service) {
+          // Filtra pelo título
+          final titleMatch = service.title.toLowerCase().contains(query);
+          // Filtra pela descrição
+          final descriptionMatch = service.description.toLowerCase().contains(query);
+          // Filtra pela modalidade
+          final modalityMatch = service.modality.toLowerCase().contains(query);
+          // Filtra pelas categorias
+          final categoryMatch = service.categoryEntities.any((category) =>
+            category.name.toLowerCase().contains(query));
+
+          return titleMatch || descriptionMatch || modalityMatch || categoryMatch;
+        }).toList();
       });
     }
   }
@@ -156,6 +185,7 @@ class _MainPageState extends State<MainPage> {
                           margin: const EdgeInsets.only(bottom: 16),
                           child: TextField(
                             controller: _searchController,
+                            onSubmitted: (_) => _filterServices(),
                             decoration: InputDecoration(
                               hintText: 'Pintura de parede, aula de inglês...',
                               hintStyle: const TextStyle(
@@ -189,10 +219,10 @@ class _MainPageState extends State<MainPage> {
                             ElevatedButton(
                               onPressed: () async {
                                 final result = await Navigator.pushNamed(
-                                  context, 
+                                  context,
                                   '/request-creation'
                                 );
-                                
+
                                 // Se retornou true, atualiza os serviços
                                 if (result == true) {
                                   await _fetchServices();
@@ -371,7 +401,8 @@ class _MainPageState extends State<MainPage> {
       );
     }
 
-    if (services.isEmpty) {
+    // Usar a lista filtrada em vez da lista completa
+    if (filteredServices.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 40),
         child: Center(
@@ -389,20 +420,20 @@ class _MainPageState extends State<MainPage> {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: services.length,
+      itemCount: filteredServices.length,
       itemBuilder: (context, index) {
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           child: ServiceCard(
-            service: services[index],
+            service: filteredServices[index],
             onEdit: () async {
               // Navega para a página de edição com o serviço
               final result = await Navigator.pushNamed(
                 context,
                 '/request-editing',
-                arguments: services[index],
+                arguments: filteredServices[index],
               );
-              
+
               // Se retornou true, atualiza os serviços
               if (result == true) {
                 await _fetchServices();
