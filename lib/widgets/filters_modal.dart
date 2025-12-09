@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 
 class FiltersModal extends StatefulWidget {
-  final Function() onApplyFilters;
+  final Function(List<String> selectedCategories) onApplyFilters;
   final double initialTempoValue;
   final String initialAvaliacaoValue;
   final String initialOrdenacaoValue;
+  final List<String> initialSelectedCategories;
 
   const FiltersModal({
     super.key,
@@ -13,6 +14,7 @@ class FiltersModal extends StatefulWidget {
     this.initialTempoValue = 5.0,
     this.initialAvaliacaoValue = "0",
     this.initialOrdenacaoValue = "0",
+    this.initialSelectedCategories = const [],
   });
 
   @override
@@ -24,6 +26,7 @@ class _FiltersModalState extends State<FiltersModal> {
   late String avaliacaoValue;
   late String ordenacaoValue;
   final TextEditingController _categoriaController = TextEditingController();
+  Set<String> selectedCategories = <String>{};
 
   @override
   void initState() {
@@ -31,6 +34,7 @@ class _FiltersModalState extends State<FiltersModal> {
     tempoValue = widget.initialTempoValue;
     avaliacaoValue = widget.initialAvaliacaoValue;
     ordenacaoValue = widget.initialOrdenacaoValue;
+    selectedCategories = widget.initialSelectedCategories.toSet();
   }
 
   @override
@@ -196,18 +200,76 @@ class _FiltersModalState extends State<FiltersModal> {
                   // Categorias
                   _buildFilterSection(
                     'Categorias',
-                    TextField(
-                      controller: _categoriaController,
-                      decoration: InputDecoration(
-                        hintText: 'Digite ou escolha',
-                        filled: true,
-                        fillColor: AppColors.branco,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                              color: AppColors.amareloUmPoucoEscuro),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: AppColors.branco,
+                            border:
+                                Border.all(color: AppColors.amareloUmPoucoEscuro),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: TextField(
+                            controller: _categoriaController,
+                            onSubmitted: (value) {
+                              if (value.trim().isNotEmpty) {
+                                setState(() {
+                                  selectedCategories.add(value.trim());
+                                });
+                                _categoriaController.clear();
+                              }
+                            },
+                            decoration: InputDecoration(
+                              hintText: 'Digite e pressione Enter',
+                              border: InputBorder.none,
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8.0,
+                          runSpacing: 4.0,
+                          children: selectedCategories.map((categoria) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.amareloClaro,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    categoria,
+                                    style: const TextStyle(
+                                      color: AppColors.preto,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        selectedCategories.remove(categoria);
+                                      });
+                                    },
+                                    child: const Icon(
+                                      Icons.close,
+                                      size: 16,
+                                      color: AppColors.preto,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
                     ),
                   ),
 
@@ -259,7 +321,7 @@ class _FiltersModalState extends State<FiltersModal> {
             child: ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                widget.onApplyFilters();
+                widget.onApplyFilters(selectedCategories.toList());
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.amareloUmPoucoEscuro,

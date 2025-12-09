@@ -32,6 +32,7 @@ class _MainPageState extends State<MainPage> {
   double tempoValue = 5.0;
   String avaliacaoValue = "0";
   String ordenacaoValue = "0";
+  List<String> selectedCategories = [];
 
   @override
   void initState() {
@@ -101,27 +102,30 @@ class _MainPageState extends State<MainPage> {
   void _filterServices() {
     final query = _searchController.text.toLowerCase().trim();
 
-    if (query.isEmpty) {
-      setState(() {
-        filteredServices = services;
-      });
-    } else {
-      setState(() {
-        filteredServices = services.where((service) {
-          // Filtra pelo título
-          final titleMatch = service.title.toLowerCase().contains(query);
-          // Filtra pela descrição
-          final descriptionMatch = service.description.toLowerCase().contains(query);
-          // Filtra pela modalidade
-          final modalityMatch = service.modality.toLowerCase().contains(query);
-          // Filtra pelas categorias
-          final categoryMatch = service.categoryEntities.any((category) =>
-            category.name.toLowerCase().contains(query));
+    setState(() {
+      filteredServices = services.where((service) {
+        // Filtra pelo título
+        final titleMatch = service.title.toLowerCase().contains(query);
+        // Filtra pela descrição
+        final descriptionMatch = service.description.toLowerCase().contains(query);
+        // Filtra pela modalidade
+        final modalityMatch = service.modality.toLowerCase().contains(query);
+        // Filtra pelas categorias
+        final categoryMatch = service.categoryEntities.any((category) =>
+          category.name.toLowerCase().contains(query));
 
-          return titleMatch || descriptionMatch || modalityMatch || categoryMatch;
-        }).toList();
-      });
-    }
+        // Verifica se o serviço corresponde à pesquisa textual
+        bool matchesSearch = query.isEmpty || titleMatch || descriptionMatch || modalityMatch || categoryMatch;
+
+        // Verifica se o serviço tem as categorias selecionadas (se houver categorias selecionadas)
+        bool matchesCategories = selectedCategories.isEmpty ||
+          selectedCategories.every((selectedCategory) =>
+            service.categoryEntities.any((category) =>
+              category.name.toLowerCase().contains(selectedCategory.toLowerCase())));
+
+        return matchesSearch && matchesCategories;
+      }).toList();
+    });
   }
 
   void _showFiltersModal() {
@@ -130,10 +134,16 @@ class _MainPageState extends State<MainPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => FiltersModal(
-        onApplyFilters: _fetchServices,
+        onApplyFilters: (selectedCategoriesList) {
+          setState(() {
+            selectedCategories = selectedCategoriesList;
+          });
+          _filterServices();
+        },
         initialTempoValue: tempoValue,
         initialAvaliacaoValue: avaliacaoValue,
         initialOrdenacaoValue: ordenacaoValue,
+        initialSelectedCategories: selectedCategories,
       ),
     );
   }
