@@ -100,81 +100,47 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
-  void _clearFilters() {
-    setState(() {
-      selectedCategories = [];
-      selectedTipoServico = "";
-      tempoValue = 5.0; // Valor padrão do slider
-      ordenacaoValue = "0";
-      _searchController.clear(); // Limpa também o campo de busca
-    });
-    // Recarrega todos os serviços após limpar os filtros
-    _filterServices();
-  }
-
   void _filterServices() {
     final query = _searchController.text.toLowerCase().trim();
 
-    List<Service> filtered = services.where((service) {
-      // Filtra pelo título
-      final titleMatch = service.title.toLowerCase().contains(query);
-      // Filtra pela descrição
-      final descriptionMatch = service.description.toLowerCase().contains(query);
-      // Filtra pela modalidade
-      final modalityMatch = service.modality.toLowerCase().contains(query);
-      // Filtra pelas categorias
-      final categoryMatch = service.categoryEntities.any((category) =>
-        category.name.toLowerCase().contains(query));
-
-      // Verifica se o serviço corresponde à pesquisa textual
-      bool matchesSearch = query.isEmpty || titleMatch || descriptionMatch || modalityMatch || categoryMatch;
-
-      // Verifica se o serviço tem as categorias selecionadas (se houver categorias selecionadas)
-      bool matchesCategories = selectedCategories.isEmpty ||
-        selectedCategories.every((selectedCategory) =>
-          service.categoryEntities.any((category) =>
-            category.name.toLowerCase().contains(selectedCategory.toLowerCase())));
-
-      // Verifica se o serviço corresponde ao tipo de serviço selecionado
-      bool matchesTipoServico = selectedTipoServico.isEmpty ||
-        // Se o filtro for 'À distância', verifica se a modalidade é 'Remoto'
-        (selectedTipoServico == 'À distância' && service.modality.toLowerCase().contains('remoto')) ||
-        // Se o filtro for 'Presencial', verifica se a modalidade é 'Presencial'
-        (selectedTipoServico == 'Presencial' && service.modality.toLowerCase().contains('presencial'));
-
-      // Verifica se o serviço corresponde ao filtro de tempo em chronos
-      bool matchesTempo = true; // Por padrão, não filtra por tempo se o valor for 5 (slider no mínimo)
-      if (tempoValue > 5) { // Filtra quando tempoValue é maior que 5
-        int tempoMax = tempoValue.toInt();
-        int tempoMin = tempoMax - 5;
-        matchesTempo = service.timeChronos >= tempoMin && service.timeChronos < tempoMax;
-      } else if (tempoValue == 5) { // Especialmente para o intervalo 0-5 horas
-        matchesTempo = service.timeChronos >= 0 && service.timeChronos <= 5;
-      }
-
-      return matchesSearch && matchesCategories && matchesTipoServico && matchesTempo;
-    }).toList();
-
-    // Aplica ordenação
-    switch (ordenacaoValue) {
-      case "0": // Mais recentes
-        filtered.sort((a, b) => b.id.compareTo(a.id));
-        break;
-      case "1": // Mais antigos
-        filtered.sort((a, b) => a.id.compareTo(b.id));
-        break;
-      case "2": // Melhores avaliados - não implementado pois o modelo não tem campo de estrelas
-        break;
-      case "3": // Maior tempo
-        filtered.sort((a, b) => b.timeChronos.compareTo(a.timeChronos));
-        break;
-      case "4": // Menor tempo
-        filtered.sort((a, b) => a.timeChronos.compareTo(b.timeChronos));
-        break;
-    }
-
     setState(() {
-      filteredServices = filtered;
+      filteredServices = services.where((service) {
+        // Filtra pelo título
+        final titleMatch = service.title.toLowerCase().contains(query);
+        // Filtra pela descrição
+        final descriptionMatch = service.description.toLowerCase().contains(query);
+        // Filtra pela modalidade
+        final modalityMatch = service.modality.toLowerCase().contains(query);
+        // Filtra pelas categorias
+        final categoryMatch = service.categoryEntities.any((category) =>
+          category.name.toLowerCase().contains(query));
+
+        // Verifica se o serviço corresponde à pesquisa textual
+        bool matchesSearch = query.isEmpty || titleMatch || descriptionMatch || modalityMatch || categoryMatch;
+
+        // Verifica se o serviço tem as categorias selecionadas (se houver categorias selecionadas)
+        bool matchesCategories = selectedCategories.isEmpty ||
+          selectedCategories.every((selectedCategory) =>
+            service.categoryEntities.any((category) =>
+              category.name.toLowerCase().contains(selectedCategory.toLowerCase())));
+
+        // Verifica se o serviço corresponde ao tipo de serviço selecionado
+        bool matchesTipoServico = selectedTipoServico.isEmpty ||
+          // Se o filtro for 'À distância', verifica se a modalidade é 'Remoto'
+          (selectedTipoServico == 'À distância' && service.modality.toLowerCase().contains('remoto')) ||
+          // Se o filtro for 'Presencial', verifica se a modalidade é 'Presencial'
+          (selectedTipoServico == 'Presencial' && service.modality.toLowerCase().contains('presencial'));
+
+        // Verifica se o serviço corresponde ao filtro de tempo em chronos
+        bool matchesTempo = true; // Por padrão, não filtra por tempo se o valor for 5 (slider no mínimo)
+        if (tempoValue > 5) {
+          int tempoMax = tempoValue.toInt();
+          int tempoMin = tempoMax - 5;
+          matchesTempo = service.timeChronos >= tempoMin && service.timeChronos <= tempoMax;
+        }
+
+        return matchesSearch && matchesCategories && matchesTipoServico && matchesTempo;
+      }).toList();
     });
   }
 
@@ -184,12 +150,11 @@ class _MainPageState extends State<MainPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => FiltersModal(
-        onApplyFilters: (selectedCategoriesList, selectedTipoServicoString, tempoValueParam, ordenacaoValueParam) {
+        onApplyFilters: (selectedCategoriesList, selectedTipoServicoString, tempoValueParam) {
           setState(() {
             selectedCategories = selectedCategoriesList;
             selectedTipoServico = selectedTipoServicoString;
             tempoValue = tempoValueParam; // Atualiza o valor do tempo
-            ordenacaoValue = ordenacaoValueParam;
           });
           _filterServices();
         },
