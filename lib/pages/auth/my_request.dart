@@ -11,11 +11,20 @@ class MeusPedidos extends StatefulWidget {
   _MeusPedidosState createState() => _MeusPedidosState();
 }
 
-class _MeusPedidosState extends State<MeusPedidos> {
+class _MeusPedidosState extends State<MeusPedidos> with TickerProviderStateMixin {
   int _abaAtual = 0;
   final List<String> _abas = ['Pedidos Aceitos', 'Pedidos Criados'];
   final TextEditingController _searchController = TextEditingController();
   bool _isDrawerOpen = false;
+
+  // NOVOS ESTADOS PARA LOADING/ERROR/EMPTY
+  bool _isLoading = true;
+  String _errorMessage = '';
+  bool _hasError = false;
+
+  // Estados de ordenação
+  String _ordenacaoAtual = 'Mais recentes';
+  late AnimationController _animacaoTransicao;
 
   // Dados de exemplo para pedidos aceitos
   final List<Map<String, dynamic>> _pedidosAceitos = [
@@ -116,6 +125,136 @@ class _MeusPedidosState extends State<MeusPedidos> {
     });
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _animacaoTransicao = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _simularCarregamento();
+  }
+
+  @override
+  void dispose() {
+    _animacaoTransicao.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // NOVO: Método para gerar estrelas de avaliação
+  Widget _buildRating(dynamic rating) {
+    final ratingValue = double.tryParse(rating.toString()) ?? 0;
+    final fullStars = ratingValue.floor();
+    final hasHalfStar = (ratingValue % 1) > 0.5;
+    
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ...List.generate(fullStars, (i) {
+          return const Icon(Icons.star, size: 14, color: Colors.amber);
+        }),
+        if (hasHalfStar)
+          const Icon(Icons.star_half, size: 14, color: Colors.amber),
+        ...List.generate(5 - fullStars - (hasHalfStar ? 1 : 0), (i) {
+          return Icon(Icons.star_outline, size: 14, color: Colors.grey.withOpacity(0.5));
+        }),
+        const SizedBox(width: 4),
+        Text(
+          ratingValue.toStringAsFixed(1),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
+
+  // NOVO: Método para filtrar pedidos pela busca
+  List<Map<String, dynamic>> _filtrarPedidos(List<Map<String, dynamic>> pedidos) {
+    final termoBusca = _searchController.text.toLowerCase();
+    
+    if (termoBusca.isEmpty) {
+      return _ordenarPedidos(pedidos);
+    }
+    
+    return _ordenarPedidos(
+      pedidos.where((pedido) {
+        return pedido['titulo'].toString().toLowerCase().contains(termoBusca) ||
+            pedido['descricao_breve'].toString().toLowerCase().contains(termoBusca) ||
+            pedido['postador'].toString().toLowerCase().contains(termoBusca);
+      }).toList(),
+    );
+  }
+
+  // NOVO: Método para ordenar pedidos
+  List<Map<String, dynamic>> _ordenarPedidos(List<Map<String, dynamic>> pedidos) {
+    final pedidosOrdenados = [...pedidos];
+    
+    switch (_ordenacaoAtual) {
+      case 'Mais recentes':
+        // Já vem em ordem
+        break;
+      case 'Maior Chronos':
+        pedidosOrdenados.sort((a, b) => (b['tempo_chronos'] ?? 0).compareTo(a['tempo_chronos'] ?? 0));
+        break;
+      case 'Melhor avaliação':
+        pedidosOrdenados.sort((a, b) {
+          final ratingA = double.tryParse(a['avaliacao'].toString()) ?? 0;
+          final ratingB = double.tryParse(b['avaliacao'].toString()) ?? 0;
+          return ratingB.compareTo(ratingA);
+        });
+        break;
+      case 'Status':
+        final ordem = {'Aceito': 1, 'Em Andamento': 2, 'Finalizado': 3, 'Disponível': 4, 'Pendente': 5};
+        pedidosOrdenados.sort((a, b) {
+          final statusA = ordem[a['status']] ?? 99;
+          final statusB = ordem[b['status']] ?? 99;
+          return statusA.compareTo(statusB);
+        });
+        break;
+    }
+    
+    return pedidosOrdenados;
+  }
+
+  // NOVO: Método para calcular progresso de pedidos em andamento
+  double _calcularProgresso(String status) {
+    switch (status) {
+      case 'Aceito':
+        return 0.25;
+      case 'Em Andamento':
+        return 0.65;
+      case 'Finalizado':
+        return 1.0;
+      default:
+        return 0.0;
+    }
+  }
+
+  Future<void> _simularCarregamento() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = '';
+    });
+    
+    await Future.delayed(const Duration(seconds: 1)); // Simular delay de rede
+    
+    // Verificar se temos dados mockados
+    if (_pedidosAceitos.isEmpty && _pedidosCriados.isEmpty) {
+      // Pode simular erro ou empty state
+      // Para simular empty state, não fazemos nada
+      // Para simular erro, descomente:
+      // setState(() {
+      //   _hasError = true;
+      //   _errorMessage = 'Não foi possível carregar os pedidos';
+      // });
+    }
+    
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
   void _openWallet() {
     // Implementar abertura da carteira se necessário
   }
@@ -142,6 +281,150 @@ class _MeusPedidosState extends State<MeusPedidos> {
       SnackBar(
         content: Text('Pedido "${pedido['titulo']}" finalizado!'),
         backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  // NOVO: Método para construir conteúdo dinâmico
+  Widget _buildListaConteudo() {
+    if (_isLoading) {
+      return _buildLoadingState();
+    }
+    
+    if (_hasError) {
+      return _buildErrorState();
+    }
+    
+    final listaAtual = _abaAtual == 0 ? _pedidosAceitos : _pedidosCriados;
+    final listaFiltrada = _filtrarPedidos(listaAtual);
+    
+    if (listaAtual.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    if (listaFiltrada.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.search_off, size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
+              const Text(
+                'Nenhum pedido encontrado',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Tente ajustar os filtros ou termos de busca',
+                style: TextStyle(color: Colors.grey.withOpacity(0.7), fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: listaFiltrada.length,
+      itemBuilder: (context, index) {
+        final pedido = listaFiltrada[index];
+        return _buildCardPedido(pedido);
+      },
+    );
+  }
+
+  // NOVO: Método para estado de carregamento
+  Widget _buildLoadingState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.amber),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Carregando seus pedidos...',
+              style: TextStyle(color: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // NOVO: Método para estado de erro
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage,
+              style: const TextStyle(color: Colors.white),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _simularCarregamento,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber,
+              ),
+              child: const Text('Tentar novamente'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // NOVO: Método para estado vazio
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.list, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(
+              _abaAtual == 0
+                  ? 'Você ainda não aceitou nenhum pedido'
+                  : 'Você ainda não criou nenhum pedido',
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Quando você aceitar ou criar pedidos, eles aparecerão aqui.',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/request-creation');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber,
+              ),
+              child: const Text('Criar primeiro pedido'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -274,32 +557,36 @@ class _MeusPedidosState extends State<MeusPedidos> {
 
               // Conteúdo das abas
               Expanded(
-                child: Container(
-                  color: AppColors.preto,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Contador de pedidos
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: Text(
-                            _abaAtual == 0 
-                              ? '${_pedidosAceitos.length} pedidos aceitos' 
-                              : '${_pedidosCriados.length} pedidos criados',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppColors.branco.withOpacity(0.7),
+                child: RefreshIndicator(
+                  onRefresh: _simularCarregamento,
+                  color: Colors.amber,
+                  backgroundColor: const Color(0xFF0B0C0C),
+                  child: Container(
+                    color: AppColors.preto,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Contador de pedidos
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: Text(
+                              _abaAtual == 0 
+                                ? '${_pedidosAceitos.length} pedidos aceitos' 
+                                : '${_pedidosCriados.length} pedidos criados',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.branco.withOpacity(0.7),
+                              ),
                             ),
                           ),
-                        ),
 
-                        // Lista de pedidos
-                        ...(_abaAtual == 0 ? _pedidosAceitos : _pedidosCriados)
-                            .map((pedido) => _buildCardPedido(pedido))
-                            .toList(),
-                      ],
+                          // Lista dinâmica com estados
+                          _buildListaConteudo(),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -467,28 +754,73 @@ class _MeusPedidosState extends State<MeusPedidos> {
 
                   const SizedBox(height: 10),
 
-                  // Informações do postador
+                  // NOVO: Badges visuais
+                  if (pedido['temAcompanhamento'] || pedido['temMotivacao'])
+                    Wrap(
+                      spacing: 6,
+                      children: [
+                        if (pedido['temAcompanhamento'])
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.blue, width: 0.5),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.visibility, size: 12, color: Colors.blue),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  'Acompanhamento',
+                                  style: TextStyle(fontSize: 11, color: Colors.blue),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (pedido['temMotivacao'])
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.green, width: 0.5),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.favorite, size: 12, color: Colors.green),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  'Motivação',
+                                  style: TextStyle(fontSize: 11, color: Colors.green),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  
+                  if (pedido['temAcompanhamento'] || pedido['temMotivacao'])
+                    const SizedBox(height: 10),
+
+                  // Informações do postador com avaliação em estrelas
                   Row(
                     children: [
                       Icon(Icons.person, color: AppColors.preto.withOpacity(0.6), size: 14),
                       const SizedBox(width: 4),
-                      Text(
-                        'Postado por ${pedido['postador']}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.preto.withOpacity(0.6),
+                      Expanded(
+                        child: Text(
+                          'Postado por ${pedido['postador']}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.preto.withOpacity(0.6),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Icon(Icons.access_time, color: AppColors.preto.withOpacity(0.6), size: 14),
-                      const SizedBox(width: 4),
-                      Text(
-                        'às ${pedido['horario']}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.preto.withOpacity(0.6),
-                        ),
-                      ),
+                      // NOVO: Avaliação em estrelas
+                      _buildRating(pedido['avaliacao']),
                     ],
                   ),
 
@@ -587,6 +919,47 @@ class _MeusPedidosState extends State<MeusPedidos> {
                           ),
                       ],
                     ),
+
+                  // NOVO: Indicador de progresso para pedidos em andamento
+                  if (pedido['status'] == 'Em Andamento') ...[
+                    const SizedBox(height: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Progresso',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.preto,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              '${(_calcularProgresso(pedido['status']) * 100).toInt()}%',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.preto,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: _calcularProgresso(pedido['status']),
+                            minHeight: 6,
+                            backgroundColor: Colors.grey.withOpacity(0.3),
+                            valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
 
                   // Botões de ação específicos para pedidos aceitos
                   if (_abaAtual == 0) ...[

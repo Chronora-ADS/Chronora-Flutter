@@ -46,13 +46,6 @@ class _MainPageState extends State<MainPage> {
     return prefs.getString('auth_token');
   }
 
-  Future<String?> _getUserId() async {
-    // Em uma implementação real, você buscaria o ID do usuário logado
-    // do token JWT ou de uma chamada à API
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('user_id'); // Você precisaria salvar isso no login
-  }
-
   Future<void> _fetchServices() async {
     try {
       final String? token = await _getToken();

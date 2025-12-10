@@ -33,13 +33,40 @@ class ChronoraFlutter extends StatelessWidget {
         // Rotas do menu lateral - REMOVENDO O CONST
         '/my-orders': (context) => my_request_page.MeusPedidos(),
         
-        // Rota para visualizar pedido
+        // Rota para visualizar pedido - COM VALIDAÇÃO SEGURA
         '/view-request': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          final args = ModalRoute.of(context)?.settings.arguments;
+          
+          // VALIDAÇÃO SEGURA - SEM POSSIBILIDADE DE CRASH
+          if (args == null || args is! Map<String, dynamic>) {
+            return Scaffold(
+              appBar: AppBar(title: const Text('Erro')),
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error, size: 64, color: Colors.red),
+                    const SizedBox(height: 16),
+                    const Text('Pedido não encontrado', style: TextStyle(fontSize: 18)),
+                    const SizedBox(height: 8),
+                    const Text('Tente novamente mais tarde', style: TextStyle(color: Colors.grey)),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Voltar'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+          
+          final pedido = args['pedido'];
+          final ehProprietario = args['ehProprietario'] ?? false;
           
           return view_requests_page.VerPedido(
-            pedido: args?['pedido'] ?? {},
-            ehProprietario: args?['ehProprietario'] ?? false,
+            pedido: pedido is Map<String, dynamic> ? pedido : {},
+            ehProprietario: ehProprietario is bool ? ehProprietario : false,
           );
         },
       },

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:chronora/core/constants/app_colors.dart';
 import 'package:chronora/widgets/header.dart';
 import 'package:chronora/widgets/side_menu.dart';
-import '../../core/constants/app_routes.dart';
 import 'dart:convert';
 
 class VerPedido extends StatefulWidget {
@@ -32,6 +31,100 @@ class _VerPedidoState extends State<VerPedido> {
     // Implementar abertura da carteira
   }
 
+  // NOVO: Método para gerar estrelas de avaliação
+  Widget _buildRating(dynamic rating) {
+    final ratingValue = double.tryParse(rating.toString()) ?? 0;
+    final fullStars = ratingValue.floor();
+    final hasHalfStar = (ratingValue % 1) > 0.5;
+    
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ...List.generate(fullStars, (i) {
+          return const Icon(Icons.star, size: 14, color: Colors.amber);
+        }),
+        if (hasHalfStar)
+          const Icon(Icons.star_half, size: 14, color: Colors.amber),
+        ...List.generate(5 - fullStars - (hasHalfStar ? 1 : 0), (i) {
+          return Icon(Icons.star_outline, size: 14, color: Colors.grey.withOpacity(0.5));
+        }),
+        const SizedBox(width: 4),
+        Text(
+          ratingValue.toStringAsFixed(1),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
+
+  // NOVO: Método seguro para carregar imagem
+  Widget _buildServiceImage() {
+    try {
+      final imageData = widget.pedido['serviceImage'];
+      
+      // Verificar se existe e é uma string válida
+      if (imageData == null || 
+          imageData.toString().isEmpty || 
+          imageData.toString().trim() == '') {
+        return _buildPlaceholderImage();
+      }
+      
+      // Tentar decodificar
+      final decodedImage = base64.decode(imageData.toString());
+      
+      // Verificar se a decodificação produziu bytes válidos
+      if (decodedImage.isEmpty) {
+        return _buildPlaceholderImage();
+      }
+      
+      return Container(
+        height: 120,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(12),
+            topRight: Radius.circular(12),
+          ),
+          image: DecorationImage(
+            image: MemoryImage(decodedImage),
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Erro ao carregar imagem: $e');
+      return _buildPlaceholderImage();
+    }
+  }
+
+  // Método para placeholder quando imagem não disponível
+  Widget _buildPlaceholderImage() {
+    return Container(
+      height: 120,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFFB5BFAE).withOpacity(0.3),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(12),
+          topRight: Radius.circular(12),
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.image, size: 40, color: Colors.grey.withOpacity(0.6)),
+            const SizedBox(height: 8),
+            Text(
+              'Sem imagem',
+              style: TextStyle(color: Colors.grey.withOpacity(0.6), fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -57,23 +150,8 @@ class _VerPedidoState extends State<VerPedido> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Imagem do serviço (se houver)
-                        if (widget.pedido['serviceImage'] != null && 
-                            widget.pedido['serviceImage'].toString().isNotEmpty)
-                          Container(
-                            height: 120,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(12),
-                                topRight: Radius.circular(12),
-                              ),
-                              image: DecorationImage(
-                                image: MemoryImage(base64.decode(widget.pedido['serviceImage'])),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
+                        // Imagem do serviço com decodificação segura
+                        _buildServiceImage(),
 
                         Padding(
                           padding: const EdgeInsets.all(16),
@@ -142,6 +220,57 @@ class _VerPedidoState extends State<VerPedido> {
                               ),
 
                               const SizedBox(height: 12),
+
+                              // NOVO: Badges visuais
+                              if (widget.pedido['temAcompanhamento'] || widget.pedido['temMotivacao'])
+                                Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    if (widget.pedido['temAcompanhamento'])
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: Colors.blue, width: 1),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.visibility, size: 14, color: Colors.blue),
+                                            const SizedBox(width: 6),
+                                            const Text(
+                                              'Com Acompanhamento',
+                                              style: TextStyle(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.w500),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    if (widget.pedido['temMotivacao'])
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: Colors.green, width: 1),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.favorite, size: 14, color: Colors.green),
+                                            const SizedBox(width: 6),
+                                            const Text(
+                                              'Com Motivação',
+                                              style: TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w500),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+
+                              if (widget.pedido['temAcompanhamento'] || widget.pedido['temMotivacao'])
+                                const SizedBox(height: 12),
 
                               // Card de Chronos (reduzido)
                               Container(
@@ -248,19 +377,8 @@ class _VerPedidoState extends State<VerPedido> {
                                             color: AppColors.preto,
                                           ),
                                         ),
-                                        Row(
-                                          children: [
-                                            Icon(Icons.star, color: AppColors.amareloClaro, size: 14),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              widget.pedido['avaliacao']?.toString() ?? '4.9',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                color: AppColors.preto.withOpacity(0.6),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                        // NOVO: Avaliação com estrelas
+                                        _buildRating(widget.pedido['avaliacao']),
                                       ],
                                     ),
                                   ),
@@ -503,25 +621,44 @@ class _VerPedidoState extends State<VerPedido> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Cancelar Pedido'),
-        content: const Text('Tem certeza que deseja cancelar este pedido?'),
+        title: Row(
+          children: [
+            const Icon(Icons.warning, color: Colors.orange),
+            const SizedBox(width: 8),
+            const Text('Cancelar Pedido'),
+          ],
+        ),
+        content: const Text('Tem certeza que deseja cancelar este pedido? Esta ação não pode ser desfeita.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Não'),
+            child: const Text('Não, manter'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
+              Navigator.pop(context); // Fecha dialog
+              
+              // Mostrar snackbar de feedback
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Pedido cancelado com sucesso!'),
-                  backgroundColor: Colors.red,
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: Colors.white),
+                      const SizedBox(width: 8),
+                      const Text('Pedido cancelado com sucesso!'),
+                    ],
+                  ),
+                  backgroundColor: Colors.green,
+                  duration: const Duration(seconds: 2),
                 ),
               );
+              
+              // Simular delay antes de voltar
+              Future.delayed(const Duration(milliseconds: 500), () {
+                Navigator.pop(context);
+              });
             },
-            child: const Text('Sim'),
+            child: const Text('Sim, cancelar', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -532,25 +669,85 @@ class _VerPedidoState extends State<VerPedido> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Aceitar Pedido'),
-        content: const Text('Você deseja aceitar este pedido?'),
+        title: Row(
+          children: [
+            const Icon(Icons.check_circle_outline, color: Colors.green),
+            const SizedBox(width: 8),
+            const Text('Aceitar Pedido'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Você deseja aceitar este pedido?'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber),
+              ),
+              child: Row(
+                children: [
+                  Image.asset('assets/img/Coin.png', width: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${widget.pedido['tempo_chronos'] ?? '0'} Chronos serão creditados na sua carteira após conclusão.',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancelar'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              Navigator.pop(context);
+              
+              // Mostrar feedback
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Pedido aceito com sucesso!'),
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Pedido aceito!'),
+                            const Text(
+                              'Você será notificado sobre atualizações.',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                   backgroundColor: Colors.green,
+                  duration: const Duration(seconds: 3),
                 ),
               );
+              
+              // Voltar após delay
+              Future.delayed(const Duration(milliseconds: 800), () {
+                Navigator.pop(context);
+              });
             },
-            child: const Text('Aceitar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+            ),
+            child: const Text('Aceitar Pedido'),
           ),
         ],
       ),
