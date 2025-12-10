@@ -119,10 +119,10 @@ class _MainPageState extends State<MainPage> {
         // Verifica se o serviço corresponde à pesquisa textual
         bool matchesSearch = query.isEmpty || titleMatch || descriptionMatch || modalityMatch || categoryMatch;
 
-        // Verifica se o serviço tem as categorias selecionadas (se houver categorias selecionadas)
+        // Verifica se o serviço tem pelo menos uma das categorias selecionadas (filtro OR)
         bool matchesCategories = selectedCategories.isEmpty ||
-          selectedCategories.every((selectedCategory) =>
-            service.categoryEntities.any((category) =>
+          service.categoryEntities.any((category) =>
+            selectedCategories.any((selectedCategory) =>
               category.name.toLowerCase().contains(selectedCategory.toLowerCase())));
 
         // Verifica se o serviço corresponde ao tipo de serviço selecionado
