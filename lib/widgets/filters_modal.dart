@@ -3,6 +3,7 @@ import '../core/constants/app_colors.dart';
 
 class FiltersModal extends StatefulWidget {
   final Function(List<String> selectedCategories, String selectedTipoServico, double tempoValue) onApplyFilters;
+  final Function()? onClearFilters; // Função opcional para limpar filtros
   final double initialTempoValue;
   final String initialAvaliacaoValue;
   final String initialOrdenacaoValue;
@@ -12,7 +13,8 @@ class FiltersModal extends StatefulWidget {
   const FiltersModal({
     super.key,
     required this.onApplyFilters,
-    this.initialTempoValue = 5.0,
+    this.onClearFilters,
+    this.initialTempoValue = 0.0, // Valor inicial agora é 0 ("Qualquer")
     this.initialAvaliacaoValue = "0",
     this.initialOrdenacaoValue = "0",
     this.initialSelectedCategories = const [],
@@ -209,9 +211,9 @@ class _FiltersModalState extends State<FiltersModal> {
                       children: [
                         Slider(
                           value: tempoValue,
-                          min: 5,
+                          min: 0,
                           max: 100,
-                          divisions: 19,
+                          divisions: 20, // 20 divisões para cobrir 0-100 com incrementos de 5
                           onChanged: (value) {
                             setState(() {
                               tempoValue = value;
@@ -220,9 +222,11 @@ class _FiltersModalState extends State<FiltersModal> {
                           activeColor: AppColors.amareloClaro,
                         ),
                         Text(
-                          tempoValue == 5
-                              ? "0-5 horas"
-                              : "${tempoValue.toInt() - 5}-${tempoValue.toInt()} horas",
+                          tempoValue == 0
+                              ? "Qualquer"
+                              : tempoValue == 5
+                                  ? "0-5 horas"
+                                  : "${tempoValue.toInt() - 5}-${tempoValue.toInt()} horas",
                           style: const TextStyle(fontSize: 14),
                         ),
                       ],
@@ -349,30 +353,69 @@ class _FiltersModalState extends State<FiltersModal> {
 
           const SizedBox(height: 20),
 
-          // Botão aplicar filtros
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                widget.onApplyFilters(selectedCategories.toList(), selectedTipoServico, tempoValue);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.amareloUmPoucoEscuro,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    // Limpar todos os filtros
+                    setState(() {
+                      tempoValue = 0.0; // Reseta para "Qualquer"
+                      avaliacaoValue = "0";
+                      ordenacaoValue = "0";
+                      selectedTipoServico = "";
+                      selectedCategories.clear();
+                      _categoriaController.clear();
+                    });
+
+                    // Chama a função de callback para limpar filtros no widget pai, se existir
+                    if (widget.onClearFilters != null) {
+                      Navigator.pop(context);
+                      widget.onClearFilters!();
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.amareloClaro,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Limpar Filtros',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.preto,
+                    ),
+                  ),
                 ),
               ),
-              child: const Text(
-                'Aplicar Filtros',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.branco,
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    widget.onApplyFilters(selectedCategories.toList(), selectedTipoServico, tempoValue);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.amareloUmPoucoEscuro,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Aplicar Filtros',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.branco,
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),

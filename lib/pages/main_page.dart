@@ -29,7 +29,8 @@ class _MainPageState extends State<MainPage> {
   bool isLoading = true;
   String errorMessage = '';
 
-  double tempoValue = 5.0;
+  double tempoValue = 0.0; // 0 representa "Qualquer"
+  bool _isTimeFilterActive = false; // Indica se o filtro de tempo está ativo
   String avaliacaoValue = "0";
   String ordenacaoValue = "0";
   List<String> selectedCategories = [];
@@ -132,10 +133,21 @@ class _MainPageState extends State<MainPage> {
           (selectedTipoServico == 'Presencial' && service.modality.toLowerCase().contains('presencial'));
 
         // Verifica se o serviço corresponde ao filtro de tempo em chronos
-        bool matchesTempo = true; // Por padrão, não filtra por tempo se o valor for 5 (slider no mínimo)
-        if (tempoValue > 5) {
+        bool matchesTempo = true; // Por padrão, não filtra por tempo
+
+        // Aplica o filtro de tempo apenas se ele estiver ativo
+        if (_isTimeFilterActive && tempoValue > 0) {
           int tempoMax = tempoValue.toInt();
-          int tempoMin = tempoMax - 5;
+          int tempoMin;
+
+          // Ajusta o tempo mínimo com base no valor do slider
+          // Quando tempoValue é 5, representa o intervalo 0-5 horas
+          if (tempoValue == 5) {
+            tempoMin = 0; // Para o intervalo 0-5 horas
+          } else {
+            tempoMin = tempoMax - 5;
+          }
+
           matchesTempo = service.timeChronos >= tempoMin && service.timeChronos <= tempoMax;
         }
 
@@ -155,9 +167,11 @@ class _MainPageState extends State<MainPage> {
             selectedCategories = selectedCategoriesList;
             selectedTipoServico = selectedTipoServicoString;
             tempoValue = tempoValueParam; // Atualiza o valor do tempo
+            _isTimeFilterActive = true; // Marca que o filtro de tempo está ativo
           });
           _filterServices();
         },
+        onClearFilters: _clearFilters, // Passa a função de limpar filtros
         initialTempoValue: tempoValue,
         initialAvaliacaoValue: avaliacaoValue,
         initialOrdenacaoValue: ordenacaoValue,
@@ -178,6 +192,19 @@ class _MainPageState extends State<MainPage> {
       _isDrawerOpen = false; // Fecha o side menu
       _isWalletOpen = true; // Abre a carteira
     });
+  }
+
+  void _clearFilters() {
+    setState(() {
+      tempoValue = 0.0; // Reseta para "Qualquer"
+      _isTimeFilterActive = false; // Reseta o estado do filtro de tempo
+      avaliacaoValue = "0";
+      ordenacaoValue = "0";
+      selectedCategories = [];
+      selectedTipoServico = "";
+      _searchController.clear();
+    });
+    _filterServices();
   }
 
   void _closeWallet() {
@@ -313,28 +340,31 @@ class _MainPageState extends State<MainPage> {
                         ),
                         const SizedBox(height: 24),
 
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: _showFiltersModal,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.branco,
-                              foregroundColor: AppColors.preto,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: _showFiltersModal,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.branco,
+                                  foregroundColor: AppColors.preto,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.filter_list, size: 20),
+                                label: const Text(
+                                  'Filtros',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
                             ),
-                            icon: const Icon(Icons.filter_list, size: 20),
-                            label: const Text(
-                              'Filtros',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
+                          ],
                         ),
 
                         const SizedBox(height: 24),
