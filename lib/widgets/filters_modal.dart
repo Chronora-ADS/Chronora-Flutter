@@ -88,7 +88,7 @@ class _FiltersModalState extends State<FiltersModal> {
                 children: [
                   // Prazo
                   _buildFilterSection(
-                    'Prazo',
+                    'Prazo limite',
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
@@ -102,8 +102,8 @@ class _FiltersModalState extends State<FiltersModal> {
                           Expanded(
                             child: Text(
                               prazoDias > 0
-                                ? '${prazoDias} dia(s)'
-                                : 'Selecione o prazo',
+                                ? 'Até ${DateTime.now().add(Duration(days: prazoDias)).day}/${DateTime.now().add(Duration(days: prazoDias)).month}'
+                                : 'Selecione a data limite',
                               style: TextStyle(
                                 color: prazoDias > 0
                                   ? AppColors.preto
@@ -444,67 +444,67 @@ class _FiltersModalState extends State<FiltersModal> {
   }
 
   void _showPrazoDialog() {
+    DateTime? selectedDate = prazoDias > 0
+        ? DateTime.now().add(Duration(days: prazoDias))
+        : null;
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        int selectedDays = prazoDias;
         return AlertDialog(
-          title: const Text('Selecione o prazo'),
+          title: const Text('Selecione a data limite'),
           content: StatefulBuilder(
             builder: (BuildContext context, StateSetter setState) {
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  RadioListTile<int>(
-                    title: const Text('Qualquer prazo'),
-                    value: 0,
-                    groupValue: selectedDays,
-                    onChanged: (value) {
-                      setState(() {
-                        selectedDays = value ?? 0; // Garante que não seja nulo
-                      });
-                    },
+                  Text(
+                    'Data selecionada: ${selectedDate != null ? "${selectedDate?.day}/${selectedDate?.month}/${selectedDate?.year}" : "Nenhuma data selecionada"}',
+                    style: const TextStyle(fontSize: 16),
                   ),
-                  RadioListTile<int>(
-                    title: const Text('Até 7 dias'),
-                    value: 7,
-                    groupValue: selectedDays,
-                    onChanged: (value) {
-                      setState(() {
-                        selectedDays = value ?? 0;
-                      });
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () async {
+                      final DateTime? picked = await showDatePicker(
+                        context: context,
+                        initialDate: selectedDate ?? DateTime.now(),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+
+                      if (picked != null) {
+                        setState(() {
+                          selectedDate = picked;
+                        });
+
+                        // Calculate days difference from today
+                        final today = DateTime.now();
+                        final difference = selectedDate!.difference(today);
+                        prazoDias = difference.inDays;
+                      }
                     },
+                    style: TextButton.styleFrom(
+                      backgroundColor: AppColors.amareloClaro,
+                      foregroundColor: AppColors.preto,
+                    ),
+                    child: const Text('Selecionar Data'),
                   ),
-                  RadioListTile<int>(
-                    title: const Text('Até 15 dias'),
-                    value: 15,
-                    groupValue: selectedDays,
-                    onChanged: (value) {
-                      setState(() {
-                        selectedDays = value ?? 0;
-                      });
-                    },
-                  ),
-                  RadioListTile<int>(
-                    title: const Text('Até 30 dias'),
-                    value: 30,
-                    groupValue: selectedDays,
-                    onChanged: (value) {
-                      setState(() {
-                        selectedDays = value ?? 0;
-                      });
-                    },
-                  ),
-                  RadioListTile<int>(
-                    title: const Text('Até 60 dias'),
-                    value: 60,
-                    groupValue: selectedDays,
-                    onChanged: (value) {
-                      setState(() {
-                        selectedDays = value ?? 0;
-                      });
-                    },
-                  ),
+                  const SizedBox(height: 8),
+                  if (selectedDate != null) ...[
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          selectedDate = null;
+                        });
+                        prazoDias = 0; // Reset to "any date"
+                      },
+                      style: TextButton.styleFrom(
+                        backgroundColor: AppColors.amareloUmPoucoEscuro,
+                        foregroundColor: AppColors.branco,
+                      ),
+                      child: const Text('Limpar Data'),
+                    ),
+                  ],
                 ],
               );
             },
@@ -518,9 +518,6 @@ class _FiltersModalState extends State<FiltersModal> {
             ),
             TextButton(
               onPressed: () {
-                setState(() {
-                  prazoDias = selectedDays;
-                });
                 Navigator.of(context).pop();
               },
               child: const Text('Confirmar'),

@@ -160,9 +160,10 @@ class _MainPageState extends State<MainPage> {
           DateTime hoje = DateTime.now();
           DateTime prazoLimite = hoje.add(Duration(days: _prazoDias));
 
-          // O serviço está dentro do prazo se seu deadline for entre hoje e o prazo limite
-          matchesPrazo = service.deadline.isAfter(hoje) && service.deadline.isBefore(prazoLimite) ||
-                         service.deadline.isAtSameMomentAs(hoje) || service.deadline.isAtSameMomentAs(prazoLimite);
+          // O serviço está dentro do prazo se seu deadline estiver entre hoje e a data limite (inclusive)
+          matchesPrazo = service.deadline.isAtSameMomentAs(hoje) ||
+                         service.deadline.isAfter(hoje) &&
+                         (service.deadline.isBefore(prazoLimite) || service.deadline.isAtSameMomentAs(prazoLimite));
         }
 
         return matchesSearch && matchesCategories && matchesTipoServico && matchesTempo && matchesPrazo;
