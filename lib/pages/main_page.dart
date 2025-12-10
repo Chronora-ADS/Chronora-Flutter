@@ -153,6 +153,32 @@ class _MainPageState extends State<MainPage> {
 
         return matchesSearch && matchesCategories && matchesTipoServico && matchesTempo;
       }).toList();
+
+      // Aplica ordenação com base no valor selecionado
+      switch (ordenacaoValue) {
+        case "0": // Mais recentes
+          // Ordenar por ID em ordem decrescente (mais recentes primeiro)
+          filteredServices.sort((a, b) => b.id.compareTo(a.id));
+          break;
+        case "1": // Mais antigos
+          // Ordenar por ID em ordem crescente (mais antigos primeiro)
+          filteredServices.sort((a, b) => a.id.compareTo(b.id));
+          break;
+        case "2": // Melhores avaliados
+          // Não há propriedade rating no modelo Service, então ordena por ID como fallback
+          filteredServices.sort((a, b) => b.id.compareTo(a.id));
+          break;
+        case "3": // Maior tempo
+          // Ordenar por tempo em chronos (maior primeiro)
+          filteredServices.sort((a, b) => b.timeChronos.compareTo(a.timeChronos));
+          break;
+        case "4": // Menor tempo
+          // Ordenar por tempo em chronos (menor primeiro)
+          filteredServices.sort((a, b) => a.timeChronos.compareTo(b.timeChronos));
+          break;
+        default:
+          break;
+      }
     });
   }
 
@@ -162,11 +188,12 @@ class _MainPageState extends State<MainPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => FiltersModal(
-        onApplyFilters: (selectedCategoriesList, selectedTipoServicoString, tempoValueParam) {
+        onApplyFilters: (selectedCategoriesList, selectedTipoServicoString, tempoValueParam, ordenacaoValueParam) {
           setState(() {
             selectedCategories = selectedCategoriesList;
             selectedTipoServico = selectedTipoServicoString;
             tempoValue = tempoValueParam; // Atualiza o valor do tempo
+            ordenacaoValue = ordenacaoValueParam; // Atualiza o valor de ordenação
             _isTimeFilterActive = true; // Marca que o filtro de tempo está ativo
           });
           _filterServices();
