@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 
 class FiltersModal extends StatefulWidget {
-  final Function(List<String> selectedCategories, String selectedTipoServico, double tempoValue, String ordenacaoValue) onApplyFilters;
+  final Function(List<String> selectedCategories, String selectedTipoServico, double tempoValue, String ordenacaoValue, int prazoDias) onApplyFilters;
   final Function()? onClearFilters; // Função opcional para limpar filtros
   final double initialTempoValue;
   final String initialAvaliacaoValue;
   final String initialOrdenacaoValue;
   final List<String> initialSelectedCategories;
   final String initialSelectedTipoServico;
+  final int initialPrazoDias;
 
   const FiltersModal({
     super.key,
@@ -19,6 +20,7 @@ class FiltersModal extends StatefulWidget {
     this.initialOrdenacaoValue = "0",
     this.initialSelectedCategories = const [],
     this.initialSelectedTipoServico = "",
+    this.initialPrazoDias = 0,
   });
 
   @override
@@ -30,6 +32,7 @@ class _FiltersModalState extends State<FiltersModal> {
   late String avaliacaoValue;
   late String ordenacaoValue;
   late String selectedTipoServico;
+  int prazoDias = 0;
   final TextEditingController _categoriaController = TextEditingController();
   Set<String> selectedCategories = <String>{};
 
@@ -40,6 +43,7 @@ class _FiltersModalState extends State<FiltersModal> {
     avaliacaoValue = widget.initialAvaliacaoValue;
     ordenacaoValue = widget.initialOrdenacaoValue;
     selectedTipoServico = widget.initialSelectedTipoServico;
+    prazoDias = widget.initialPrazoDias;
     selectedCategories = widget.initialSelectedCategories.toSet();
   }
 
@@ -93,11 +97,27 @@ class _FiltersModalState extends State<FiltersModal> {
                             Border.all(color: AppColors.amareloUmPoucoEscuro),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const TextField(
-                        decoration: InputDecoration(
-                          hintText: '30/10/2025',
-                          border: InputBorder.none,
-                        ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              prazoDias > 0
+                                ? '${prazoDias} dia(s)'
+                                : 'Selecione o prazo',
+                              style: TextStyle(
+                                color: prazoDias > 0
+                                  ? AppColors.preto
+                                  : AppColors.amareloUmPoucoEscuro.withOpacity(0.6),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.date_range, color: AppColors.amareloUmPoucoEscuro),
+                            onPressed: () {
+                              _showPrazoDialog();
+                            },
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -365,6 +385,7 @@ class _FiltersModalState extends State<FiltersModal> {
                       ordenacaoValue = "0";
                       selectedTipoServico = "";
                       selectedCategories.clear();
+                      prazoDias = 0;
                       _categoriaController.clear();
                     });
 
@@ -396,7 +417,7 @@ class _FiltersModalState extends State<FiltersModal> {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    widget.onApplyFilters(selectedCategories.toList(), selectedTipoServico, tempoValue, ordenacaoValue);
+                    widget.onApplyFilters(selectedCategories.toList(), selectedTipoServico, tempoValue, ordenacaoValue, prazoDias);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.amareloUmPoucoEscuro,
@@ -419,6 +440,94 @@ class _FiltersModalState extends State<FiltersModal> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showPrazoDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        int selectedDays = prazoDias;
+        return AlertDialog(
+          title: const Text('Selecione o prazo'),
+          content: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  RadioListTile<int>(
+                    title: const Text('Qualquer prazo'),
+                    value: 0,
+                    groupValue: selectedDays,
+                    onChanged: (value) {
+                      setState(() {
+                        selectedDays = value ?? 0; // Garante que não seja nulo
+                      });
+                    },
+                  ),
+                  RadioListTile<int>(
+                    title: const Text('Até 7 dias'),
+                    value: 7,
+                    groupValue: selectedDays,
+                    onChanged: (value) {
+                      setState(() {
+                        selectedDays = value ?? 0;
+                      });
+                    },
+                  ),
+                  RadioListTile<int>(
+                    title: const Text('Até 15 dias'),
+                    value: 15,
+                    groupValue: selectedDays,
+                    onChanged: (value) {
+                      setState(() {
+                        selectedDays = value ?? 0;
+                      });
+                    },
+                  ),
+                  RadioListTile<int>(
+                    title: const Text('Até 30 dias'),
+                    value: 30,
+                    groupValue: selectedDays,
+                    onChanged: (value) {
+                      setState(() {
+                        selectedDays = value ?? 0;
+                      });
+                    },
+                  ),
+                  RadioListTile<int>(
+                    title: const Text('Até 60 dias'),
+                    value: 60,
+                    groupValue: selectedDays,
+                    onChanged: (value) {
+                      setState(() {
+                        selectedDays = value ?? 0;
+                      });
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  prazoDias = selectedDays;
+                });
+                Navigator.of(context).pop();
+              },
+              child: const Text('Confirmar'),
+            ),
+          ],
+        );
+      },
     );
   }
 

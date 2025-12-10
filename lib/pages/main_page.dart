@@ -35,6 +35,7 @@ class _MainPageState extends State<MainPage> {
   String ordenacaoValue = "0";
   List<String> selectedCategories = [];
   String selectedTipoServico = "";
+  int _prazoDias = 0; // Variável para armazenar o prazo selecionado
 
   @override
   void initState() {
@@ -151,7 +152,20 @@ class _MainPageState extends State<MainPage> {
           matchesTempo = service.timeChronos >= tempoMin && service.timeChronos <= tempoMax;
         }
 
-        return matchesSearch && matchesCategories && matchesTipoServico && matchesTempo;
+        // Verifica se o serviço corresponde ao filtro de prazo
+        bool matchesPrazo = true; // Por padrão, não filtra por prazo
+
+        // Aplica o filtro de prazo apenas se ele estiver definido e maior que 0
+        if (_prazoDias > 0) {
+          DateTime hoje = DateTime.now();
+          DateTime prazoLimite = hoje.add(Duration(days: _prazoDias));
+
+          // O serviço está dentro do prazo se seu deadline for entre hoje e o prazo limite
+          matchesPrazo = service.deadline.isAfter(hoje) && service.deadline.isBefore(prazoLimite) ||
+                         service.deadline.isAtSameMomentAs(hoje) || service.deadline.isAtSameMomentAs(prazoLimite);
+        }
+
+        return matchesSearch && matchesCategories && matchesTipoServico && matchesTempo && matchesPrazo;
       }).toList();
 
       // Aplica ordenação com base no valor selecionado
@@ -188,13 +202,14 @@ class _MainPageState extends State<MainPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => FiltersModal(
-        onApplyFilters: (selectedCategoriesList, selectedTipoServicoString, tempoValueParam, ordenacaoValueParam) {
+        onApplyFilters: (selectedCategoriesList, selectedTipoServicoString, tempoValueParam, ordenacaoValueParam, prazoDias) {
           setState(() {
             selectedCategories = selectedCategoriesList;
             selectedTipoServico = selectedTipoServicoString;
             tempoValue = tempoValueParam; // Atualiza o valor do tempo
             ordenacaoValue = ordenacaoValueParam; // Atualiza o valor de ordenação
             _isTimeFilterActive = true; // Marca que o filtro de tempo está ativo
+            _prazoDias = prazoDias; // Atualiza o valor do prazo
           });
           _filterServices();
         },
@@ -204,6 +219,7 @@ class _MainPageState extends State<MainPage> {
         initialOrdenacaoValue: ordenacaoValue,
         initialSelectedCategories: selectedCategories,
         initialSelectedTipoServico: selectedTipoServico,
+        initialPrazoDias: _prazoDias,
       ),
     );
   }
@@ -229,6 +245,7 @@ class _MainPageState extends State<MainPage> {
       ordenacaoValue = "0";
       selectedCategories = [];
       selectedTipoServico = "";
+      _prazoDias = 0; // Reseta o prazo
       _searchController.clear();
     });
     _filterServices();
