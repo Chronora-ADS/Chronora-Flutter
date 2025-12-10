@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 
 class FiltersModal extends StatefulWidget {
-  final Function(List<String> selectedCategories) onApplyFilters;
+  final Function(List<String> selectedCategories, String selectedTipoServico) onApplyFilters;
   final double initialTempoValue;
   final String initialAvaliacaoValue;
   final String initialOrdenacaoValue;
   final List<String> initialSelectedCategories;
+  final String initialSelectedTipoServico;
 
   const FiltersModal({
     super.key,
@@ -15,6 +16,7 @@ class FiltersModal extends StatefulWidget {
     this.initialAvaliacaoValue = "0",
     this.initialOrdenacaoValue = "0",
     this.initialSelectedCategories = const [],
+    this.initialSelectedTipoServico = "",
   });
 
   @override
@@ -25,6 +27,7 @@ class _FiltersModalState extends State<FiltersModal> {
   late double tempoValue;
   late String avaliacaoValue;
   late String ordenacaoValue;
+  late String selectedTipoServico;
   final TextEditingController _categoriaController = TextEditingController();
   Set<String> selectedCategories = <String>{};
 
@@ -34,6 +37,7 @@ class _FiltersModalState extends State<FiltersModal> {
     tempoValue = widget.initialTempoValue;
     avaliacaoValue = widget.initialAvaliacaoValue;
     ordenacaoValue = widget.initialOrdenacaoValue;
+    selectedTipoServico = widget.initialSelectedTipoServico;
     selectedCategories = widget.initialSelectedCategories.toSet();
   }
 
@@ -105,25 +109,55 @@ class _FiltersModalState extends State<FiltersModal> {
                       children: [
                         Expanded(
                           child: OutlinedButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              setState(() {
+                                selectedTipoServico = selectedTipoServico == 'À distância' ? '' : 'À distância';
+                              });
+                            },
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(
-                                  color: AppColors.amareloUmPoucoEscuro),
-                              backgroundColor:
-                                  AppColors.amareloClaro.withOpacity(0.1),
+                              side: BorderSide(
+                                  color: selectedTipoServico == 'À distância'
+                                      ? AppColors.amareloUmPoucoEscuro
+                                      : AppColors.amareloUmPoucoEscuro.withOpacity(0.3)),
+                              backgroundColor: selectedTipoServico == 'À distância'
+                                  ? AppColors.amareloClaro.withOpacity(0.1)
+                                  : AppColors.branco,
                             ),
-                            child: const Text('À distância'),
+                            child: Text(
+                              'À distância',
+                              style: TextStyle(
+                                color: selectedTipoServico == 'À distância'
+                                    ? AppColors.preto
+                                    : AppColors.amareloUmPoucoEscuro.withOpacity(0.6),
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: OutlinedButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              setState(() {
+                                selectedTipoServico = selectedTipoServico == 'Presencial' ? '' : 'Presencial';
+                              });
+                            },
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(
-                                  color: AppColors.amareloUmPoucoEscuro),
+                              side: BorderSide(
+                                  color: selectedTipoServico == 'Presencial'
+                                      ? AppColors.amareloUmPoucoEscuro
+                                      : AppColors.amareloUmPoucoEscuro.withOpacity(0.3)),
+                              backgroundColor: selectedTipoServico == 'Presencial'
+                                  ? AppColors.amareloClaro.withOpacity(0.1)
+                                  : AppColors.branco,
                             ),
-                            child: const Text('Presencial'),
+                            child: Text(
+                              'Presencial',
+                              style: TextStyle(
+                                color: selectedTipoServico == 'Presencial'
+                                    ? AppColors.preto
+                                    : AppColors.amareloUmPoucoEscuro.withOpacity(0.6),
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -321,7 +355,7 @@ class _FiltersModalState extends State<FiltersModal> {
             child: ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                widget.onApplyFilters(selectedCategories.toList());
+                widget.onApplyFilters(selectedCategories.toList(), selectedTipoServico);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.amareloUmPoucoEscuro,

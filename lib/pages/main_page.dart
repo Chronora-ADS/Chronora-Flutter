@@ -33,6 +33,7 @@ class _MainPageState extends State<MainPage> {
   String avaliacaoValue = "0";
   String ordenacaoValue = "0";
   List<String> selectedCategories = [];
+  String selectedTipoServico = "";
 
   @override
   void initState() {
@@ -123,7 +124,11 @@ class _MainPageState extends State<MainPage> {
             service.categoryEntities.any((category) =>
               category.name.toLowerCase().contains(selectedCategory.toLowerCase())));
 
-        return matchesSearch && matchesCategories;
+        // Verifica se o serviço corresponde ao tipo de serviço selecionado
+        bool matchesTipoServico = selectedTipoServico.isEmpty ||
+          service.modality.toLowerCase().contains(selectedTipoServico.toLowerCase());
+
+        return matchesSearch && matchesCategories && matchesTipoServico;
       }).toList();
     });
   }
@@ -134,9 +139,10 @@ class _MainPageState extends State<MainPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => FiltersModal(
-        onApplyFilters: (selectedCategoriesList) {
+        onApplyFilters: (selectedCategoriesList, selectedTipoServicoString) {
           setState(() {
             selectedCategories = selectedCategoriesList;
+            selectedTipoServico = selectedTipoServicoString;
           });
           _filterServices();
         },
@@ -144,6 +150,7 @@ class _MainPageState extends State<MainPage> {
         initialAvaliacaoValue: avaliacaoValue,
         initialOrdenacaoValue: ordenacaoValue,
         initialSelectedCategories: selectedCategories,
+        initialSelectedTipoServico: selectedTipoServico,
       ),
     );
   }
