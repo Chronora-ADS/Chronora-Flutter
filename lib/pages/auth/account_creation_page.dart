@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:go_router/go_router.dart';
 import '../../widgets/backgrounds/background_auth_widget.dart';
 import '../../widgets/auth_text_field.dart';
 import '../../core/constants/app_colors.dart';
@@ -147,13 +148,12 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
       final response = await ApiService.post('/auth/register', payload);
 
       if (response.statusCode == 200) {
-        final token = response.body;
-        await _saveToken(token);
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Cadastro realizado com sucesso!')),
         );
-        Navigator.pushReplacementNamed(context, AppRoutes.login);
+        
+        final router = GoRouter.of(context);
+        router.go(AppRoutes.login);
       } else {
         final error = response.body;
         print('Erro do servidor: ${response.statusCode} - $error');
@@ -172,16 +172,6 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
       setState(() {
         _isLoading = false;
       });
-    }
-  }
-
-  Future<void> _saveToken(String token) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('auth_token', token);
-      print('Token salvo com sucesso!');
-    } catch (e) {
-      print('Erro ao salvar token: $e');
     }
   }
 
@@ -220,7 +210,6 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                   ),
                   const SizedBox(height: 30),
 
-                  // Nome completo
                   AuthTextField(
                     hintText: 'Nome completo',
                     controller: _nameController,
@@ -229,7 +218,6 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
 
                   const SizedBox(height: 16),
 
-                  // E-mail
                   AuthTextField(
                     hintText: 'E-mail',
                     controller: _emailController,
@@ -239,7 +227,6 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
 
                   const SizedBox(height: 16),
 
-                  // Número de celular
                   AuthTextField(
                     hintText: 'Número de celular (com DDD)',
                     controller: _phoneController,
@@ -249,7 +236,6 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
 
                   const SizedBox(height: 16),
 
-                  // Senha
                   AuthTextField(
                     hintText: 'Senha',
                     controller: _passwordController,
@@ -259,7 +245,6 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
 
                   const SizedBox(height: 16),
 
-                  // Confirmar Senha
                   AuthTextField(
                     hintText: 'Confirmar Senha',
                     controller: _confirmPasswordController,
@@ -269,7 +254,6 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
 
                   const SizedBox(height: 20),
 
-                  // Botão para anexar documento
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
@@ -326,7 +310,6 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
 
                   const SizedBox(height: 16),
 
-                  // Botão de criar conta
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -361,14 +344,13 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
 
                   const SizedBox(height: 16),
 
-                  // Botão de voltar para login
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
                       onPressed: _isLoading
                           ? null
                           : () {
-                              Navigator.pop(context);
+                              context.pop();
                             },
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(

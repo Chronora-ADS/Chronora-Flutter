@@ -6,13 +6,14 @@ import 'package:universal_html/html.dart' as html;
 import 'dart:typed_data';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:go_router/go_router.dart';
 
-// Importe os widgets da main_page
-import '../../../widgets/header.dart';
-import '../../../widgets/side_menu.dart';
-import '../../../widgets/wallet_modal.dart';
-import '../../../core/services/api_service.dart';
-import '../../../core/models/create_request_model.dart';
+import '../../../../widgets/header.dart';
+import '../../../../widgets/side_menu.dart';
+import '../../../../widgets/wallet_modal.dart';
+import '../../../../core/services/api_service.dart';
+import '../../../../core/models/create_request_model.dart';
+import '../../../../core/router/auth_wrapper.dart';
 
 class RequestCreationPage extends StatefulWidget {
   const RequestCreationPage({super.key});
@@ -163,7 +164,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     return truncatedName;
   }
 
-  // Método para converter imagem para base64
   Future<String?> _convertImageToBase64() async {
     try {
       if (kIsWeb) {
@@ -185,7 +185,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     }
   }
 
-  // Método para criar o pedido no backend - CORRIGIDO
   Future<void> _createRequest() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -214,7 +213,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     });
 
     try {
-      // Recuperar o token salvo
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
       
@@ -229,13 +227,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         return;
       }
 
-      // Converter imagem para base64 se existir
       String? base64Image;
       if (_selectedImage != null) {
         base64Image = await _convertImageToBase64();
       }
 
-      // VALIDAÇÃO E FORMATAÇÃO CORRETA DA DATA
       final deadlineText = _deadlineController.text.trim();
       if (deadlineText.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -248,7 +244,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         return;
       }
 
-      // Converter data do formato DD/MM/YYYY para YYYY-MM-DD
       final deadlineParts = deadlineText.split('/');
       if (deadlineParts.length != 3) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -267,7 +262,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         final month = deadlineParts[1].padLeft(2, '0');
         final year = deadlineParts[2];
         
-        // Validar se é uma data válida
         final date = DateTime.parse('$year-$month-$day');
         if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -292,7 +286,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         return;
       }
 
-      // VALIDAÇÃO DO TEMPO EM CHRONOS
       final chronosText = _chronosController.text.trim();
       if (chronosText.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -329,7 +322,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         return;
       }
 
-      // CRIAR O MODELO CORRETAMENTE
       final requestModel = CreateRequestModel(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
@@ -357,7 +349,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           ),
         );
         
-        // Limpar formulário após sucesso
         _formKey.currentState!.reset();
         setState(() {
           _categoriesTags.clear();
@@ -367,7 +358,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           _imageBytes = null;
         });
 
-        Navigator.pop(context, true);
+        context.pop(true);
         
       } else {
         final error = response.body;
@@ -425,85 +416,87 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0B0C0C),
-      body: Stack(
-        children: [
-          _buildBackgroundImages(),
-          
-          Column(
-            children: [
-              Header(
-                onMenuPressed: _toggleDrawer,
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
+    return AuthWrapper(
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0B0C0C),
+        body: Stack(
+          children: [
+            _buildBackgroundImages(),
+            
+            Column(
+              children: [
+                Header(
+                  onMenuPressed: _toggleDrawer,
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      children: [
+                        _buildSearchBar(),
+                        const SizedBox(height: 60),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: _buildForm(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            if (_isDrawerOpen)
+              Positioned(
+                top: kToolbarHeight * 1.5,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  color: Colors.black.withOpacity(0.5),
+                  child: Row(
                     children: [
-                      _buildSearchBar(),
-                      const SizedBox(height: 60),
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.6,
+                        child: SideMenu(
+                          onWalletPressed: _openWallet,
+                        ),
+                      ),
                       Expanded(
-                        child: SingleChildScrollView(
-                          child: _buildForm(),
+                        child: GestureDetector(
+                          onTap: _toggleDrawer,
+                          child: Container(
+                            color: Colors.transparent,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-            ],
-          ),
 
-          if (_isDrawerOpen)
-            Positioned(
-              top: kToolbarHeight * 1.5,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(
-                        onWalletPressed: _openWallet,
+            if (_isWalletOpen)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  color: Colors.black.withOpacity(0.5),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: WalletModal(
+                        onClose: _closeWallet,
                       ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(
-                          color: Colors.transparent,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          if (_isWalletOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: WalletModal(
-                      onClose: _closeWallet,
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -783,7 +776,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       return 'Data é obrigatória';
     }
     
-    // Validar formato DD/MM/YYYY
     final parts = value.split('/');
     if (parts.length != 3) {
       return 'Use o formato DD/MM/YYYY';
@@ -1033,7 +1025,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: TextButton(
-              onPressed: _isLoading ? null : () => Navigator.pop(context),
+              onPressed: _isLoading ? null : () => context.pop(),
               child: const Text(
                 'Cancelar',
                 style: TextStyle(
