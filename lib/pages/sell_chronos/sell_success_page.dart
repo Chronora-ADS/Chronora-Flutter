@@ -238,7 +238,9 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
             height: 50,
             child: OutlinedButton(
               onPressed: () {
-                context.popUntil((route) => route.isFirst);
+                // Correção: Substituir popUntil por go para navegar diretamente
+                // para a tela principal e depois para venda
+                context.go(AppRoutes.main);
                 context.pushNamed('sell-chronos');
               },
               style: OutlinedButton.styleFrom(

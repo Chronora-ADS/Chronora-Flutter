@@ -1170,8 +1170,114 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           (_serviceId != null || widget.service != null);
   }
 
+  Widget _buildForm() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Título
+          const Text(
+            'Título do pedido',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildFormField('Título', _titleController, validator: _requiredValidator),
+          const SizedBox(height: 24),
+
+          // Descrição
+          const Text(
+            'Descrição',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildDescriptionField(),
+          const SizedBox(height: 24),
+
+          // Tempo em Chronos
+          const Text(
+            'Tempo em Chronos',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildFormField('Chronos', _chronosController, validator: _chronosValidator),
+          const SizedBox(height: 24),
+
+          // Data de Prazo
+          const Text(
+            'Data de prazo',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildDateField('DD/MM/YYYY'),
+          const SizedBox(height: 24),
+
+          // Categorias
+          const Text(
+            'Categoria(s)',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildCategoriesField(),
+          const SizedBox(height: 24),
+
+          // Modalidade
+          const Text(
+            'Modalidade',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildModalityDropdown(),
+          const SizedBox(height: 24),
+
+          // Imagem
+          const Text(
+            'Imagem',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildImageButton(),
+          const SizedBox(height: 32),
+
+          // Botões de ação
+          _buildActionButtons(),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Verifica se está carregando e não há erro
     if (!_isReadyToShowForm && !_isFetchingData && _errorMessage == null) {
       return const Scaffold(
         backgroundColor: Color(0xFF0B0C0C),
@@ -1196,6 +1302,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       );
     }
 
+    // Verifica se há erro
     if (_errorMessage != null) {
       return Scaffold(
         backgroundColor: const Color(0xFF0B0C0C),
@@ -1229,93 +1336,94 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
                     'Voltar',
                     style: TextStyle(color: Colors.white),
                   ),
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    );
-  }
+      );
+    }
 
-  return AuthWrapper(
-    child: Scaffold(
-      backgroundColor: const Color(0xFF0B0C0C),
-      body: Stack(
-        children: [
-          _buildBackgroundImages(),
-          Column(
-            children: [
-              Header(
-                onMenuPressed: _toggleDrawer,
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
+    // Retorna a tela principal com AuthWrapper
+    return AuthWrapper(
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0B0C0C),
+        body: Stack(
+          children: [
+            _buildBackgroundImages(),
+            Column(
+              children: [
+                Header(
+                  onMenuPressed: _toggleDrawer,
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      children: [
+                        _buildSearchBar(),
+                        const SizedBox(height: 60),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: _buildForm(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (_isDrawerOpen)
+              Positioned(
+                top: kToolbarHeight * 1.5,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  color: Colors.black.withOpacity(0.5),
+                  child: Row(
                     children: [
-                      _buildSearchBar(),
-                      const SizedBox(height: 60),
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.6,
+                        child: SideMenu(
+                          onWalletPressed: _openWallet,
+                        ),
+                      ),
                       Expanded(
-                        child: SingleChildScrollView(
-                          child: _buildForm(),
+                        child: GestureDetector(
+                          onTap: _toggleDrawer,
+                          child: Container(
+                            color: Colors.transparent,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-            ],
-          ),
-          if (_isDrawerOpen)
-            Positioned(
-              top: kToolbarHeight * 1.5,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(
-                        onWalletPressed: _openWallet,
+            if (_isWalletOpen)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  color: Colors.black.withOpacity(0.5),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: WalletModal(
+                        onClose: _closeWallet,
                       ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(
-                          color: Colors.transparent,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          if (_isWalletOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: WalletModal(
-                      onClose: _closeWallet,
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
