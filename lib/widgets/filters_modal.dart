@@ -33,6 +33,7 @@ class _FiltersModalState extends State<FiltersModal> {
   late String ordenacaoValue;
   late String selectedTipoServico;
   int prazoDias = 0;
+  DateTime? _selectedPrazoDate;
   final TextEditingController _categoriaController = TextEditingController();
   Set<String> selectedCategories = <String>{};
 
@@ -45,6 +46,11 @@ class _FiltersModalState extends State<FiltersModal> {
     selectedTipoServico = widget.initialSelectedTipoServico;
     prazoDias = widget.initialPrazoDias;
     selectedCategories = widget.initialSelectedCategories.toSet();
+
+    // Initialize the selected date based on prazoDias
+    if (widget.initialPrazoDias > 0) {
+      _selectedPrazoDate = DateTime.now().add(Duration(days: widget.initialPrazoDias));
+    }
   }
 
   @override
@@ -101,11 +107,11 @@ class _FiltersModalState extends State<FiltersModal> {
                         children: [
                           Expanded(
                             child: Text(
-                              prazoDias > 0
-                                ? 'Até ${DateTime.now().add(Duration(days: prazoDias)).day}/${DateTime.now().add(Duration(days: prazoDias)).month}'
+                              _selectedPrazoDate != null
+                                ? 'Até ${_selectedPrazoDate!.day}/${_selectedPrazoDate!.month}'
                                 : 'Selecione a data limite',
                               style: TextStyle(
-                                color: prazoDias > 0
+                                color: _selectedPrazoDate != null
                                   ? AppColors.preto
                                   : AppColors.amareloUmPoucoEscuro.withOpacity(0.6),
                               ),
@@ -386,6 +392,7 @@ class _FiltersModalState extends State<FiltersModal> {
                       selectedTipoServico = "";
                       selectedCategories.clear();
                       prazoDias = 0;
+                      _selectedPrazoDate = null;
                       _categoriaController.clear();
                     });
 
@@ -443,89 +450,25 @@ class _FiltersModalState extends State<FiltersModal> {
     );
   }
 
-  void _showPrazoDialog() {
-    DateTime? selectedDate = prazoDias > 0
-        ? DateTime.now().add(Duration(days: prazoDias))
-        : null;
+  Future<void> _showPrazoDialog() async {
+    DateTime? initialDate = _selectedPrazoDate ?? DateTime.now();
 
-    showDialog(
+    final DateTime? picked = await showDatePicker(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Selecione a data limite'),
-          content: StatefulBuilder(
-            builder: (BuildContext context, StateSetter setState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Data selecionada: ${selectedDate != null ? "${selectedDate?.day}/${selectedDate?.month}/${selectedDate?.year}" : "Nenhuma data selecionada"}',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () async {
-                      final DateTime? picked = await showDatePicker(
-                        context: context,
-                        initialDate: selectedDate ?? DateTime.now(),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 365)),
-                      );
-
-                      if (picked != null) {
-                        setState(() {
-                          selectedDate = picked;
-                        });
-
-                        // Calculate days difference from today
-                        final today = DateTime.now();
-                        final difference = selectedDate!.difference(today);
-                        prazoDias = difference.inDays;
-                      }
-                    },
-                    style: TextButton.styleFrom(
-                      backgroundColor: AppColors.amareloClaro,
-                      foregroundColor: AppColors.preto,
-                    ),
-                    child: const Text('Selecionar Data'),
-                  ),
-                  const SizedBox(height: 8),
-                  if (selectedDate != null) ...[
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          selectedDate = null;
-                        });
-                        prazoDias = 0; // Reset to "any date"
-                      },
-                      style: TextButton.styleFrom(
-                        backgroundColor: AppColors.amareloUmPoucoEscuro,
-                        foregroundColor: AppColors.branco,
-                      ),
-                      child: const Text('Limpar Data'),
-                    ),
-                  ],
-                ],
-              );
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Confirmar'),
-            ),
-          ],
-        );
-      },
+      initialDate: initialDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
     );
+
+    if (picked != null) {
+      // Calculate days difference from today
+      final today = DateTime.now();
+      final difference = picked.difference(today);
+      setState(() {
+        _selectedPrazoDate = picked;
+        prazoDias = difference.inDays;
+      });
+    }
   }
 
   Widget _buildFilterSection(String title, Widget child) {
