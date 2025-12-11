@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 
 class FiltersModal extends StatefulWidget {
-  final Function(List<String> selectedCategories, String selectedTipoServico, double tempoValue, String ordenacaoValue, int prazoDias) onApplyFilters;
+  final Function(List<String> selectedCategories, String selectedTipoServico, double tempoValue, String ordenacaoValue, int prazoDias, DateTime? selectedPrazoDate) onApplyFilters;
   final Function()? onClearFilters; // Função opcional para limpar filtros
   final double initialTempoValue;
   final String initialAvaliacaoValue;
@@ -424,7 +424,7 @@ class _FiltersModalState extends State<FiltersModal> {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    widget.onApplyFilters(selectedCategories.toList(), selectedTipoServico, tempoValue, ordenacaoValue, prazoDias);
+                    widget.onApplyFilters(selectedCategories.toList(), selectedTipoServico, tempoValue, ordenacaoValue, prazoDias, _selectedPrazoDate);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.amareloUmPoucoEscuro,
