@@ -2,7 +2,7 @@ class Service {
   final int id;
   final String title;
   final String description;
-  final String serviceImage;
+  final String serviceImageUrl;
   final int timeChronos;
   final UserCreator userCreator;
   final List<CategoryEntity> categoryEntities;
@@ -13,7 +13,7 @@ class Service {
     required this.id,
     required this.title,
     required this.description,
-    required this.serviceImage,
+    required this.serviceImageUrl,
     required this.timeChronos,
     required this.userCreator,
     required this.categoryEntities,
@@ -48,7 +48,7 @@ class Service {
       id: json['id'],
       title: json['title'] ?? 'Título não disponível',
       description: json['description'] ?? 'Descrição não disponível',
-      serviceImage: json['serviceImage'] ?? '',
+      serviceImageUrl: json['serviceImageUrl'] ?? '',
       timeChronos: json['timeChronos'] ?? 0,
       userCreator: userCreator,
       categoryEntities: (json['categoryEntities'] as List? ?? [])
