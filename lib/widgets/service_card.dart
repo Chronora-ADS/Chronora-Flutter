@@ -45,33 +45,21 @@ class ServiceCard extends StatelessWidget {
                 Container(
                   height: 300,
                   width: double.infinity,
-                  decoration: const BoxDecoration(
-                    borderRadius: BorderRadius.only(
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(30),
                       topRight: Radius.circular(30),
                     ),
+                    image: service.serviceImage.isNotEmpty
+                        ? DecorationImage(
+                            image: MemoryImage(base64.decode(service.serviceImage)),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                   ),
-                  child: service.serviceImageUrl.isNotEmpty
-                      ? Image.network(
-                          service.serviceImageUrl,
-                          height: 300,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: Colors.grey[300],
-                              child: const Icon(Icons.broken_image, size: 50),
-                            );
-                          },
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return const Center(child: CircularProgressIndicator());
-                          },
-                        )
-                      : Container(
-                          color: Colors.grey[300],
-                          child: const Icon(Icons.image, size: 50, color: Colors.grey),
-                        ),
+                  child: service.serviceImage.isEmpty
+                      ? const Icon(Icons.image, size: 50, color: Colors.grey)
+                      : null,
                 ),
 
                 // Informações sobrepostas no canto superior direito

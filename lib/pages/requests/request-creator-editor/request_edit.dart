@@ -65,10 +65,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     _descriptionController.text = service.description;
     _chronosController.text = service.timeChronos.toString();
     
-    // Se tiver imagem, converte de base64
-    if (service.serviceImageUrl.isNotEmpty) {
+    if (service.serviceImage.isNotEmpty) {
       try {
-        final imageBytes = base64.decode(service.serviceImageUrl);
+        final imageBytes = base64.decode(service.serviceImage);
         setState(() {
           _imageBytes = imageBytes;
           _selectedImage = _imageBytes;
