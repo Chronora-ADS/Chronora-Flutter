@@ -67,6 +67,39 @@ class _RequestViewState extends State<RequestView> {
     });
   }
 
+  Widget _buildBackgroundImages() {
+    return Stack(
+      children: [
+        Positioned(
+          left: 0,
+          top: 135,
+          child: Image.asset(
+            'assets/img/Comb2.png',
+            errorBuilder: (context, error, stackTrace) => const SizedBox(),
+          ),
+        ),
+        Positioned(
+          left: 0,
+          bottom: 0,
+          child: Image.asset(
+            'assets/img/BarAscending.png',
+            width: 210.47,
+            height: 178.9,
+            errorBuilder: (context, error, stackTrace) => const SizedBox(),
+          ),
+        ),
+        Positioned(
+          right: 0,
+          bottom: 60,
+          child: Image.asset(
+            'assets/img/Comb3.png',
+            errorBuilder: (context, error, stackTrace) => const SizedBox(),
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _loadData() async {
     await _getCurrentUserId();
     if (_extractedService != null) {
@@ -182,7 +215,7 @@ class _RequestViewState extends State<RequestView> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Pedido cancelado com sucesso'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.amareloClaro,
           ),
         );
         Navigator.pop(context, true); // Retorna true para atualizar a lista
@@ -193,7 +226,7 @@ class _RequestViewState extends State<RequestView> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Erro: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.vermelho,
         ),
       );
       setState(() => _isLoading = false);
@@ -219,7 +252,7 @@ class _RequestViewState extends State<RequestView> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Funcionalidade de aceitar pedido em desenvolvimento'),
-        backgroundColor: Colors.orange,
+        backgroundColor: AppColors.amareloUmPoucoEscuro,
       ),
     );
   }
@@ -227,19 +260,18 @@ class _RequestViewState extends State<RequestView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0C0C),
+      backgroundColor: AppColors.preto,
       body: Stack(
         children: [
+          _buildBackgroundImages(),
           Column(
             children: [
               Header(onMenuPressed: _toggleDrawer),
               Expanded(
-                child: BackgroundDefaultWidget(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(16),
                     child: _buildContent(),
                   ),
-                ),
               ),
             ],
           ),
@@ -250,7 +282,7 @@ class _RequestViewState extends State<RequestView> {
               right: 0,
               bottom: 0,
               child: Container(
-                color: Colors.black.withOpacity(0.5),
+                color: AppColors.preto.withOpacity(0.5),
                 child: Row(
                   children: [
                     SizedBox(
@@ -274,7 +306,7 @@ class _RequestViewState extends State<RequestView> {
               right: 0,
               bottom: 0,
               child: Container(
-                color: Colors.black.withOpacity(0.5),
+                color: AppColors.preto.withOpacity(0.5),
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
@@ -317,169 +349,188 @@ class _RequestViewState extends State<RequestView> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE9EAEC),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Título
-          Text(
-            _serviceDetail!.title,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Linha com prazo, modalidade e chronos (como na imagem)
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Prazo: ${_formatDate(_serviceDetail!.deadline)}',
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _serviceDetail!.modality,
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.amareloClaro,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '${_serviceDetail!.timeChronos} Chronos',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // Descrição
-          Text(
-            _serviceDetail!.description,
-            style: const TextStyle(fontSize: 16),
-          ),
-          const SizedBox(height: 20),
-
-          // Categorias em container separado, formato lista com marcadores
-          if (_serviceDetail!.categoryEntities.isNotEmpty) ...[
+      child: 
+        Column(
+          children: [
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(8),
+              padding: const EdgeInsets.all(10), 
+              decoration: const BoxDecoration(
+                color: AppColors.branco,
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Categorias:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  // Título
+                  Text(
+                    _serviceDetail!.title,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  ..._serviceDetail!.categoryEntities.map((cat) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('• ', style: TextStyle(fontSize: 16)),
-                            Expanded(child: Text(cat.name)),
-                          ],
-                        ),
-                      )),
-                ],
+                ]
               ),
             ),
-            const SizedBox(height: 20),
-          ],
-
-          // Informações do criador em container separado
-          if (_serviceDetail!.userCreator != null) ...[
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: const BoxDecoration(
+                color: AppColors.preto,
+                border: Border(
+                  bottom: BorderSide(color:AppColors.amareloUmPoucoMaisEscuro, width: 3),
+                  top: BorderSide(color:AppColors.amareloUmPoucoMaisEscuro, width: 3),
+                  left: BorderSide(color:AppColors.amareloUmPoucoMaisEscuro, width: 3),
+                  right: BorderSide(color:AppColors.amareloUmPoucoMaisEscuro, width: 3)
+                ),
+                borderRadius: BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
+                // borderRadius: BorderRadius.circular(15),
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Postado por:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  const SizedBox(height: 8),
+                  // Linha com prazo, modalidade e chronos (como na imagem)
                   Row(
                     children: [
-                      CircleAvatar(
-                        backgroundColor: AppColors.amareloClaro,
-                        child: Text(
-                          _serviceDetail!.userCreator!.name[0].toUpperCase(),
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _serviceDetail!.userCreator!.name,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              'Prazo: ${_formatDate(_serviceDetail!.deadline)}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: AppColors.branco,
+                                backgroundColor: AppColors.amareloUmPoucoEscuro
+                              ),
                             ),
                             const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Text(
-                                  // _serviceDetail!.userCreator!.rating?.toStringAsFixed(1) ?? 
-                                  "5.0",
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                                const SizedBox(width: 4),
-                                const Icon(Icons.star, color: Colors.amber, size: 16),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'às ${_formatTime(_serviceDetail!.postedAt)}',
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                ),
-                              ],
+                            Text(
+                              _serviceDetail!.modality,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: AppColors.branco,
+                                backgroundColor: AppColors.amareloUmPoucoEscuro
+                              ),
                             ),
                           ],
                         ),
                       ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Text(
+                          '${_serviceDetail!.timeChronos} Chronos',
+                          style: const TextStyle(
+                            color: AppColors.amareloClaro,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 24,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
+                  const SizedBox(height: 20),
 
-          // Botões de ação
-          _buildActionButtons(),
-        ],
-      ),
+                  // Descrição
+                  Text(
+                    _serviceDetail!.description,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: AppColors.branco
+                    ),
+                  ),
+                ]
+              )
+            ),
+        
+            const SizedBox(height: 20),
+            if (_serviceDetail!.categoryEntities.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.amareloClaro,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ..._serviceDetail!.categoryEntities.map((cat) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('• ', style: TextStyle(fontSize: 16)),
+                              Expanded(child: Text(cat.name)),
+                            ],
+                          ),
+                        )),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+
+            // Informações do criador em container separado
+            if (_serviceDetail!.userCreator != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.branco,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Postado às ${_formatTime(_serviceDetail!.postedAt)} por:',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: AppColors.amareloClaro,
+                          child: Text(
+                            _serviceDetail!.userCreator!.name[0].toUpperCase(),
+                            style: const TextStyle(color: AppColors.branco),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _serviceDetail!.userCreator!.name,
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 4),
+                              const Row(
+                                children: [
+                                  Text(
+                                    // _serviceDetail!.userCreator!.rating?.toStringAsFixed(1) ?? 
+                                    "5.0",
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                  SizedBox(width: 4),
+                                  Icon(Icons.star, color: AppColors.amareloClaro, size: 16),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+
+            // Botões de ação
+            _buildActionButtons(),
+          ],
+        )
     );
   }
 
@@ -487,13 +538,13 @@ class _RequestViewState extends State<RequestView> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.grey.shade300,
+        color: AppColors.cinza,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: Colors.black87),
+          Icon(icon, size: 16, color: AppColors.preto),
           const SizedBox(width: 4),
           Text(label, style: const TextStyle(fontSize: 12)),
         ],
@@ -526,8 +577,8 @@ class _RequestViewState extends State<RequestView> {
             child: ElevatedButton(
               onPressed: _cancelRequest,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
+                backgroundColor: AppColors.vermelho,
+                foregroundColor: AppColors.branco,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -545,7 +596,7 @@ class _RequestViewState extends State<RequestView> {
           onPressed: _acceptRequest,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.amareloUmPoucoEscuro,
-            foregroundColor: Colors.white,
+            foregroundColor: AppColors.branco,
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
