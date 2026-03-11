@@ -12,6 +12,7 @@ class ServiceDetailModel {
   final String modality;
   final String? serviceImage;
   final UserCreator userCreator;
+  final String postedAt;
 
   ServiceDetailModel({
     this.id,
@@ -23,6 +24,7 @@ class ServiceDetailModel {
     required this.modality,
     this.serviceImage,
     required this.userCreator,
+    required this.postedAt
   });
 
   factory ServiceDetailModel.fromJson(Map<String, dynamic> json) {
@@ -36,6 +38,7 @@ class ServiceDetailModel {
       modality: json['modality'] ?? '',
       serviceImage: json['serviceImage'],
       userCreator: UserCreator.fromJson(json['userCreator'] ?? {}),
+      postedAt: json['postedAt'] ?? '',
     );
   }
 
@@ -59,6 +62,7 @@ class ServiceDetailModel {
       'categories': categoryEntities.map((e) => e.name).toList(),
       'modality': modality,
       if (serviceImage != null) 'serviceImage': serviceImage,
+      'postedAt': postedAt
     };
   }
 }

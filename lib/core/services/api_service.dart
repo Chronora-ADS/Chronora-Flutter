@@ -80,4 +80,22 @@ class ApiService {
       throw Exception('Erro de conexão: $e');
     }
   }
+
+    static Future<http.Response> delete(String endpoint, {String? token}) async {
+    try {
+      final headers = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+
+      final response = await http.get(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: headers,
+      );
+      return response;
+    } catch (e) {
+      throw Exception('Erro de conexão: $e');
+    }
+  }
 }

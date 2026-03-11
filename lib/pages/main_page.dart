@@ -395,11 +395,11 @@ class _MainPageState extends State<MainPage> {
           margin: const EdgeInsets.only(bottom: 16),
           child: ServiceCard(
             service: services[index],
-            onEdit: () async {
+            onView: () async {
               // Navega para a página de edição com o serviço
               final result = await Navigator.pushNamed(
                 context,
-                '/request-editing',
+                '/request-view',
                 arguments: services[index],
               );
               
