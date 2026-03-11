@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:chronora/core/models/main_page_requests_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
-
+import 'package:go_router/go_router.dart';
 import '../core/constants/app_colors.dart';
 import '../core/services/api_service.dart';
+import '../../core/router/auth_wrapper.dart';
 import '../widgets/backgrounds/background_default_widget.dart';
 import '../widgets/header.dart';
 import '../widgets/service_card.dart';
@@ -238,8 +239,8 @@ class _MainPageState extends State<MainPage> {
 
   void _openWallet() {
     setState(() {
-      _isDrawerOpen = false; // Fecha o side menu
-      _isWalletOpen = true; // Abre a carteira
+      _isDrawerOpen = false;
+      _isWalletOpen = true;
     });
   }
 
@@ -303,22 +304,17 @@ class _MainPageState extends State<MainPage> {
                                 borderRadius: BorderRadius.circular(20),
                                 borderSide: BorderSide.none,
                               ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              prefixIcon: const Icon(Icons.search,
-                                  color: AppColors.textoPlaceholder),
                             ),
                           ),
-                        ),
-
-                        // Make Request Section
-                        Column(
-                          children: [
-                            const Text(
-                              'As horas acumuladas no seu banco representam oportunidades reais de ação.',
-                              style: TextStyle(
-                                color: AppColors.branco,
-                                fontSize: 16,
+                          Column(
+                            children: [
+                              const Text(
+                                'As horas acumuladas no seu banco representam oportunidades reais de ação.',
+                                style: TextStyle(
+                                  color: AppColors.branco,
+                                  fontSize: 16,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -339,7 +335,10 @@ class _MainPageState extends State<MainPage> {
                                 backgroundColor: AppColors.branco,
                                 foregroundColor: AppColors.preto,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 12),
+                                    horizontal: 16, vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -417,68 +416,39 @@ class _MainPageState extends State<MainPage> {
                             ),
                           ],
                         ),
-
-                        const SizedBox(height: 24),
-
-                        _buildServicesList(),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          // Menu lateral
-          if (_isDrawerOpen)
-            Positioned(
-              top: kToolbarHeight * 1.5,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(
-                        onWalletPressed: _openWallet, // Usa a nova função
                       ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(
-                          color: Colors.transparent,
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: _toggleDrawer,
+                          child: Container(
+                            color: Colors.transparent,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-
-          // Modal da Carteira
-          if (_isWalletOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: WalletModal(
-                      onClose: _closeWallet, // Usa a nova função
+            if (_isWalletOpen)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  color: Colors.black.withOpacity(0.5),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: WalletModal(
+                        onClose: _closeWallet,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -550,7 +520,6 @@ class _MainPageState extends State<MainPage> {
               }
             },
             onCardEdited: (edited) async {
-              // Quando o card é editado pelo clique direto
               if (edited) {
                 await _fetchServices();
               }

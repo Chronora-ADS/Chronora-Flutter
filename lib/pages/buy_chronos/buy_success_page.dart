@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../widgets/header.dart';
-import '../../widgets/side_menu.dart';
-import '../../widgets/wallet_modal.dart';
+import 'package:go_router/go_router.dart';
+import '../../../widgets/header.dart';
+import '../../../widgets/side_menu.dart';
+import '../../../widgets/wallet_modal.dart';
+import '../../../core/router/auth_wrapper.dart';
+import '../../../core/constants/app_routes.dart';
 
 class BuySuccessPage extends StatefulWidget {
   final int chronosAmount;
@@ -23,7 +26,6 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
 
-  // Método auxiliar para criar linhas de detalhe
   Widget _buildDetailRow(String label, String value, IconData icon) {
     return Row(
       children: [
@@ -151,14 +153,12 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
   }
 
   Widget _buildSuccessContent() {
-    // Preço por Chronos (deve ser o mesmo da página de compra)
     const double chronosPrice = 2.50;
-    const double taxPercentage = 0.10; // 10%
+    const double taxPercentage = 0.10;
     
-    // Cálculos corretos:
-    final subtotal = widget.chronosAmount * chronosPrice; // Quantidade × Preço unitário
-    final taxa = subtotal * taxPercentage; // 10% do subtotal
-    final total = subtotal + taxa; // Este deve ser igual ao widget.totalAmount
+    final subtotal = widget.chronosAmount * chronosPrice;
+    final taxa = subtotal * taxPercentage;
+    final total = subtotal + taxa;
     
     return Container(
       padding: const EdgeInsets.all(25),
@@ -169,7 +169,6 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Ícone de sucesso
           Container(
             width: 80,
             height: 80,
@@ -186,7 +185,6 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
           
           const SizedBox(height: 24),
           
-          // Título de sucesso
           const Text(
             'Compra realizada com sucesso!',
             style: TextStyle(
@@ -199,7 +197,6 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
           
           const SizedBox(height: 30),
           
-          // Detalhes da transação
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -210,7 +207,6 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
             ),
             child: Column(
               children: [
-                // Chronos comprados
                 _buildDetailRow(
                   'Chronos comprados:',
                   '${widget.chronosAmount}',
@@ -218,7 +214,6 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Preço unitário (OPCIONAL - pode remover se não quiser mostrar)
                 _buildDetailRow(
                   'Preço por Chronos:',
                   'R\$ ${chronosPrice.toStringAsFixed(2)}',
@@ -226,7 +221,6 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Subtotal
                 _buildDetailRow(
                   'Subtotal:',
                   'R\$ ${subtotal.toStringAsFixed(2)}',
@@ -234,7 +228,6 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Taxa
                 _buildDetailRow(
                   'Taxa (10%):',
                   'R\$ ${taxa.toStringAsFixed(2)}',
@@ -242,7 +235,6 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Total (CORRIGIDO - usa o cálculo local)
                 _buildDetailRow(
                   'Total pago:',
                   'R\$ ${total.toStringAsFixed(2)}',
@@ -250,7 +242,6 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Método de pagamento
                 _buildDetailRow(
                   'Método de pagamento:',
                   widget.paymentMethod,
@@ -262,7 +253,6 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
           
           const SizedBox(height: 30),
           
-          // Mensagem de confirmação
           Text(
             'Os Chronos foram creditados instantaneamente em sua conta.',
             style: TextStyle(
@@ -274,17 +264,14 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
           
           const SizedBox(height: 30),
           
-          // Botão Voltar ao Início
+          // Botão Voltar ao Início - CORRIGIDO
           SizedBox(
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
               onPressed: () {
-                Navigator.pushNamedAndRemoveUntil(
-                  context, 
-                  '/main', 
-                  (route) => false
-                );
+                // Navega para a tela principal
+                context.go(AppRoutes.main);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFC29503),
@@ -305,14 +292,19 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
           
           const SizedBox(height: 16),
           
-          // Botão Nova Compra
+          // Botão Nova Compra - CORRIGIDO
           SizedBox(
             width: double.infinity,
             height: 50,
             child: OutlinedButton(
               onPressed: () {
-                Navigator.popUntil(context, (route) => route.isFirst);
-                Navigator.pushNamed(context, '/buy-chronos');
+                // CORREÇÃO: Usando go_router corretamente
+                // 1. Volta para a tela principal
+                context.go(AppRoutes.main);
+                // 2. Depois navega para buy-chronos
+                Future.delayed(const Duration(milliseconds: 100), () {
+                  context.pushNamed('buy-chronos');
+                });
               },
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(
@@ -338,88 +330,83 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
     );
   }
 
-  // MÉTODO BUILD QUE ESTAVA FALTANDO
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: Header(onMenuPressed: _toggleDrawer),
-      backgroundColor: const Color(0xFF0B0C0C),
-      body: Stack(
-        children: [
-          // Background images
-          _buildBackgroundImages(),
-          
-          // Main content
-          Column(
-            children: [
-              // Barra de pesquisa no topo
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: _buildSearchBar(),
-              ),
-              
-              // Card centralizado verticalmente no meio da tela
-              Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _buildSuccessContent(),
+    return AuthWrapper(
+      child: Scaffold(
+        appBar: Header(onMenuPressed: _toggleDrawer),
+        backgroundColor: const Color(0xFF0B0C0C),
+        body: Stack(
+          children: [
+            _buildBackgroundImages(),
+            
+            Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: _buildSearchBar(),
+                ),
+                
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: _buildSuccessContent(),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
 
-          // Menu lateral
-          if (_isDrawerOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(
-                        onWalletPressed: _openWallet,
-                      ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(
-                          color: Colors.transparent,
+            if (_isDrawerOpen)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  color: Colors.black.withOpacity(0.5),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.6,
+                        child: SideMenu(
+                          onWalletPressed: _openWallet,
                         ),
                       ),
-                    ),
-                  ],
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: _toggleDrawer,
+                          child: Container(
+                            color: Colors.transparent,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-          // Modal da Carteira
-          if (_isWalletOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: WalletModal(
-                      onClose: _closeWallet,
+            if (_isWalletOpen)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  color: Colors.black.withOpacity(0.5),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: WalletModal(
+                        onClose: _closeWallet,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

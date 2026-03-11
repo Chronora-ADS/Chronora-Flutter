@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../core/constants/app_colors.dart';
-import '../../core/services/api_service.dart';
-import '../../widgets/header.dart';
-import '../../widgets/side_menu.dart';
-import '../../widgets/wallet_modal.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/services/api_service.dart';
+import '../../../core/router/auth_wrapper.dart';
+import '../../../widgets/header.dart';
+import '../../../widgets/side_menu.dart';
+import '../../../widgets/wallet_modal.dart';
 import 'sell_success_page.dart';
 
 class PixSellPage extends StatefulWidget {
@@ -45,7 +47,6 @@ class _PixSellPageState extends State<PixSellPage> {
     return prefs.getString('auth_token');
   }
 
-  /// Faz a requisição PUT para vender Chronos
   Future<void> _sellChronosBackend(int amount, String pixKey) async {
     final String? token = await _getToken();
     
@@ -112,7 +113,7 @@ class _PixSellPageState extends State<PixSellPage> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => context.pop(),
               child: const Text(
                 'OK',
                 style: TextStyle(color: AppColors.amareloClaro),
@@ -217,7 +218,6 @@ class _PixSellPageState extends State<PixSellPage> {
           ),
           const SizedBox(height: 25),
 
-          // Resumo da venda
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -249,7 +249,6 @@ class _PixSellPageState extends State<PixSellPage> {
 
           const SizedBox(height: 25),
 
-          // Campo de chave PIX
           const Text(
             'Informar chave PIX',
             style: TextStyle(
@@ -309,7 +308,6 @@ class _PixSellPageState extends State<PixSellPage> {
 
           const SizedBox(height: 30),
 
-          // Botão Finalizar Venda
           SizedBox(
             width: double.infinity,
             height: 46,
@@ -324,20 +322,13 @@ class _PixSellPageState extends State<PixSellPage> {
                         });
                         
                         try {
-                          // Faz a requisição para o backend
                           await _sellChronosBackend(widget.chronosAmount, pixKey);
                           
-                          // Se der sucesso, navega para a página de sucesso
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => SellSuccessPage(
-                                chronosAmount: widget.chronosAmount,
-                                totalAmount: widget.totalAmount,
-                                pixKey: pixKey,
-                              ),
-                            ),
-                          );
+                          context.replaceNamed('sell-success', extra: {
+                            'chronosAmount': widget.chronosAmount,
+                            'totalAmount': widget.totalAmount,
+                            'pixKey': pixKey,
+                          });
                         } catch (e) {
                           setState(() {
                             _isProcessing = false;
@@ -378,13 +369,12 @@ class _PixSellPageState extends State<PixSellPage> {
 
           const SizedBox(height: 16),
 
-          // Botão Cancelar
           SizedBox(
             width: double.infinity,
             height: 46,
             child: OutlinedButton(
               onPressed: _isProcessing ? null : () {
-                Navigator.pop(context);
+                context.pop();
               },
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(
@@ -452,85 +442,77 @@ class _PixSellPageState extends State<PixSellPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: Header(onMenuPressed: _toggleDrawer),
-      backgroundColor: const Color(0xFF0B0C0C),
-      body: Stack(
-        children: [
-          // Background images
-          _buildBackgroundImages(),
-          
-          // Main content - BARRA DE PESQUISA NO TOPO, CARD CENTRALIZADO
-          Column(
-            children: [
-              // Barra de pesquisa no topo
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: _buildSearchBar(),
-              ),
-              
-              // Card centralizado verticalmente no meio da tela
-              Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _buildForm(context),
+    return AuthWrapper(
+      child: Scaffold(
+        appBar: Header(onMenuPressed: _toggleDrawer),
+        backgroundColor: const Color(0xFF0B0C0C),
+        body: Stack(
+          children: [
+            _buildBackgroundImages(),
+            Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: _buildSearchBar(),
+                ),
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: _buildForm(context),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-
-          // Menu lateral
-          if (_isDrawerOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(
-                        onWalletPressed: _openWallet,
-                      ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(
-                          color: Colors.transparent,
+              ],
+            ),
+            if (_isDrawerOpen)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  color: Colors.black.withOpacity(0.5),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.6,
+                        child: SideMenu(
+                          onWalletPressed: _openWallet,
                         ),
                       ),
-                    ),
-                  ],
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: _toggleDrawer,
+                          child: Container(
+                            color: Colors.transparent,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-
-          // Modal da Carteira
-          if (_isWalletOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: WalletModal(
-                      onClose: _closeWallet,
+            if (_isWalletOpen)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  color: Colors.black.withOpacity(0.5),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: WalletModal(
+                        onClose: _closeWallet,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

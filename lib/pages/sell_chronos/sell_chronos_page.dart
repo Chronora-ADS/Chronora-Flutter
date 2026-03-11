@@ -1,39 +1,36 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../core/constants/app_colors.dart';
-import '../../core/services/api_service.dart';
-import '../../widgets/header.dart';
-import '../../widgets/side_menu.dart';
-import '../../widgets/wallet_modal.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/services/api_service.dart';
+import '../../../core/router/auth_wrapper.dart';
+import '../../../widgets/header.dart';
+import '../../../widgets/side_menu.dart';
+import '../../../widgets/wallet_modal.dart';
 import 'pix_sell_page.dart';
 
-/// Controller para vender Chronos
-/// - Preço fixo de venda: R$2,00 por Chronos
-/// - Taxa de 10% sobre o subtotal
-/// - Validações: quantidade inteira >=1, <= saldo atual; chave PIX não vazia e formato básico
 class SellChronosController extends ChangeNotifier {
-  static const double CHRONOS_SELL_PRICE = 2.00; // R$ por Chronos
-  static const double TAX_PERCENTAGE = 0.10; // 10%
-  static const int MIN_CHRONOS_KEEP = 1; // Mínimo de Chronos que deve permanecer na carteira
+  static const double CHRONOS_SELL_PRICE = 2.00;
+  static const double TAX_PERCENTAGE = 0.10;
+  static const int MIN_CHRONOS_KEEP = 1;
   static const String TOOLTIP_TEXT =
       'O valor de venda de Chronos é equivalente a R\$2,00 reais. No final, é aplicada uma taxa de 10% sobre o total.';
 
-  int currentBalance = 0; // Inicializa com 0, será carregado do backend
+  int currentBalance = 0;
   int sellAmount = 0;
   String pixKey = '';
   String errorMessage = '';
   bool isLoading = false;
-  bool isLoadingBalance = true; // Novo estado para carregamento do saldo
+  bool isLoadingBalance = true;
   
-  // Controllers
   late TextEditingController amountController;
   late TextEditingController pixKeyController;
   
   SellChronosController() {
     amountController = TextEditingController();
     pixKeyController = TextEditingController();
-    _loadCurrentBalance(); // Carrega saldo ao criar controller
+    _loadCurrentBalance();
   }
   
   @override
@@ -48,7 +45,6 @@ class SellChronosController extends ChangeNotifier {
     return prefs.getString('auth_token');
   }
 
-  /// Carrega o saldo atual do usuário do backend
   Future<void> _loadCurrentBalance() async {
     try {
       final String? token = await _getToken();
@@ -113,16 +109,15 @@ class SellChronosController extends ChangeNotifier {
   double get subtotal => sellAmount * CHRONOS_SELL_PRICE;
   double get tax => subtotal * TAX_PERCENTAGE;
   double get taxAmount => tax;
-  double get totalAmount => subtotal - tax; // valor a receber pelo usuário
+  double get totalAmount => subtotal - tax;
   int get chronosAfterSale => currentBalance - sellAmount;
 
-  // REGRA: Não pode vender todos os Chronos - deve manter pelo menos MIN_CHRONOS_KEEP
   bool get isAmountValid => 
       sellAmount > 0 && 
       sellAmount <= currentBalance &&
       chronosAfterSale >= MIN_CHRONOS_KEEP;
   
-  bool get isPixValid => true; // PIX será validado em outra tela
+  bool get isPixValid => true;
   bool get canProceed => isAmountValid && !isLoading && !isLoadingBalance;
   
   void updateSellAmount(String value) {
@@ -198,13 +193,8 @@ class SellChronosController extends ChangeNotifier {
     notifyListeners();
     
     try {
-      // TODO: Integrar com backend real
-      // await _sellChronosBackend(amount, pixKey);
-      
-      // Simulação temporária
       await Future.delayed(const Duration(milliseconds: 900));
       
-      // Atualiza saldo local após sucesso
       currentBalance = chronosAfterSale;
       sellAmount = 0;
       pixKey = '';
@@ -222,16 +212,14 @@ class SellChronosController extends ChangeNotifier {
 
   bool _validatePixBasic(String key) {
     if (key.isEmpty) return false;
-    // Verificação simples: e-mail, CPF (somente números 11), telefone (10-13 dígitos) ou aleatória (chave aleatória allowed)
     final emailRegex = RegExp(r"^[\w-.]+@[\w-]+\.[a-zA-Z]{2,}");
     final digitsOnly = RegExp(r"^[0-9]+$");
     final phoneRegex = RegExp(r'^\+?[0-9]{10,13}\$');
 
     if (emailRegex.hasMatch(key)) return true;
     final clean = key.replaceAll(RegExp(r'[^0-9]'), '');
-    if (clean.length == 11 && digitsOnly.hasMatch(clean)) return true; // possível CPF
+    if (clean.length == 11 && digitsOnly.hasMatch(clean)) return true;
     if (phoneRegex.hasMatch(key)) return true;
-    // chave aleatória (UUID-like) allow alphanumeric between 8 and 64
     final randomKey = RegExp(r'^[a-zA-Z0-9_-]{8,64}\$');
     if (randomKey.hasMatch(key)) return true;
 
@@ -301,7 +289,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => context.pop(),
               child: const Text(
                 'OK',
                 style: TextStyle(color: AppColors.amareloClaro),
@@ -409,7 +397,6 @@ class _SellChronosPageState extends State<SellChronosPage> {
               ),
               const SizedBox(height: 25),
 
-              // Saldo atual
               Row(
                 children: [
                   Text(
@@ -443,7 +430,6 @@ class _SellChronosPageState extends State<SellChronosPage> {
               ),
               const SizedBox(height: 15),
 
-              // Campo de quantidade
               Container(
                 height: 46,
                 decoration: BoxDecoration(
@@ -480,7 +466,6 @@ class _SellChronosPageState extends State<SellChronosPage> {
                 ),
               ),
               
-              // Mensagem de erro
               if (_controller.errorMessage.isNotEmpty) ...{
                 const SizedBox(height: 8),
                 Text(
@@ -494,7 +479,6 @@ class _SellChronosPageState extends State<SellChronosPage> {
 
               const SizedBox(height: 15),
 
-              // Resumo com borda amarela
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -514,7 +498,6 @@ class _SellChronosPageState extends State<SellChronosPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Texto "Total a receber" com tooltip
                         Row(
                           children: [
                             const Text(
@@ -525,7 +508,6 @@ class _SellChronosPageState extends State<SellChronosPage> {
                               ),
                             ),
                             const SizedBox(width: 6),
-                            // Tooltip com ponto de interrogação
                             Tooltip(
                               message: 'O valor de venda Chronos é equivalente à 20% de 10 reais. No final, é aplicado uma taxa de 10% sobre o total.',
                               decoration: BoxDecoration(
@@ -571,7 +553,6 @@ class _SellChronosPageState extends State<SellChronosPage> {
               ),
               const SizedBox(height: 15),
 
-              // Chronos pós-venda
               Row(
                 children: [
                   Text('Chronos pós-venda:', style: TextStyle(color: Colors.black.withOpacity(0.7))),
@@ -588,7 +569,6 @@ class _SellChronosPageState extends State<SellChronosPage> {
                 ],
               ),
               
-              // Mensagem informativa sobre o mínimo
               if (_controller.chronosAfterSale >= 0) ...{
                 const SizedBox(height: 8),
                 Text(
@@ -602,7 +582,6 @@ class _SellChronosPageState extends State<SellChronosPage> {
 
               const SizedBox(height: 25),
 
-              // Botões
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -618,7 +597,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
                       ),
                       child: TextButton(
                         onPressed: () {
-                          Navigator.pop(context); // Volta para página anterior
+                          context.pop();
                         },
                         child: const Text(
                           'Cancelar',
@@ -644,15 +623,10 @@ class _SellChronosPageState extends State<SellChronosPage> {
                         onPressed: _controller.canProceed
                             ? () {
                                 int amount = int.tryParse(_controller.amountController.text) ?? 0;
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => PixSellPage(
-                                      chronosAmount: amount,
-                                      totalAmount: _controller.totalAmount,
-                                    ),
-                                  ),
-                                );
+                                context.pushNamed('pix-sell', extra: {
+                                  'chronosAmount': amount,
+                                  'totalAmount': _controller.totalAmount,
+                                });
                               }
                             : null,
                         child: Text(
@@ -688,85 +662,77 @@ class _SellChronosPageState extends State<SellChronosPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: Header(onMenuPressed: _toggleDrawer),
-      backgroundColor: const Color(0xFF0B0C0C),
-      body: Stack(
-        children: [
-          // Background images
-          _buildBackgroundImages(),
-          
-          // Main content - BARRA DE PESQUISA NO TOPO, CARD CENTRALIZADO
-          Column(
-            children: [
-              // Barra de pesquisa no topo
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: _buildSearchBar(),
-              ),
-              
-              // Card centralizado verticalmente no meio da tela
-              Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _buildForm(context),
+    return AuthWrapper(
+      child: Scaffold(
+        appBar: Header(onMenuPressed: _toggleDrawer),
+        backgroundColor: const Color(0xFF0B0C0C),
+        body: Stack(
+          children: [
+            _buildBackgroundImages(),
+            Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: _buildSearchBar(),
+                ),
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: _buildForm(context),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-
-          // Menu lateral
-          if (_isDrawerOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(
-                        onWalletPressed: _openWallet,
-                      ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(
-                          color: Colors.transparent,
+              ],
+            ),
+            if (_isDrawerOpen)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  color: Colors.black.withOpacity(0.5),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.6,
+                        child: SideMenu(
+                          onWalletPressed: _openWallet,
                         ),
                       ),
-                    ),
-                  ],
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: _toggleDrawer,
+                          child: Container(
+                            color: Colors.transparent,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-
-          // Modal da Carteira
-          if (_isWalletOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: WalletModal(
-                      onClose: _closeWallet,
+            if (_isWalletOpen)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  color: Colors.black.withOpacity(0.5),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: WalletModal(
+                        onClose: _closeWallet,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -11,12 +11,23 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  
+  # HTTP e API
   http: ^1.1.0
-  universal_html: ^2.2.1
-  file_picker: ^9.0.0
-  shared_preferences: ^2.5.3
+  
+  # Navegação e estado - VERSÕES COMPATÍVEIS
+  go_router: ^6.5.0  # Versão mais estável para Flutter 3.x
   provider: ^6.1.5+1
-  image_picker: ^1.2.1
+  
+  # Armazenamento local
+  shared_preferences: ^2.5.3
+  
+  # Manipulação de arquivos e imagens
+  file_picker: ^6.1.1    # Versão mais compatível
+  image_picker: ^1.0.4   # Versão mais estável
+  
+  # Para web (manipulação de arquivos)
+  universal_html: ^2.2.1
 
 dev_dependencies:
   flutter_test:
