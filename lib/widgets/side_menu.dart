@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants/app_routes.dart';
 import '../core/constants/app_colors.dart';
+import '../core/services/auth_service.dart';
 
 class SideMenu extends StatelessWidget {
   final VoidCallback onWalletPressed;
@@ -24,33 +28,36 @@ class SideMenu extends StatelessWidget {
                       icon: 'assets/img/HomeWhite.png',
                       title: 'Página Inicial',
                       onTap: () {
-                        Navigator.pushReplacementNamed(context, AppRoutes.main);
+                        context.go(AppRoutes.main);
                       },
                     ),
                     _buildMenuItem(
                       icon: 'assets/img/PlusWhite.png',
                       title: 'Crie um pedido',
                       onTap: () {
-                        Navigator.pushNamed(context, '/request-creation');
+                        context.push(AppRoutes.requestCreation);
                       },
                     ),
                     _buildMenuItem(
                       icon: 'assets/img/SuitcaseWhite.png',
                       title: 'Meus pedidos',
                       onTap: () {
-                        Navigator.pushNamed(context, '/my-orders');
+                        // Navega para main page que mostra os pedidos
+                        context.go(AppRoutes.main);
                       },
                     ),
                     _buildMenuItem(
                       icon: 'assets/img/CoinWhite.png',
                       title: 'Carteira',
-                      onTap: onWalletPressed, // Agora usa diretamente a função
+                      onTap: onWalletPressed,
                     ),
                     _buildMenuItem(
                       icon: 'assets/img/NotificationsWhite.png',
                       title: 'Notificações',
                       onTap: () {
-                        Navigator.pushNamed(context, '/notifications');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Notificações em desenvolvimento')),
+                        );
                       },
                     ),
                   ],
@@ -72,14 +79,18 @@ class SideMenu extends StatelessWidget {
                     icon: 'assets/img/UserIconWhite.png',
                     title: 'Perfil',
                     onTap: () {
-                      Navigator.pushNamed(context, '/profile');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Perfil em desenvolvimento')),
+                      );
                     },
                   ),
                   _buildMenuItem(
                     icon: 'assets/img/SettingsWhite.png',
                     title: 'Configurações',
                     onTap: () {
-                      Navigator.pushNamed(context, '/settings');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Configurações em desenvolvimento')),
+                      );
                     },
                   ),
                   Padding(
@@ -180,7 +191,34 @@ class SideMenu extends StatelessWidget {
     );
   }
 
-  void _logout(BuildContext context) {
-    Navigator.pushReplacementNamed(context, AppRoutes.login);
+  Future<void> _logout(BuildContext context) async {
+    try {
+      // Usa o AuthService para fazer o logout corretamente
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.logout();
+
+      // Remove apenas o token de autenticação, mantendo o e-mail salvo
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Log antes do logout
+      final emailSalvo = prefs.getString('remembered_email');
+      print('🔍 E-mail salvo antes do logout: "$emailSalvo"');
+      print('🔍 Chaves antes do logout: ${prefs.getKeys()}');
+      
+      // Remove apenas o token, mantém o e-mail salvo
+      await prefs.remove('auth_token');
+      
+      // Log após logout
+      print('🗑️ Logout realizado: token removido, e-mail mantido');
+      print('🔍 Chaves após logout: ${prefs.getKeys()}');
+    } catch (e) {
+      print('❌ Erro ao fazer logout: $e');
+    }
+    
+    // Usa GoRouter para navegar para o login
+    if (context.mounted) {
+      final router = GoRouter.of(context);
+      router.go(AppRoutes.login);
+    }
   }
 }

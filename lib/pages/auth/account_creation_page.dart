@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 import '../../widgets/backgrounds/background_auth_widget.dart';
 import '../../widgets/auth_text_field.dart';
@@ -350,7 +349,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                       onPressed: _isLoading
                           ? null
                           : () {
-                              context.pop();
+                              context.go(AppRoutes.login);
                             },
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(

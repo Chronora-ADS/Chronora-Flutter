@@ -3,6 +3,7 @@ import 'package:chronora/core/models/main_page_requests_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../core/constants/app_routes.dart';
 import '../core/constants/app_colors.dart';
 import '../core/services/api_service.dart';
 import '../../core/router/auth_wrapper.dart';
@@ -378,16 +379,17 @@ class _MainPageState extends State<MainPage> {
       physics: const NeverScrollableScrollPhysics(),
       itemCount: services.length,
       itemBuilder: (context, index) {
+        final service = services[index];
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           child: ServiceCard(
-            service: services[index],
+            service: service,
             onEdit: () async {
-              final result = await context.pushNamed(
-                'request-editing',
-                extra: services[index],
+              final result = await context.push(
+                AppRoutes.requestEditing,
+                extra: service,
               );
-              
+
               if (result == true) {
                 await _fetchServices();
               }

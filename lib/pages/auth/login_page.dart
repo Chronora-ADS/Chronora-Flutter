@@ -22,15 +22,38 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  bool _rememberMe = false;
+  SharedPreferences? _prefs;
+
+  @override
+  void initState() {
+    super.initState();
+    // Carrega SharedPreferences em background sem bloquear a UI
+    _initPrefsAsync();
+  }
+
+  Future<void> _initPrefsAsync() async {
+    _prefs = await SharedPreferences.getInstance();
+    _loadRememberedEmail();
+  }
+
+  void _loadRememberedEmail() {
+    if (_prefs == null) return;
+    
+    final savedEmail = _prefs!.getString('remembered_email');
+    if (savedEmail != null && savedEmail.isNotEmpty) {
+      setState(() {
+        _emailController.text = savedEmail;
+        _rememberMe = true;
+      });
+    }
+  }
 
   Future<void> _saveToken(String token) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('auth_token', token);
-      print('Token salvo com sucesso!');
-    } catch (e) {
-      print('Erro ao salvar token: $e');
+    if (_prefs == null) {
+      _prefs = await SharedPreferences.getInstance();
     }
+    await _prefs!.setString('auth_token', token);
   }
 
   Future<void> _login() async {
@@ -53,41 +76,59 @@ class _LoginPageState extends State<LoginPage> {
         final responseData = json.decode(response.body);
         final token = responseData['access_token'];
 
-        print('🔐 Token recebido: ${token != null ? "SIM" : "NÃO"}');
-
         if (token == null) {
           throw Exception('Token não encontrado na resposta');
         }
 
-        await _saveToken(token);
-        
+        // Salva token e e-mail em paralelo para maior velocidade
+        await Future.wait([
+          _saveToken(token),
+          _saveOrRemoveEmail(email),
+        ]);
+
         // Salva o token no AuthService
-        final authService = Provider.of<AuthService>(context, listen: false);
-        await authService.saveToken(token);
+        if (mounted) {
+          final authService = Provider.of<AuthService>(context, listen: false);
+          await authService.saveToken(token);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Login realizado com sucesso!')),
-        );
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Login realizado com sucesso!')),
+          );
 
-        // Usando go_router para navegar
-        final router = GoRouter.of(context);
-        router.go(AppRoutes.main);
+          final router = GoRouter.of(context);
+          router.go(AppRoutes.main);
+        }
       } else {
-        final error = response.body;
-        print('Erro no login: $error');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro no login: $error')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro no login: ${response.body}')),
+          );
+        }
       }
     } catch (e) {
-      print('Erro de conexão: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro de conexão: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro de conexão: $e')),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _saveOrRemoveEmail(String email) async {
+    if (_prefs == null) {
+      _prefs = await SharedPreferences.getInstance();
+    }
+    
+    if (_rememberMe) {
+      await _prefs!.setString('remembered_email', email);
+    } else {
+      await _prefs!.remove('remembered_email');
     }
   }
 
@@ -235,8 +276,12 @@ class _LoginPageState extends State<LoginPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Checkbox(
-                value: false,
-                onChanged: (value) {},
+                value: _rememberMe,
+                onChanged: (value) {
+                  setState(() {
+                    _rememberMe = value ?? false;
+                  });
+                },
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity.compact,
               ),

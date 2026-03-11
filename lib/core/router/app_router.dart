@@ -128,19 +128,13 @@ class AppRouter {
         name: 'request-editing',
         pageBuilder: (context, state) {
           Service? service;
-          
+
           // Extrai o Service do state.extra
           final extra = state.extra;
           if (extra is Service) {
             service = extra;
-          } else if (extra is Map<String, dynamic>) {
-            // Tenta extrair de um Map
-            final serviceFromMap = extra['service'];
-            if (serviceFromMap is Service) {
-              service = serviceFromMap;
-            }
           }
-          
+
           return MaterialPage(
             key: state.pageKey,
             child: RequestEditingPage(service: service),
@@ -153,20 +147,20 @@ class AppRouter {
     redirect: (context, state) {
       final authService = Provider.of<AuthService>(context, listen: false);
       final isAuthenticated = authService.isAuthenticated;
-      
+
       final publicRoutes = [AppRoutes.login, AppRoutes.accountCreation];
-      final isPublicRoute = publicRoutes.contains(state.location);
-      
+      final isPublicRoute = publicRoutes.any((route) => state.location.startsWith(route));
+
       // 1. USUÁRIO NÃO AUTENTICADO tentando acessar rota privada
       if (!isAuthenticated && !isPublicRoute) {
         return AppRoutes.login;
       }
-      
+
       // 2. USUÁRIO AUTENTICADO tentando acessar rota de autenticação
       if (isAuthenticated && isPublicRoute) {
         return AppRoutes.main;
       }
-      
+
       // 3. Permanece na rota atual
       return null;
     },
