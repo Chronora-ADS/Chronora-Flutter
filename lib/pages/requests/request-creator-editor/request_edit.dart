@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:html' as html if (dart.library.io) 'dart:io';
+import 'package:universal_html/html.dart' as html;
 import 'dart:typed_data';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -67,9 +67,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     _chronosController.text = service.timeChronos.toString();
     
     // Se tiver imagem, converte de base64
-    if (service.serviceImage.isNotEmpty) {
+    if (service.serviceImageUrl.isNotEmpty) {
       try {
-        final imageBytes = base64.decode(service.serviceImage);
+        final imageBytes = base64.decode(service.serviceImageUrl);
         setState(() {
           _imageBytes = imageBytes;
           _selectedImage = _imageBytes;
@@ -1347,7 +1347,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         // Menu lateral
         if (_isDrawerOpen)
           Positioned(
-            top: kToolbarHeight,
+            top: kToolbarHeight * 1.5,
             left: 0,
             right: 0,
             bottom: 0,
