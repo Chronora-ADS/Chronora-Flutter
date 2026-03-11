@@ -2,17 +2,25 @@ import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 
 class FiltersModal extends StatefulWidget {
-  final Function() onApplyFilters;
+  final Function(List<String> selectedCategories, String selectedTipoServico, double tempoValue, String ordenacaoValue, int prazoDias, DateTime? selectedPrazoDate) onApplyFilters;
+  final Function()? onClearFilters; // Função opcional para limpar filtros
   final double initialTempoValue;
   final String initialAvaliacaoValue;
   final String initialOrdenacaoValue;
+  final List<String> initialSelectedCategories;
+  final String initialSelectedTipoServico;
+  final int initialPrazoDias;
 
   const FiltersModal({
     super.key,
     required this.onApplyFilters,
-    this.initialTempoValue = 5.0,
+    this.onClearFilters,
+    this.initialTempoValue = 0.0, // Valor inicial agora é 0 ("Qualquer")
     this.initialAvaliacaoValue = "0",
     this.initialOrdenacaoValue = "0",
+    this.initialSelectedCategories = const [],
+    this.initialSelectedTipoServico = "",
+    this.initialPrazoDias = 0,
   });
 
   @override
@@ -23,7 +31,11 @@ class _FiltersModalState extends State<FiltersModal> {
   late double tempoValue;
   late String avaliacaoValue;
   late String ordenacaoValue;
+  late String selectedTipoServico;
+  int prazoDias = 0;
+  DateTime? _selectedPrazoDate;
   final TextEditingController _categoriaController = TextEditingController();
+  Set<String> selectedCategories = <String>{};
 
   @override
   void initState() {
@@ -31,6 +43,14 @@ class _FiltersModalState extends State<FiltersModal> {
     tempoValue = widget.initialTempoValue;
     avaliacaoValue = widget.initialAvaliacaoValue;
     ordenacaoValue = widget.initialOrdenacaoValue;
+    selectedTipoServico = widget.initialSelectedTipoServico;
+    prazoDias = widget.initialPrazoDias;
+    selectedCategories = widget.initialSelectedCategories.toSet();
+
+    // Initialize the selected date based on prazoDias
+    if (widget.initialPrazoDias > 0) {
+      _selectedPrazoDate = DateTime.now().add(Duration(days: widget.initialPrazoDias));
+    }
   }
 
   @override
@@ -74,7 +94,7 @@ class _FiltersModalState extends State<FiltersModal> {
                 children: [
                   // Prazo
                   _buildFilterSection(
-                    'Prazo',
+                    'Prazo limite',
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
@@ -83,11 +103,27 @@ class _FiltersModalState extends State<FiltersModal> {
                             Border.all(color: AppColors.amareloUmPoucoEscuro),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const TextField(
-                        decoration: InputDecoration(
-                          hintText: '30/10/2025',
-                          border: InputBorder.none,
-                        ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _selectedPrazoDate != null
+                                ? 'Até ${_selectedPrazoDate!.day}/${_selectedPrazoDate!.month}'
+                                : 'Selecione a data limite',
+                              style: TextStyle(
+                                color: _selectedPrazoDate != null
+                                  ? AppColors.preto
+                                  : AppColors.amareloUmPoucoEscuro.withOpacity(0.6),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.date_range, color: AppColors.amareloUmPoucoEscuro),
+                            onPressed: () {
+                              _showPrazoDialog();
+                            },
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -101,25 +137,55 @@ class _FiltersModalState extends State<FiltersModal> {
                       children: [
                         Expanded(
                           child: OutlinedButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              setState(() {
+                                selectedTipoServico = selectedTipoServico == 'À distância' ? '' : 'À distância';
+                              });
+                            },
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(
-                                  color: AppColors.amareloUmPoucoEscuro),
-                              backgroundColor:
-                                  AppColors.amareloClaro.withOpacity(0.1),
+                              side: BorderSide(
+                                  color: selectedTipoServico == 'À distância'
+                                      ? AppColors.amareloUmPoucoEscuro
+                                      : AppColors.amareloUmPoucoEscuro.withOpacity(0.3)),
+                              backgroundColor: selectedTipoServico == 'À distância'
+                                  ? AppColors.amareloClaro.withOpacity(0.1)
+                                  : AppColors.branco,
                             ),
-                            child: const Text('À distância'),
+                            child: Text(
+                              'À distância',
+                              style: TextStyle(
+                                color: selectedTipoServico == 'À distância'
+                                    ? AppColors.preto
+                                    : AppColors.amareloUmPoucoEscuro.withOpacity(0.6),
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: OutlinedButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              setState(() {
+                                selectedTipoServico = selectedTipoServico == 'Presencial' ? '' : 'Presencial';
+                              });
+                            },
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(
-                                  color: AppColors.amareloUmPoucoEscuro),
+                              side: BorderSide(
+                                  color: selectedTipoServico == 'Presencial'
+                                      ? AppColors.amareloUmPoucoEscuro
+                                      : AppColors.amareloUmPoucoEscuro.withOpacity(0.3)),
+                              backgroundColor: selectedTipoServico == 'Presencial'
+                                  ? AppColors.amareloClaro.withOpacity(0.1)
+                                  : AppColors.branco,
                             ),
-                            child: const Text('Presencial'),
+                            child: Text(
+                              'Presencial',
+                              style: TextStyle(
+                                color: selectedTipoServico == 'Presencial'
+                                    ? AppColors.preto
+                                    : AppColors.amareloUmPoucoEscuro.withOpacity(0.6),
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -171,9 +237,9 @@ class _FiltersModalState extends State<FiltersModal> {
                       children: [
                         Slider(
                           value: tempoValue,
-                          min: 5,
+                          min: 0,
                           max: 100,
-                          divisions: 19,
+                          divisions: 20, // 20 divisões para cobrir 0-100 com incrementos de 5
                           onChanged: (value) {
                             setState(() {
                               tempoValue = value;
@@ -182,9 +248,11 @@ class _FiltersModalState extends State<FiltersModal> {
                           activeColor: AppColors.amareloClaro,
                         ),
                         Text(
-                          tempoValue == 5
-                              ? "0-5 horas"
-                              : "${tempoValue.toInt() - 5}-${tempoValue.toInt()} horas",
+                          tempoValue == 0
+                              ? "Qualquer"
+                              : tempoValue == 5
+                                  ? "0-5 horas"
+                                  : "${tempoValue.toInt() - 5}-${tempoValue.toInt()} horas",
                           style: const TextStyle(fontSize: 14),
                         ),
                       ],
@@ -196,18 +264,76 @@ class _FiltersModalState extends State<FiltersModal> {
                   // Categorias
                   _buildFilterSection(
                     'Categorias',
-                    TextField(
-                      controller: _categoriaController,
-                      decoration: InputDecoration(
-                        hintText: 'Digite ou escolha',
-                        filled: true,
-                        fillColor: AppColors.branco,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                              color: AppColors.amareloUmPoucoEscuro),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: AppColors.branco,
+                            border:
+                                Border.all(color: AppColors.amareloUmPoucoEscuro),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: TextField(
+                            controller: _categoriaController,
+                            onSubmitted: (value) {
+                              if (value.trim().isNotEmpty) {
+                                setState(() {
+                                  selectedCategories.add(value.trim());
+                                });
+                                _categoriaController.clear();
+                              }
+                            },
+                            decoration: InputDecoration(
+                              hintText: 'Digite e pressione Enter',
+                              border: InputBorder.none,
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8.0,
+                          runSpacing: 4.0,
+                          children: selectedCategories.map((categoria) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.amareloClaro,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    categoria,
+                                    style: const TextStyle(
+                                      color: AppColors.preto,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        selectedCategories.remove(categoria);
+                                      });
+                                    },
+                                    child: const Icon(
+                                      Icons.close,
+                                      size: 16,
+                                      color: AppColors.preto,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
                     ),
                   ),
 
@@ -253,34 +379,96 @@ class _FiltersModalState extends State<FiltersModal> {
 
           const SizedBox(height: 20),
 
-          // Botão aplicar filtros
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                widget.onApplyFilters();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.amareloUmPoucoEscuro,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    // Limpar todos os filtros
+                    setState(() {
+                      tempoValue = 0.0; // Reseta para "Qualquer"
+                      avaliacaoValue = "0";
+                      ordenacaoValue = "0";
+                      selectedTipoServico = "";
+                      selectedCategories.clear();
+                      prazoDias = 0;
+                      _selectedPrazoDate = null;
+                      _categoriaController.clear();
+                    });
+
+                    // Chama a função de callback para limpar filtros no widget pai, se existir
+                    if (widget.onClearFilters != null) {
+                      Navigator.pop(context);
+                      widget.onClearFilters!();
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.amareloClaro,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Limpar Filtros',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.preto,
+                    ),
+                  ),
                 ),
               ),
-              child: const Text(
-                'Aplicar Filtros',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.branco,
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    widget.onApplyFilters(selectedCategories.toList(), selectedTipoServico, tempoValue, ordenacaoValue, prazoDias, _selectedPrazoDate);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.amareloUmPoucoEscuro,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Aplicar Filtros',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.branco,
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _showPrazoDialog() async {
+    DateTime? initialDate = _selectedPrazoDate ?? DateTime.now();
+
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+
+    if (picked != null) {
+      // Calculate days difference from today
+      final today = DateTime.now();
+      final difference = picked.difference(today);
+      setState(() {
+        _selectedPrazoDate = picked;
+        prazoDias = difference.inDays;
+      });
+    }
   }
 
   Widget _buildFilterSection(String title, Widget child) {
