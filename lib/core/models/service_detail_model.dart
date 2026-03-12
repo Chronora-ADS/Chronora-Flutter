@@ -10,7 +10,7 @@ class ServiceDetailModel {
   final String deadline;
   final List<CategoryEntity> categoryEntities;
   final String modality;
-  final String? serviceImage;
+  final String? serviceImageUrl;
   final UserCreator userCreator;
   final String postedAt;
 
@@ -22,7 +22,7 @@ class ServiceDetailModel {
     required this.deadline,
     required this.categoryEntities,
     required this.modality,
-    this.serviceImage,
+    this.serviceImageUrl,
     required this.userCreator,
     required this.postedAt
   });
@@ -36,7 +36,7 @@ class ServiceDetailModel {
       deadline: json['deadline'] ?? '',
       categoryEntities: _parseCategories(json['categoryEntities']),
       modality: json['modality'] ?? '',
-      serviceImage: json['serviceImage'],
+      serviceImageUrl: json['serviceImageUrl'],
       userCreator: UserCreator.fromJson(json['userCreator'] ?? {}),
       postedAt: json['postedAt'] ?? '',
     );
@@ -61,7 +61,7 @@ class ServiceDetailModel {
       'deadline': deadline,
       'categories': categoryEntities.map((e) => e.name).toList(),
       'modality': modality,
-      if (serviceImage != null) 'serviceImage': serviceImage,
+      if (serviceImageUrl != null) 'serviceImage': serviceImageUrl,
       'postedAt': postedAt
     };
   }

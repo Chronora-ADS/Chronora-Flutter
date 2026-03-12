@@ -99,9 +99,34 @@ class _RequestViewState extends State<RequestView> {
       ],
     );
   }
+  // Substitua o método _getCurrentUserId por:
+  Future<void> _getCurrentUserFromApi() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null) throw Exception('Usuário não autenticado');
 
+      final response = await ApiService.get('/user/get', token: token);
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> userData = json.decode(response.body);
+        setState(() {
+          _currentUserId = userData['id']; // ou userData['user']['id']
+        });
+        print('Current user ID from API: $_currentUserId');
+      } else {
+        throw Exception('Falha ao obter dados do usuário');
+      }
+    } catch (e) {
+      print('Erro ao obter usuário: $e');
+      setState(() {
+        _currentUserId = null;
+      });
+    }
+  }
+
+  // Atualize o método _loadData:
   Future<void> _loadData() async {
-    await _getCurrentUserId();
+    await _getCurrentUserFromApi(); // <-- chamada alterada
     if (_extractedService != null) {
       await _fetchServiceDetail(_extractedService!.id);
     } else {
@@ -110,13 +135,6 @@ class _RequestViewState extends State<RequestView> {
         _isLoading = false;
       });
     }
-  }
-
-  Future<void> _getCurrentUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _currentUserId = prefs.getInt('user_id');
-    });
   }
 
   Future<void> _fetchServiceDetail(int serviceId) async {
@@ -139,8 +157,11 @@ class _RequestViewState extends State<RequestView> {
         final Map<String, dynamic> data = json.decode(response.body);
         final detail = ServiceDetailModel.fromJson(data);
 
+        print('Current user ID: $_currentUserId');
+        print('Creator ID: ${detail.userCreator?.id}');
+
         // Verifica se o usuário atual é o dono do serviço
-        final isOwner = detail.userCreator?.id == _currentUserId;
+        final isOwner = detail.userCreator?.id.toString() == _currentUserId?.toString();
 
         setState(() {
           _serviceDetail = detail;
@@ -377,58 +398,136 @@ class _RequestViewState extends State<RequestView> {
               decoration: const BoxDecoration(
                 color: AppColors.preto,
                 border: Border(
-                  bottom: BorderSide(color:AppColors.amareloUmPoucoMaisEscuro, width: 3),
-                  top: BorderSide(color:AppColors.amareloUmPoucoMaisEscuro, width: 3),
-                  left: BorderSide(color:AppColors.amareloUmPoucoMaisEscuro, width: 3),
-                  right: BorderSide(color:AppColors.amareloUmPoucoMaisEscuro, width: 3)
+                  bottom: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
+                  top: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
+                  left: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
+                  right: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3)
                 ),
                 borderRadius: BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
-                // borderRadius: BorderRadius.circular(15),
               ),
               child: Column(
                 children: [
-                  // Linha com prazo, modalidade e chronos (como na imagem)
+                  // Linha com imagem à esquerda e informações à direita
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Imagem
+                      ClipRRect(
+                        child: Container(
+                          width: 200,
+                          height: 113,
+                          decoration: BoxDecoration(
+                            color: AppColors.cinza,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: _serviceDetail!.serviceImageUrl != null &&
+                                  _serviceDetail!.serviceImageUrl!.isNotEmpty
+                              ? Image.network(
+                                  _serviceDetail!.serviceImageUrl!,
+                                  width: 160,
+                                  height: 90,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: AppColors.cinza,
+                                      child: const Icon(Icons.broken_image,
+                                          size: 40, color: AppColors.cinza),
+                                    );
+                                  },
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return const Center(
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(
+                                            AppColors.amareloClaro),
+                                      ),
+                                    );
+                                  },
+                                )
+                              : Container(
+                                  color: AppColors.cinza,
+                                  child: const Icon(Icons.image,
+                                      size: 40, color: AppColors.cinza),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Informações à direita
                       Expanded(
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text(
-                              'Prazo: ${_formatDate(_serviceDetail!.deadline)}',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: AppColors.branco,
-                                backgroundColor: AppColors.amareloUmPoucoEscuro
+                            // Prazo
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.amareloUmPoucoEscuro,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'Prazo: ${_formatDate(_serviceDetail!.deadline)}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.branco,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _serviceDetail!.modality,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: AppColors.branco,
-                                backgroundColor: AppColors.amareloUmPoucoEscuro
+                            const SizedBox(height: 8),
+                            // Modalidade
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.amareloUmPoucoEscuro,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                _serviceDetail!.modality,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.branco,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            // Chronos
+                            // Chronos com ícone alinhado à direita
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Image.asset(
+                                    'assets/img/CoinYellow.png',
+                                    width: 20,
+                                    height: 20,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (context, error, stackTrace) =>
+                                        const Icon(Icons.currency_bitcoin, color: AppColors.amareloClaro, size: 20),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      '${_serviceDetail!.timeChronos} Chronos',
+                                      style: const TextStyle(
+                                        color: AppColors.amareloClaro,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 20,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        child: Text(
-                          '${_serviceDetail!.timeChronos} Chronos',
-                          style: const TextStyle(
-                            color: AppColors.amareloClaro,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 24,
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 20),
-
                   // Descrição
                   Text(
                     _serviceDetail!.description,
@@ -437,33 +536,31 @@ class _RequestViewState extends State<RequestView> {
                       color: AppColors.branco
                     ),
                   ),
-                ]
-              )
+                ],
+              ),
             ),
         
-            const SizedBox(height: 20),
+            const SizedBox(height: 5),
             if (_serviceDetail!.categoryEntities.isNotEmpty) ...[
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.amareloClaro,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ..._serviceDetail!.categoryEntities.map((cat) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('• ', style: TextStyle(fontSize: 16)),
-                              Expanded(child: Text(cat.name)),
-                            ],
-                          ),
-                        )),
-                  ],
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _serviceDetail!.categoryEntities.map((cat) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.amareloClaro,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Text(
+                        cat.name,
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    );
+                  }).toList(),
                 ),
               ),
               const SizedBox(height: 20),
@@ -493,7 +590,7 @@ class _RequestViewState extends State<RequestView> {
                           child: Text(
                             _serviceDetail!.userCreator!.name[0].toUpperCase(),
                             style: const TextStyle(color: AppColors.branco),
-                          ),
+                          ), // imagem perfil
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -552,38 +649,114 @@ class _RequestViewState extends State<RequestView> {
     );
   }
 
+  // Widget _buildActionButtons() {
+  //   if (_isOwner) {
+  //     // Botões para o criador: Editar e Cancelar
+  //     return Row(
+  //       children: [
+  //         Expanded(
+  //           child: OutlinedButton(
+  //             onPressed: _editRequest,
+  //             style: OutlinedButton.styleFrom(
+  //               backgroundColor: AppColors.amareloUmPoucoEscuro,
+  //               side: const BorderSide(color: AppColors.amareloUmPoucoEscuro),
+  //               shape: RoundedRectangleBorder(
+  //                 borderRadius: BorderRadius.circular(8),
+  //               ),
+  //             ),
+  //             child: const Text(
+  //               'Editar pedido',
+  //               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.branco),
+  //             ),
+  //           ),
+  //         ),
+  //         const SizedBox(width: 16),
+  //         Expanded(
+  //           child: ElevatedButton(
+  //             onPressed: _cancelRequest,
+  //             style: ElevatedButton.styleFrom(
+  //               backgroundColor: AppColors.vermelho,
+  //               foregroundColor: AppColors.branco,
+  //               shape: RoundedRectangleBorder(
+  //                 borderRadius: BorderRadius.circular(8),
+  //               ),
+  //             ),
+  //             child: const Text(
+  //               'Cancelar pedido',
+  //               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+  //             ),
+  //           ),
+  //         ),
+  //       ],
+  //     );
+  //   } else {
+  //     // Botão para outros usuários: Aceitar
+  //     return SizedBox(
+  //       width: double.infinity,
+  //       child: ElevatedButton(
+  //         onPressed: _acceptRequest,
+  //         style: ElevatedButton.styleFrom(
+  //           backgroundColor: AppColors.amareloUmPoucoEscuro,
+  //           foregroundColor: AppColors.branco,
+  //           padding: const EdgeInsets.symmetric(vertical: 14),
+  //           shape: RoundedRectangleBorder(
+  //             borderRadius: BorderRadius.circular(20),
+  //           ),
+  //         ),
+  //         child: const Text(
+  //           'Aceitar pedido',
+  //           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+  //         ),
+  //       ),
+  //     );
+  //   }
+  // }
+
   Widget _buildActionButtons() {
     if (_isOwner) {
-      // Botões para o criador: Editar e Cancelar
-      return Row(
+      // Botões para o criador: Editar e Cancelar (empilhados)
+      return Column(
         children: [
-          Expanded(
+          SizedBox(
+            width: double.infinity,
             child: OutlinedButton(
               onPressed: _editRequest,
               style: OutlinedButton.styleFrom(
+                backgroundColor: AppColors.amareloUmPoucoEscuro,
                 side: const BorderSide(color: AppColors.amareloUmPoucoEscuro),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                padding: const EdgeInsets.symmetric(vertical: 8),
               ),
               child: const Text(
                 'Editar pedido',
-                style: TextStyle(color: AppColors.amareloUmPoucoEscuro),
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.branco,
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
             child: ElevatedButton(
               onPressed: _cancelRequest,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.vermelho,
+                backgroundColor: AppColors.preto,
                 foregroundColor: AppColors.branco,
+                side: const BorderSide(color: AppColors.amareloUmPoucoEscuro, width: 4),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                padding: const EdgeInsets.symmetric(vertical: 8),
               ),
-              child: const Text('Cancelar pedido'),
+              child: const Text(
+                'Cancelar pedido',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
             ),
           ),
         ],
@@ -599,12 +772,12 @@ class _RequestViewState extends State<RequestView> {
             foregroundColor: AppColors.branco,
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(20),
             ),
           ),
           child: const Text(
             'Aceitar pedido',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
         ),
       );

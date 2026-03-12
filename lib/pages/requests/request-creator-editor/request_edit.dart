@@ -113,7 +113,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     print('Deadline: ${serviceDetail.deadline}');
     print('Modalidade: ${serviceDetail.modality}');
     print('Categorias: ${serviceDetail.categoryEntities.map((c) => c.name).toList()}');
-    print('ServiceImage presente: ${serviceDetail.serviceImage != null && serviceDetail.serviceImage!.isNotEmpty}');
+    print('ServiceImage presente: ${serviceDetail.serviceImageUrl != null && serviceDetail.serviceImageUrl!.isNotEmpty}');
     
     // Preenche os campos do formulário
     _titleController.text = serviceDetail.title;
@@ -144,10 +144,10 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     _selectedModality = normalizedModality;
     
     // Carrega imagem se existir
-    if (serviceDetail.serviceImage != null && serviceDetail.serviceImage!.isNotEmpty) {
+    if (serviceDetail.serviceImageUrl != null && serviceDetail.serviceImageUrl!.isNotEmpty) {
       try {
         setState(() {
-          _imageBytes = base64.decode(serviceDetail.serviceImage!);
+          _imageBytes = base64.decode(serviceDetail.serviceImageUrl!);
           _selectedImage = _imageBytes;
           _imageFileName = 'imagem_servico.jpg';
         });
