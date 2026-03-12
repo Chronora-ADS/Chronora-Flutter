@@ -25,12 +25,18 @@ class _MainPageState extends State<MainPage> {
   bool _isWalletOpen = false;
 
   List<Service> services = [];
+  List<Service> filteredServices = [];
   bool isLoading = true;
   String errorMessage = '';
 
-  double tempoValue = 5.0;
+  double tempoValue = 0.0; // 0 representa "Qualquer"
+  bool _isTimeFilterActive = false; // Indica se o filtro de tempo está ativo
   String avaliacaoValue = "0";
   String ordenacaoValue = "0";
+  List<String> selectedCategories = [];
+  String selectedTipoServico = "";
+  int _prazoDias = 0; // Variável para armazenar o prazo selecionado em dias a partir de hoje
+  DateTime? _selectedPrazoDate; // Data exata selecionada pelo usuário
 
   @override
   void initState() {
@@ -78,6 +84,8 @@ class _MainPageState extends State<MainPage> {
 
         setState(() {
           services = data.map((item) => Service.fromJson(item)).toList();
+          // Atualiza a lista filtrada também
+          filteredServices = services;
           isLoading = false;
         });
       } else {
@@ -95,16 +103,125 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
+  void _filterServices() {
+    final query = _searchController.text.toLowerCase().trim();
+
+    setState(() {
+      filteredServices = services.where((service) {
+        // Filtra pelo título
+        final titleMatch = service.title.toLowerCase().contains(query);
+        // Filtra pela descrição
+        final descriptionMatch = service.description.toLowerCase().contains(query);
+        // Filtra pela modalidade
+        final modalityMatch = service.modality.toLowerCase().contains(query);
+        // Filtra pelas categorias
+        final categoryMatch = service.categoryEntities.any((category) =>
+          category.name.toLowerCase().contains(query));
+
+        // Verifica se o serviço corresponde à pesquisa textual
+        bool matchesSearch = query.isEmpty || titleMatch || descriptionMatch || modalityMatch || categoryMatch;
+
+        // Verifica se o serviço tem pelo menos uma das categorias selecionadas (filtro OR)
+        bool matchesCategories = selectedCategories.isEmpty ||
+          service.categoryEntities.any((category) =>
+            selectedCategories.any((selectedCategory) =>
+              category.name.toLowerCase().contains(selectedCategory.toLowerCase())));
+
+        // Verifica se o serviço corresponde ao tipo de serviço selecionado
+        bool matchesTipoServico = selectedTipoServico.isEmpty ||
+          // Se o filtro for 'À distância', verifica se a modalidade é 'Remoto'
+          (selectedTipoServico == 'À distância' && service.modality.toLowerCase().contains('remoto')) ||
+          // Se o filtro for 'Presencial', verifica se a modalidade é 'Presencial'
+          (selectedTipoServico == 'Presencial' && service.modality.toLowerCase().contains('presencial'));
+
+        // Verifica se o serviço corresponde ao filtro de tempo em chronos
+        bool matchesTempo = true; // Por padrão, não filtra por tempo
+
+        // Aplica o filtro de tempo apenas se ele estiver ativo
+        if (_isTimeFilterActive && tempoValue > 0) {
+          int tempoMax = tempoValue.toInt();
+          int tempoMin;
+
+          // Ajusta o tempo mínimo com base no valor do slider
+          // Quando tempoValue é 5, representa o intervalo 0-5 horas
+          if (tempoValue == 5) {
+            tempoMin = 0; // Para o intervalo 0-5 horas
+          } else {
+            tempoMin = tempoMax - 5;
+          }
+
+          matchesTempo = service.timeChronos >= tempoMin && service.timeChronos <= tempoMax;
+        }
+
+        // Verifica se o serviço corresponde ao filtro de prazo
+        bool matchesPrazo = true; // Por padrão, não filtra por prazo
+
+        // Aplica o filtro de prazo apenas se a data estiver definida
+        if (_selectedPrazoDate != null) {
+          DateTime hoje = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+          DateTime prazoLimite = DateTime(_selectedPrazoDate!.year, _selectedPrazoDate!.month, _selectedPrazoDate!.day);
+
+          // O serviço está dentro do prazo se seu deadline estiver entre hoje (inclusive) e a data limite (inclusive)
+          matchesPrazo = (service.deadline.isAtSameMomentAs(hoje) || service.deadline.isAfter(hoje)) &&
+                         (service.deadline.isBefore(prazoLimite) || service.deadline.isAtSameMomentAs(prazoLimite));
+        }
+
+        return matchesSearch && matchesCategories && matchesTipoServico && matchesTempo && matchesPrazo;
+      }).toList();
+
+      // Aplica ordenação com base no valor selecionado
+      switch (ordenacaoValue) {
+        case "0": // Mais recentes
+          // Ordenar por ID em ordem decrescente (mais recentes primeiro)
+          filteredServices.sort((a, b) => b.id.compareTo(a.id));
+          break;
+        case "1": // Mais antigos
+          // Ordenar por ID em ordem crescente (mais antigos primeiro)
+          filteredServices.sort((a, b) => a.id.compareTo(b.id));
+          break;
+        case "2": // Melhores avaliados
+          // Não há propriedade rating no modelo Service, então ordena por ID como fallback
+          filteredServices.sort((a, b) => b.id.compareTo(a.id));
+          break;
+        case "3": // Maior tempo
+          // Ordenar por tempo em chronos (maior primeiro)
+          filteredServices.sort((a, b) => b.timeChronos.compareTo(a.timeChronos));
+          break;
+        case "4": // Menor tempo
+          // Ordenar por tempo em chronos (menor primeiro)
+          filteredServices.sort((a, b) => a.timeChronos.compareTo(b.timeChronos));
+          break;
+        default:
+          break;
+      }
+    });
+  }
+
   void _showFiltersModal() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => FiltersModal(
-        onApplyFilters: _fetchServices,
+        onApplyFilters: (selectedCategoriesList, selectedTipoServicoString, tempoValueParam, ordenacaoValueParam, prazoDias, selectedPrazoDate) {
+          setState(() {
+            selectedCategories = selectedCategoriesList;
+            selectedTipoServico = selectedTipoServicoString;
+            tempoValue = tempoValueParam; // Atualiza o valor do tempo
+            ordenacaoValue = ordenacaoValueParam; // Atualiza o valor de ordenação
+            _isTimeFilterActive = true; // Marca que o filtro de tempo está ativo
+            _prazoDias = prazoDias; // Atualiza o valor do prazo
+            _selectedPrazoDate = selectedPrazoDate; // Atualiza a data selecionada
+          });
+          _filterServices();
+        },
+        onClearFilters: _clearFilters, // Passa a função de limpar filtros
         initialTempoValue: tempoValue,
         initialAvaliacaoValue: avaliacaoValue,
         initialOrdenacaoValue: ordenacaoValue,
+        initialSelectedCategories: selectedCategories,
+        initialSelectedTipoServico: selectedTipoServico,
+        initialPrazoDias: _prazoDias,
       ),
     );
   }
@@ -120,6 +237,21 @@ class _MainPageState extends State<MainPage> {
       _isDrawerOpen = false; // Fecha o side menu
       _isWalletOpen = true; // Abre a carteira
     });
+  }
+
+  void _clearFilters() {
+    setState(() {
+      tempoValue = 0.0; // Reseta para "Qualquer"
+      _isTimeFilterActive = false; // Reseta o estado do filtro de tempo
+      avaliacaoValue = "0";
+      ordenacaoValue = "0";
+      selectedCategories = [];
+      selectedTipoServico = "";
+      _prazoDias = 0; // Reseta o prazo
+      _selectedPrazoDate = null; // Reseta a data selecionada
+      _searchController.clear();
+    });
+    _filterServices();
   }
 
   void _closeWallet() {
@@ -156,6 +288,7 @@ class _MainPageState extends State<MainPage> {
                           margin: const EdgeInsets.only(bottom: 16),
                           child: TextField(
                             controller: _searchController,
+                            onSubmitted: (_) => _filterServices(),
                             decoration: InputDecoration(
                               hintText: 'Pintura de parede, aula de inglês...',
                               hintStyle: const TextStyle(
@@ -189,10 +322,10 @@ class _MainPageState extends State<MainPage> {
                             ElevatedButton(
                               onPressed: () async {
                                 final result = await Navigator.pushNamed(
-                                  context, 
+                                  context,
                                   '/request-creation'
                                 );
-                                
+
                                 // Se retornou true, atualiza os serviços
                                 if (result == true) {
                                   await _fetchServices();
@@ -254,28 +387,31 @@ class _MainPageState extends State<MainPage> {
                         ),
                         const SizedBox(height: 24),
 
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: _showFiltersModal,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.branco,
-                              foregroundColor: AppColors.preto,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: _showFiltersModal,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.branco,
+                                  foregroundColor: AppColors.preto,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.filter_list, size: 20),
+                                label: const Text(
+                                  'Filtros',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
                             ),
-                            icon: const Icon(Icons.filter_list, size: 20),
-                            label: const Text(
-                              'Filtros',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
+                          ],
                         ),
 
                         const SizedBox(height: 24),
@@ -371,7 +507,8 @@ class _MainPageState extends State<MainPage> {
       );
     }
 
-    if (services.isEmpty) {
+    // Usar a lista filtrada em vez da lista completa
+    if (filteredServices.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 40),
         child: Center(
@@ -389,7 +526,7 @@ class _MainPageState extends State<MainPage> {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: services.length,
+      itemCount: filteredServices.length,
       itemBuilder: (context, index) {
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
@@ -402,7 +539,7 @@ class _MainPageState extends State<MainPage> {
                 '/request-view',
                 arguments: services[index],
               );
-              
+
               // Se retornou true, atualiza os serviços
               if (result == true) {
                 await _fetchServices();
