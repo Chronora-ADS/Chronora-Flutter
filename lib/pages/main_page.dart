@@ -39,10 +39,6 @@ class _MainPageState extends State<MainPage> {
   int _prazoDias = 0; // Variável para armazenar o prazo selecionado em dias a partir de hoje
   DateTime? _selectedPrazoDate; // Data exata selecionada pelo usuário
 
-  String _normalizeFilterText(String value) {
-    return value.trim().toLowerCase();
-  }
-
   @override
   void initState() {
     super.initState();
@@ -109,19 +105,19 @@ class _MainPageState extends State<MainPage> {
   }
 
   void _filterServices() {
-    final query = _normalizeFilterText(_searchController.text);
+    final query = _searchController.text.toLowerCase().trim();
 
     setState(() {
       filteredServices = services.where((service) {
         // Filtra pelo título
-        final titleMatch = _normalizeFilterText(service.title).contains(query);
+        final titleMatch = service.title.toLowerCase().contains(query);
         // Filtra pela descrição
-        final descriptionMatch = _normalizeFilterText(service.description).contains(query);
+        final descriptionMatch = service.description.toLowerCase().contains(query);
         // Filtra pela modalidade
-        final modalityMatch = _normalizeFilterText(service.modality).contains(query);
+        final modalityMatch = service.modality.toLowerCase().contains(query);
         // Filtra pelas categorias
         final categoryMatch = service.categoryEntities.any((category) =>
-          _normalizeFilterText(category.name).contains(query));
+          category.name.toLowerCase().contains(query));
 
         // Verifica se o serviço corresponde à pesquisa textual
         bool matchesSearch = query.isEmpty || titleMatch || descriptionMatch || modalityMatch || categoryMatch;
@@ -130,7 +126,7 @@ class _MainPageState extends State<MainPage> {
         bool matchesCategories = selectedCategories.isEmpty ||
           service.categoryEntities.any((category) =>
             selectedCategories.any((selectedCategory) =>
-              _normalizeFilterText(category.name).contains(_normalizeFilterText(selectedCategory))));
+              category.name.toLowerCase().contains(selectedCategory.toLowerCase())));
 
         // Verifica se o serviço corresponde ao tipo de serviço selecionado
         bool matchesTipoServico = selectedTipoServico.isEmpty ||
