@@ -231,7 +231,8 @@ class _RequestViewState extends State<RequestView> {
 
       final response = await ApiService.changeStatus(
         '/service/changeStatus/${_serviceDetail!.id}',
-        status
+        status,
+        token: token,
       );
 
       if (response.statusCode == 200 || response.statusCode == 204) {
