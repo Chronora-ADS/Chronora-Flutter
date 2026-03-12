@@ -227,9 +227,11 @@ class _RequestViewState extends State<RequestView> {
       final token = prefs.getString('auth_token');
       if (token == null) throw Exception('Usuário não autenticado');
 
-      final response = await ApiService.delete(
-        '/service/delete/${_serviceDetail!.id}',
-        token: token,
+      const status = "CANCELADO";
+
+      final response = await ApiService.changeStatus(
+        '/service/changeStatus/${_serviceDetail!.id}',
+        status
       );
 
       if (response.statusCode == 200 || response.statusCode == 204) {
@@ -374,11 +376,12 @@ class _RequestViewState extends State<RequestView> {
         Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(10), 
+              padding: const EdgeInsets.all(10),
               decoration: const BoxDecoration(
                 color: AppColors.branco,
                 borderRadius: BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
               ),
+              width: double.infinity,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -528,14 +531,18 @@ class _RequestViewState extends State<RequestView> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  // Descrição
-                  Text(
-                    _serviceDetail!.description,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: AppColors.branco
-                    ),
-                  ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: 
+                      // Descrição
+                      Text(
+                        _serviceDetail!.description,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: AppColors.branco
+                        ),
+                      ),
+                  )
                 ],
               ),
             ),
@@ -648,69 +655,6 @@ class _RequestViewState extends State<RequestView> {
       ),
     );
   }
-
-  // Widget _buildActionButtons() {
-  //   if (_isOwner) {
-  //     // Botões para o criador: Editar e Cancelar
-  //     return Row(
-  //       children: [
-  //         Expanded(
-  //           child: OutlinedButton(
-  //             onPressed: _editRequest,
-  //             style: OutlinedButton.styleFrom(
-  //               backgroundColor: AppColors.amareloUmPoucoEscuro,
-  //               side: const BorderSide(color: AppColors.amareloUmPoucoEscuro),
-  //               shape: RoundedRectangleBorder(
-  //                 borderRadius: BorderRadius.circular(8),
-  //               ),
-  //             ),
-  //             child: const Text(
-  //               'Editar pedido',
-  //               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.branco),
-  //             ),
-  //           ),
-  //         ),
-  //         const SizedBox(width: 16),
-  //         Expanded(
-  //           child: ElevatedButton(
-  //             onPressed: _cancelRequest,
-  //             style: ElevatedButton.styleFrom(
-  //               backgroundColor: AppColors.vermelho,
-  //               foregroundColor: AppColors.branco,
-  //               shape: RoundedRectangleBorder(
-  //                 borderRadius: BorderRadius.circular(8),
-  //               ),
-  //             ),
-  //             child: const Text(
-  //               'Cancelar pedido',
-  //               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-  //             ),
-  //           ),
-  //         ),
-  //       ],
-  //     );
-  //   } else {
-  //     // Botão para outros usuários: Aceitar
-  //     return SizedBox(
-  //       width: double.infinity,
-  //       child: ElevatedButton(
-  //         onPressed: _acceptRequest,
-  //         style: ElevatedButton.styleFrom(
-  //           backgroundColor: AppColors.amareloUmPoucoEscuro,
-  //           foregroundColor: AppColors.branco,
-  //           padding: const EdgeInsets.symmetric(vertical: 14),
-  //           shape: RoundedRectangleBorder(
-  //             borderRadius: BorderRadius.circular(20),
-  //           ),
-  //         ),
-  //         child: const Text(
-  //           'Aceitar pedido',
-  //           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-  //         ),
-  //       ),
-  //     );
-  //   }
-  // }
 
   Widget _buildActionButtons() {
     if (_isOwner) {
