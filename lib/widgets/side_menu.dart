@@ -38,7 +38,7 @@ class SideMenu extends StatelessWidget {
                       icon: 'assets/img/SuitcaseWhite.png',
                       title: 'Meus pedidos',
                       onTap: () {
-                        Navigator.pushNamed(context, '/my-orders');
+                        Navigator.pushNamed(context, AppRoutes.myRequests);
                       },
                     ),
                     _buildMenuItem(
