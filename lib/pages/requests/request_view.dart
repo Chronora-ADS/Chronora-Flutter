@@ -272,13 +272,7 @@ class _RequestViewState extends State<RequestView> {
   }
 
   void _acceptRequest() {
-    // TODO: Implementar lógica de aceitar pedido
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Funcionalidade de aceitar pedido em desenvolvimento'),
-        backgroundColor: AppColors.amareloUmPoucoEscuro,
-      ),
-    );
+    Navigator.pushNamed(context, '/request-accepted');
   }
 
   @override
