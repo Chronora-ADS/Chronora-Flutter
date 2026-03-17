@@ -5,13 +5,13 @@ import 'dart:convert';
 
 class ServiceCard extends StatelessWidget {
   final Service service;
-  final VoidCallback? onEdit;
+  final VoidCallback? onView;
   final ValueChanged<bool>? onCardEdited; // Nova propriedade para capturar edição
 
   const ServiceCard({
     super.key,
     required this.service,
-    this.onEdit,
+    this.onView,
     this.onCardEdited, // Adiciona este parâmetro
   });
 
@@ -22,7 +22,7 @@ class ServiceCard extends StatelessWidget {
         // Navega para a página de edição quando o card é clicado
         final result = await Navigator.pushNamed(
           context,
-          '/request-editing',
+          '/request-view',
           arguments: service,
         );
         
@@ -145,13 +145,6 @@ class ServiceCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      // Botão de edição (opcional)
-                      if (onEdit != null)
-                        IconButton(
-                          onPressed: onEdit,
-                          icon: const Icon(Icons.edit),
-                          iconSize: 20,
-                        ),
                     ],
                   ),
 

@@ -107,7 +107,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     print('Deadline: ${serviceDetail.deadline}');
     print('Modalidade: ${serviceDetail.modality}');
     print('Categorias: ${serviceDetail.categoryEntities.map((c) => c.name).toList()}');
-    print('ServiceImage presente: ${serviceDetail.serviceImage != null && serviceDetail.serviceImage!.isNotEmpty}');
+    print('ServiceImage presente: ${serviceDetail.serviceImageUrl != null && serviceDetail.serviceImageUrl!.isNotEmpty}');
     
     _titleController.text = serviceDetail.title;
     _descriptionController.text = serviceDetail.description;
@@ -133,10 +133,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     String normalizedModality = _normalizeModality(serviceDetail.modality);
     _selectedModality = normalizedModality;
     
-    if (serviceDetail.serviceImage != null && serviceDetail.serviceImage!.isNotEmpty) {
+    // Carrega imagem se existir
+    if (serviceDetail.serviceImageUrl != null && serviceDetail.serviceImageUrl!.isNotEmpty) {
       try {
         setState(() {
-          _imageBytes = base64.decode(serviceDetail.serviceImage!);
+          _imageBytes = base64.decode(serviceDetail.serviceImageUrl!);
           _selectedImage = _imageBytes;
           _imageFileName = 'imagem_servico.jpg';
         });
