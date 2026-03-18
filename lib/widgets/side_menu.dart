@@ -35,14 +35,14 @@ class SideMenu extends StatelessWidget {
                       icon: 'assets/img/PlusWhite.png',
                       title: 'Crie um pedido',
                       onTap: () {
-                        Navigator.pushNamed(context, '/request-creation');
+                        Navigator.pushNamed(context, AppRoutes.requestCreation);
                       },
                     ),
                     _buildMenuItem(
                       icon: 'assets/img/SuitcaseWhite.png',
                       title: 'Meus pedidos',
                       onTap: () {
-                        Navigator.pushNamed(context, '/my-orders');
+                        Navigator.pushNamed(context, AppRoutes.myRequests);
                       },
                     ),
                     _buildMenuItem(
@@ -76,7 +76,7 @@ class SideMenu extends StatelessWidget {
                     icon: 'assets/img/UserIconWhite.png',
                     title: 'Perfil',
                     onTap: () {
-                      Navigator.pushNamed(context, '/profile');
+                      Navigator.pushNamed(context, AppRoutes.profile);
                     },
                   ),
                   _buildMenuItem(

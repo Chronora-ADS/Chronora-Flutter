@@ -1,9 +1,15 @@
-// pages/profile_page.dart
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:chronora/core/constants/app_colors.dart';
+import 'package:chronora/core/constants/app_routes.dart';
+import 'package:chronora/core/services/profile_controller.dart';
+import 'package:chronora/widgets/backgrounds/background_default_widget.dart';
+import 'package:chronora/widgets/header.dart';
+import 'package:chronora/widgets/side_menu.dart';
+import 'package:chronora/widgets/wallet_modal.dart';
 import 'package:flutter/material.dart';
-import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import '../core/constants/app_colors.dart';
-import '../core/services/profile_controller.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -16,49 +22,45 @@ class _ProfilePageState extends State<ProfilePage> {
   final ProfileController _controller = ProfileController();
   final ImagePicker _imagePicker = ImagePicker();
   final TextEditingController _searchController = TextEditingController();
-  
-  late TextEditingController nameController;
-  late TextEditingController emailController;
-  late TextEditingController phoneController;
-  late TextEditingController currentPasswordController;
-  late TextEditingController newPasswordController;
-  late TextEditingController confirmPasswordController;
 
-  bool _isLoading = false;
+  late final TextEditingController _nameController;
+  late final TextEditingController _emailController;
+  late final TextEditingController _phoneController;
+  late final TextEditingController _currentPasswordController;
+  late final TextEditingController _newPasswordController;
+  late final TextEditingController _confirmPasswordController;
+
+  bool _isDrawerOpen = false;
+  bool _isWalletOpen = false;
+  bool _isSubmitting = false;
   bool _isEditing = false;
-  File? _documentFile;
+
+  XFile? _documentFile;
+  Uint8List? _documentBytes;
   String _documentFileName = '';
 
   @override
   void initState() {
     super.initState();
-    
-    // Inicializa os controladores
-    nameController = TextEditingController();
-    emailController = TextEditingController();
-    phoneController = TextEditingController();
-    currentPasswordController = TextEditingController();
-    newPasswordController = TextEditingController();
-    confirmPasswordController = TextEditingController();
-    
+    _nameController = TextEditingController();
+    _emailController = TextEditingController();
+    _phoneController = TextEditingController();
+    _currentPasswordController = TextEditingController();
+    _newPasswordController = TextEditingController();
+    _confirmPasswordController = TextEditingController();
     _loadUserProfile();
   }
 
   Future<void> _loadUserProfile() async {
-    print('Iniciando carregamento do perfil...');
     await _controller.loadUserProfile();
 
-    if (_controller.user != null) {
-      nameController.text = _controller.user!.name;
-      emailController.text = _controller.user!.email;
-      phoneController.text = _controller.user!.phoneNumber;
+    if (!mounted) return;
 
-      print('Perfil carregado com sucesso:');
-      print('Nome: ${_controller.user!.name}');
-      print('Email: ${_controller.user!.email}');
-      print('Telefone: ${_controller.user!.phoneNumber}');
-    } else {
-      print('Erro ao carregar perfil: ${_controller.errorMessage}');
+    final user = _controller.user;
+    if (user != null) {
+      _nameController.text = user.name;
+      _emailController.text = user.email;
+      _phoneController.text = user.phoneNumber;
     }
 
     setState(() {});
@@ -66,17 +68,18 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _pickDocument() async {
     try {
-      final XFile? file = await _imagePicker.pickImage(
+      final file = await _imagePicker.pickImage(
         source: ImageSource.gallery,
         imageQuality: 80,
       );
 
-      if (file != null) {
-        setState(() {
-          _documentFile = File(file.path);
-          _documentFileName = file.name;
-        });
-      }
+      if (file == null || !mounted) return;
+
+      setState(() {
+        _documentFile = file;
+        _documentBytes = null;
+        _documentFileName = file.name;
+      });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao selecionar arquivo: $e')),
@@ -84,101 +87,23 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _deleteAccount() async {
-    bool confirmDelete = await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Deletar Conta'),
-        content: const Text(
-          'Tem certeza que deseja deletar sua conta? Esta ação não pode ser desfeita e todos os seus dados serão perdidos.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            child: const Text('Deletar'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmDelete == true) {
-      setState(() => _isLoading = true);
-      
-      final success = await _controller.deleteAccount();
-      
-      setState(() => _isLoading = false);
-      
-      if (success) {
-        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Conta deletada com sucesso')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao deletar conta: ${_controller.errorMessage}')),
-        );
-      }
-    }
+  void _toggleDrawer() {
+    setState(() {
+      _isDrawerOpen = !_isDrawerOpen;
+    });
   }
 
-  Future<void> _updateProfile() async {
-    if (nameController.text.isEmpty || emailController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preencha todos os campos obrigatórios')),
-      );
-      return;
-    }
-
-    if (newPasswordController.text.isNotEmpty) {
-      if (newPasswordController.text != confirmPasswordController.text) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('As senhas não coincidem')),
-        );
-        return;
-      }
-      if (currentPasswordController.text.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Digite sua senha atual para mudar a senha')),
-        );
-        return;
-      }
-    }
-
+  void _openWallet() {
     setState(() {
-      _isLoading = true;
-      _isEditing = false;
+      _isDrawerOpen = false;
+      _isWalletOpen = true;
     });
+  }
 
-    final success = await _controller.updateUserProfile(
-      name: nameController.text,
-      email: emailController.text,
-      phoneNumber: phoneController.text,
-      newPassword: newPasswordController.text.isNotEmpty ? newPasswordController.text : null,
-      currentPassword: currentPasswordController.text.isNotEmpty ? currentPasswordController.text : null,
-    );
-
-    setState(() => _isLoading = false);
-
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Perfil atualizado com sucesso!')),
-      );
-      _loadUserProfile();
-      currentPasswordController.clear();
-      newPasswordController.clear();
-      confirmPasswordController.clear();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro: ${_controller.errorMessage}')),
-      );
-    }
+  void _closeWallet() {
+    setState(() {
+      _isWalletOpen = false;
+    });
   }
 
   void _startEditing() {
@@ -188,511 +113,653 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _cancelEditing() {
+    final user = _controller.user;
     setState(() {
       _isEditing = false;
-      if (_controller.user != null) {
-        nameController.text = _controller.user!.name;
-        emailController.text = _controller.user!.email;
-        phoneController.text = _controller.user!.phoneNumber;
+      if (user != null) {
+        _nameController.text = user.name;
+        _emailController.text = user.email;
+        _phoneController.text = user.phoneNumber;
       }
-      currentPasswordController.clear();
-      newPasswordController.clear();
-      confirmPasswordController.clear();
+      _currentPasswordController.clear();
+      _newPasswordController.clear();
+      _confirmPasswordController.clear();
       _documentFile = null;
+      _documentBytes = null;
       _documentFileName = '';
     });
   }
 
+  Future<Map<String, String>?> _buildDocumentPayload() async {
+    if (_documentFile == null) {
+      return null;
+    }
+
+    final bytes = _documentBytes ?? await _documentFile!.readAsBytes();
+    _documentBytes = bytes;
+
+    final extension = _documentFileName.contains('.')
+        ? _documentFileName.split('.').last
+        : 'jpg';
+
+    return {
+      'name': _documentFileName,
+      'type': extension,
+      'data': base64Encode(bytes),
+    };
+  }
+
+  Future<void> _updateProfile() async {
+    if (_nameController.text.trim().isEmpty ||
+        _emailController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Preencha nome e e-mail.')),
+      );
+      return;
+    }
+
+    if (_newPasswordController.text.isNotEmpty) {
+      if (_newPasswordController.text != _confirmPasswordController.text) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('As senhas não coincidem.')),
+        );
+        return;
+      }
+
+      if (_currentPasswordController.text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Digite sua senha atual para alterar a senha.'),
+          ),
+        );
+        return;
+      }
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    final document = await _buildDocumentPayload();
+
+    final success = await _controller.updateUserProfile(
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim(),
+      phoneNumber: _phoneController.text.trim(),
+      document: document,
+      newPassword: _newPasswordController.text.trim().isEmpty
+          ? null
+          : _newPasswordController.text.trim(),
+      currentPassword: _currentPasswordController.text.trim().isEmpty
+          ? null
+          : _currentPasswordController.text.trim(),
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _isSubmitting = false;
+    });
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_controller.errorMessage)),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Perfil atualizado com sucesso.')),
+    );
+
+    _currentPasswordController.clear();
+    _newPasswordController.clear();
+    _confirmPasswordController.clear();
+
+    setState(() {
+      _isEditing = false;
+    });
+
+    await _loadUserProfile();
+  }
+
+  Future<void> _confirmDeleteAccount() async {
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          margin: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          decoration: BoxDecoration(
+            color: AppColors.branco,
+            borderRadius: BorderRadius.circular(36),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    icon: const Icon(Icons.close, size: 32),
+                  ),
+                ],
+              ),
+              const Text(
+                'Você deseja mesmo\ndeletar a sua conta?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.preto,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Você perderá todos os seus Chronos e os seus pedidos abertos serão cancelados.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: AppColors.preto,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFC90B0B),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  child: const Text(
+                    'Deletar Conta',
+                    style: TextStyle(
+                      color: AppColors.branco,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(
+                      color: Color(0xFF353B42),
+                      width: 2,
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  child: const Text(
+                    'Voltar',
+                    style: TextStyle(
+                      color: Color(0xFF353B42),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    final success = await _controller.deleteAccount();
+
+    if (!mounted) return;
+
+    setState(() {
+      _isSubmitting = false;
+    });
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_controller.errorMessage)),
+      );
+      return;
+    }
+
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.login,
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final hasError = !_controller.isLoading && _controller.user == null;
+
     return Scaffold(
       backgroundColor: AppColors.preto,
-      body: Column(
+      body: Stack(
         children: [
-          // Header igual ao da MainPage
-          _buildHeader(),
-          
-          // Campo de pesquisa
-          Container(
-            margin: const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 16),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Pintura de parede, aula de inglês...',
-                hintStyle: const TextStyle(color: AppColors.textoPlaceholder),
-                filled: true,
-                fillColor: AppColors.branco,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide: BorderSide.none,
+          Column(
+            children: [
+              Header(onMenuPressed: _toggleDrawer),
+              Expanded(
+                child: BackgroundDefaultWidget(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    child: Column(
+                      children: [
+                        _buildSearchField(),
+                        const SizedBox(height: 24),
+                        _buildProfileCard(hasError: hasError),
+                      ],
+                    ),
+                  ),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                prefixIcon: const Icon(Icons.search, color: AppColors.textoPlaceholder),
+              ),
+            ],
+          ),
+          if (_isDrawerOpen)
+            Positioned(
+              top: kToolbarHeight * 1.5,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.6,
+                      child: SideMenu(onWalletPressed: _openWallet),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _toggleDrawer,
+                        child: Container(color: Colors.transparent),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-
-          // Conteúdo do perfil
-          Expanded(
-            child: _controller.isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.amareloClaro),
-                    ),
-                  )
-                : _controller.user == null
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              color: Colors.red,
-                              size: 64,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Erro ao carregar perfil',
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _controller.errorMessage,
-                              style: TextStyle(
-                                color: Colors.grey[700],
-                                fontSize: 14,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 24),
-                            ElevatedButton(
-                              onPressed: _loadUserProfile,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.amareloClaro,
-                              ),
-                              child: const Text(
-                                'Tentar novamente',
-                                style: TextStyle(color: Colors.black),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : SingleChildScrollView(
-                        padding: const EdgeInsets.all(16),
-                        child: Center(
-                          child: Container(
-                            width: MediaQuery.of(context).size.width * 0.9,
-                            child: Card(
-                              color: AppColors.branco,
-                              elevation: 4,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(20),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Informações Pessoais
-                                    const Text(
-                                      'Informações Pessoais',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.preto,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 20),
-
-                                    // Nome
-                                    _buildInfoRow('Nome', nameController, Icons.person, enabled: _isEditing),
-                                    const SizedBox(height: 16),
-
-                                    // Email
-                                    _buildInfoRow('Email', emailController, Icons.email, enabled: false),
-                                    const SizedBox(height: 16),
-
-                                    // Telefone
-                                    _buildInfoRow('Telefone', phoneController, Icons.phone, enabled: _isEditing),
-                                    const SizedBox(height: 24),
-
-                                    // Documento com Foto
-                                    const Text(
-                                      'Documento com Foto',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.preto,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-
-                                    GestureDetector(
-                                      onTap: _isEditing ? _pickDocument : null,
-                                      child: Container(
-                                        width: double.infinity,
-                                        height: 100,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.cinza.withOpacity(0.1),
-                                          border: Border.all(
-                                            color: AppColors.cinza,
-                                            width: 2,
-                                          ),
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: _documentFile != null
-                                            ? Stack(
-                                                children: [
-                                                  Center(
-                                                    child: Image.file(
-                                                      _documentFile!,
-                                                      fit: BoxFit.cover,
-                                                      width: double.infinity,
-                                                      height: double.infinity,
-                                                    ),
-                                                  ),
-                                                  if (_isEditing)
-                                                    Positioned(
-                                                      top: 8,
-                                                      right: 8,
-                                                      child: GestureDetector(
-                                                        onTap: () {
-                                                          setState(() {
-                                                            _documentFile = null;
-                                                            _documentFileName = '';
-                                                          });
-                                                        },
-                                                        child: Container(
-                                                          padding: const EdgeInsets.all(4),
-                                                          decoration: const BoxDecoration(
-                                                            color: Colors.red,
-                                                            shape: BoxShape.circle,
-                                                          ),
-                                                          child: const Icon(
-                                                            Icons.close,
-                                                            color: Colors.white,
-                                                            size: 16,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                ],
-                                              )
-                                            : Column(
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                children: [
-                                                  Icon(
-                                                    Icons.upload_file,
-                                                    size: 32,
-                                                    color: AppColors.cinza,
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  Text(
-                                                    _isEditing 
-                                                        ? 'Clique para selecionar um arquivo'
-                                                        : 'Clique em "Atualizar perfil" para editar',
-                                                    style: TextStyle(
-                                                      color: AppColors.cinza,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      _documentFile != null 
-                                          ? 'Arquivo selecionado: $_documentFileName'
-                                          : 'Nenhum arquivo selecionado',
-                                      style: TextStyle(
-                                        color: AppColors.cinza,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-
-                                    const SizedBox(height: 24),
-
-                                    // Alterar Senha (só aparece em modo edição)
-                                    if (_isEditing) ...[
-                                      const Text(
-                                        'Alterar Senha',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.preto,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-
-                                      _buildPasswordField('Senha Atual', currentPasswordController, Icons.lock),
-                                      const SizedBox(height: 12),
-
-                                      _buildPasswordField('Nova Senha', newPasswordController, Icons.lock_outline),
-                                      const SizedBox(height: 12),
-
-                                      _buildPasswordField('Confirmar Nova Senha', confirmPasswordController, Icons.lock_outline),
-
-                                      const SizedBox(height: 24),
-                                    ],
-
-                                    // Botões de Ação
-                                    if (_isEditing)
-                                      // Modo edição: Cancelar + Atualizar
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: OutlinedButton(
-                                              onPressed: _isLoading ? null : _cancelEditing,
-                                              style: OutlinedButton.styleFrom(
-                                                side: const BorderSide(color: AppColors.amareloClaro),
-                                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                              ),
-                                              child: const Text(
-                                                'Cancelar',
-                                                style: TextStyle(
-                                                  color: AppColors.amareloClaro,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: ElevatedButton(
-                                              onPressed: _isLoading ? null : _updateProfile,
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: AppColors.amareloClaro,
-                                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                              ),
-                                              child: _isLoading
-                                                  ? const SizedBox(
-                                                      height: 18,
-                                                      width: 18,
-                                                      child: CircularProgressIndicator(
-                                                        valueColor: AlwaysStoppedAnimation(AppColors.preto),
-                                                        strokeWidth: 2,
-                                                      ),
-                                                    )
-                                                  : const Text(
-                                                      'Salvar alterações',
-                                                      style: TextStyle(
-                                                        color: AppColors.preto,
-                                                        fontWeight: FontWeight.bold,
-                                                      ),
-                                                    ),
-                                            ),
-                                          ),
-                                        ],
-                                      )
-                                    else
-                                      // Modo visualização: Apenas Atualizar perfil
-                                      SizedBox(
-                                        width: double.infinity,
-                                        child: ElevatedButton(
-                                          onPressed: _isLoading ? null : _startEditing,
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppColors.amareloClaro,
-                                            padding: const EdgeInsets.symmetric(vertical: 12),
-                                          ),
-                                          child: const Text(
-                                            'Atualizar perfil',
-                                            style: TextStyle(
-                                              color: AppColors.preto,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-
-                                    const SizedBox(height: 12),
-
-                                    // Botão Deletar Conta (sempre visível)
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: OutlinedButton(
-                                        onPressed: _isLoading ? null : _deleteAccount,
-                                        style: OutlinedButton.styleFrom(
-                                          side: const BorderSide(color: Colors.red),
-                                          padding: const EdgeInsets.symmetric(vertical: 12),
-                                        ),
-                                        child: _isLoading
-                                            ? const SizedBox(
-                                                height: 18,
-                                                width: 18,
-                                                child: CircularProgressIndicator(
-                                                  valueColor: AlwaysStoppedAnimation(Colors.red),
-                                                  strokeWidth: 2,
-                                                ),
-                                              )
-                                            : const Text(
-                                                'Deletar conta',
-                                                style: TextStyle(
-                                                  color: Colors.red,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-          ),
+          if (_isWalletOpen)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: WalletModal(onClose: _closeWallet),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  // Header igual ao da MainPage
-  Widget _buildHeader() {
-    return AppBar(
-      backgroundColor: AppColors.amareloClaro,
-      leading: IconButton(
-        icon: const Icon(Icons.menu, color: AppColors.preto),
-        onPressed: () {
-          Scaffold.of(context).openDrawer();
-        },
+  Widget _buildSearchField() {
+    return TextField(
+      controller: _searchController,
+      decoration: InputDecoration(
+        hintText: 'Pintura de parede, aula de inglês...',
+        hintStyle: const TextStyle(color: AppColors.textoPlaceholder),
+        filled: true,
+        fillColor: AppColors.branco,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+        prefixIcon: const Icon(
+          Icons.search,
+          color: AppColors.textoPlaceholder,
+        ),
       ),
-      centerTitle: true,
-      title: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Image.asset(
-            'assets/img/LogoHeader.png',
-            width: 125,
-            height: 32,
-          ),
-        ],
-      ),
-      actions: [
-        Row(
+    );
+  }
+
+  Widget _buildProfileCard({required bool hasError}) {
+    if (_controller.isLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 60),
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(AppColors.amareloClaro),
+        ),
+      );
+    }
+
+    if (hasError) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.branco,
+          borderRadius: BorderRadius.circular(36),
+        ),
+        child: Column(
           children: [
-            Image.asset('assets/img/Coin.png', width: 24, height: 24),
-            const SizedBox(width: 4),
+            const Text(
+              'Erro ao carregar perfil',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+                color: Colors.red,
+              ),
+            ),
+            const SizedBox(height: 12),
             Text(
-              _controller.user?.timeChronos?.toString() ?? '0',
+              _controller.errorMessage,
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 16,
-                fontWeight: FontWeight.bold,
                 color: AppColors.preto,
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _loadUserProfile,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.amareloClaro,
+              ),
+              child: const Text(
+                'Tentar novamente',
+                style: TextStyle(color: AppColors.preto),
+              ),
+            ),
           ],
         ),
-      ],
-      elevation: 0,
-    );
-  }
+      );
+    }
 
-  Widget _buildInfoRow(String label, TextEditingController controller, IconData icon, {bool enabled = true}) {
-    return Row(
-      children: [
-        Icon(icon, color: AppColors.cinza, size: 20),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+      decoration: BoxDecoration(
+        color: AppColors.branco,
+        borderRadius: BorderRadius.circular(36),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Center(
+            child: Text(
+              'Perfil',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w500,
+                color: AppColors.preto,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          _buildInputField(
+            controller: _nameController,
+            hintText: 'Nome',
+            enabled: _isEditing,
+          ),
+          const SizedBox(height: 14),
+          _buildInputField(
+            controller: _emailController,
+            hintText: 'E-mail',
+            enabled: false,
+          ),
+          const SizedBox(height: 14),
+          _buildInputField(
+            controller: _phoneController,
+            hintText: 'Telefone',
+            enabled: _isEditing,
+            keyboardType: TextInputType.phone,
+          ),
+          const SizedBox(height: 14),
+          if (_isEditing) ...[
+            _buildInputField(
+              controller: _currentPasswordController,
+              hintText: 'Senha atual',
+              obscureText: true,
+            ),
+            const SizedBox(height: 14),
+            _buildInputField(
+              controller: _newPasswordController,
+              hintText: 'Nova senha',
+              obscureText: true,
+            ),
+            const SizedBox(height: 14),
+            _buildInputField(
+              controller: _confirmPasswordController,
+              hintText: 'Confirmar nova senha',
+              obscureText: true,
+            ),
+            const SizedBox(height: 14),
+            _buildDocumentField(),
+            const SizedBox(height: 20),
+          ],
+          Row(
             children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: AppColors.preto,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _isSubmitting
+                      ? null
+                      : (_isEditing
+                          ? _cancelEditing
+                          : () => Navigator.pushReplacementNamed(
+                                context,
+                                AppRoutes.main,
+                              )),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(
+                      color: AppColors.amareloUmPoucoEscuro,
+                      width: 2,
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(
+                      color: AppColors.amareloUmPoucoEscuro,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 4),
-              TextField(
-                controller: controller,
-                enabled: enabled,
-                style: const TextStyle(
-                  color: AppColors.preto,
-                  fontSize: 16,
-                ),
-                decoration: InputDecoration(
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 6),
-                  enabledBorder: const UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.cinza),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _isSubmitting
+                      ? null
+                      : (_isEditing ? _updateProfile : _startEditing),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.amareloUmPoucoEscuro,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
-                  disabledBorder: const UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.cinza),
-                  ),
-                  focusedBorder: const UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.amareloClaro),
-                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.branco,
+                            ),
+                          ),
+                        )
+                      : Text(
+                          _isEditing ? 'Atualizar perfil' : 'Editar perfil',
+                          style: const TextStyle(
+                            color: AppColors.branco,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                 ),
               ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          OutlinedButton(
+            onPressed: _isSubmitting ? null : _confirmDeleteAccount,
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Colors.red, width: 2),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            child: const Text(
+              'Deletar conta',
+              style: TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildPasswordField(String label, TextEditingController controller, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, color: AppColors.cinza, size: 20),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: AppColors.preto,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 4),
-              TextField(
-                controller: controller,
-                obscureText: true,
-                style: const TextStyle(
-                  color: AppColors.preto,
-                  fontSize: 16,
-                ),
-                decoration: InputDecoration(
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 6),
-                  enabledBorder: const UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.cinza),
-                  ),
-                  focusedBorder: const UnderlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.amareloClaro),
-                  ),
-                ),
-              ),
-            ],
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String hintText,
+    bool enabled = true,
+    bool obscureText = false,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return TextField(
+      controller: controller,
+      enabled: enabled,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      style: const TextStyle(
+        color: AppColors.preto,
+        fontSize: 16,
+      ),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: const TextStyle(
+          color: AppColors.textoPlaceholder,
+          fontSize: 16,
+        ),
+        filled: true,
+        fillColor: const Color(0xFFF3F3F3),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(2),
+          borderSide: const BorderSide(color: AppColors.brancoBorda),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(2),
+          borderSide: const BorderSide(color: AppColors.brancoBorda),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(2),
+          borderSide: const BorderSide(color: AppColors.amareloUmPoucoEscuro),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 16,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDocumentField() {
+    return InkWell(
+      onTap: _pickDocument,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: AppColors.amareloUmPoucoEscuro,
+            width: 2,
           ),
         ),
-      ],
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                _documentFileName.isEmpty
+                    ? 'documento_com_foto_atual'
+                    : _documentFileName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.preto,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            if (_documentFileName.isNotEmpty)
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _documentFile = null;
+                    _documentBytes = null;
+                    _documentFileName = '';
+                  });
+                },
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  child: Icon(Icons.close, color: AppColors.preto, size: 20),
+                ),
+              ),
+            Container(
+              width: 28,
+              height: 28,
+              color: AppColors.amareloUmPoucoEscuro,
+              child: const Icon(
+                Icons.subdirectory_arrow_left,
+                color: AppColors.branco,
+                size: 18,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   @override
   void dispose() {
-    nameController.dispose();
-    emailController.dispose();
-    phoneController.dispose();
-    currentPasswordController.dispose();
-    newPasswordController.dispose();
-    confirmPasswordController.dispose();
     _searchController.dispose();
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 }

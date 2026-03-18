@@ -1,7 +1,8 @@
-// controllers/profile_controller.dart
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../models/user_model.dart';
 import '../services/api_service.dart';
 
@@ -13,56 +14,40 @@ class ProfileController {
   Future<void> loadUserProfile() async {
     isLoading = true;
     errorMessage = '';
-    
+
     try {
       final token = await _getToken();
       if (token == null) {
-        errorMessage = "Token não encontrado";
+        errorMessage = 'Token não encontrado';
         isLoading = false;
         return;
       }
-      
+
       if (kDebugMode) {
         debugPrint('[ProfileController] Carregando perfil do usuário...');
       }
 
-      final response = await ApiService.get("/user/get", token: token);
-      
+      final response = await ApiService.get('/user/get', token: token);
+
       if (kDebugMode) {
         debugPrint('[ProfileController] Status: ${response.statusCode}');
         debugPrint('[ProfileController] Resposta: ${response.body}');
       }
-      
+
       if (response.statusCode == 200) {
         final userData = jsonDecode(response.body);
-        
-        Map<String, dynamic> parsedData;
-        
-        if (userData is Map && userData.containsKey('data')) {
-          parsedData = userData['data'] as Map<String, dynamic>;
-        } else if (userData is Map && userData.containsKey('user')) {
-          parsedData = userData['user'] as Map<String, dynamic>;
-        } else if (userData is Map) {
-          parsedData = userData.cast<String, dynamic>();
-        } else {
-          throw FormatException('Formato de resposta inválido');
-        }
-        
-        user = User.fromJson(parsedData);
+        user = User.fromJson(_extractUserMap(userData));
         errorMessage = '';
-        
-        if (kDebugMode) {
-          debugPrint('[ProfileController] Perfil carregado com sucesso: ${user!.name}');
-        }
       } else {
         _handleErrorResponse(response);
       }
     } catch (e) {
-      errorMessage = "Erro ao carregar perfil: $e";
+      errorMessage = 'Erro ao carregar perfil: $e';
       if (kDebugMode) {
         debugPrint('[ProfileController] Erro: $e');
       }
     }
+
     isLoading = false;
   }
 
@@ -70,16 +55,17 @@ class ProfileController {
     required String name,
     required String email,
     required String phoneNumber,
+    Map<String, String>? document,
     String? newPassword,
     String? currentPassword,
   }) async {
     isLoading = true;
     errorMessage = '';
-    
+
     try {
       final token = await _getToken();
       if (token == null) {
-        errorMessage = "Token não encontrado";
+        errorMessage = 'Token não encontrado';
         isLoading = false;
         return false;
       }
@@ -88,8 +74,11 @@ class ProfileController {
         'name': name,
         'email': email,
         'phoneNumber': phoneNumber,
-        if (newPassword != null && newPassword.isNotEmpty) 'newPassword': newPassword,
-        if (currentPassword != null && currentPassword.isNotEmpty) 'currentPassword': currentPassword,
+        if (document != null) 'document': document,
+        if (newPassword != null && newPassword.isNotEmpty)
+          'newPassword': newPassword,
+        if (currentPassword != null && currentPassword.isNotEmpty)
+          'currentPassword': currentPassword,
       };
 
       if (kDebugMode) {
@@ -97,22 +86,22 @@ class ProfileController {
       }
 
       final response = await ApiService.put(
-        '/user/update',
+        '/user/put',
         body,
         token: token,
       );
 
       if (response.statusCode == 200) {
         final userData = jsonDecode(response.body);
-        user = User.fromJson(userData);
+        user = User.fromJson(_extractUserMap(userData));
         errorMessage = '';
         return true;
-      } else {
-        _handleErrorResponse(response);
-        return false;
       }
+
+      _handleErrorResponse(response);
+      return false;
     } catch (e) {
-      errorMessage = "Erro ao atualizar perfil: $e";
+      errorMessage = 'Erro ao atualizar perfil: $e';
       return false;
     } finally {
       isLoading = false;
@@ -122,11 +111,11 @@ class ProfileController {
   Future<bool> deleteAccount() async {
     isLoading = true;
     errorMessage = '';
-    
+
     try {
       final token = await _getToken();
       if (token == null) {
-        errorMessage = "Token não encontrado";
+        errorMessage = 'Token não encontrado';
         isLoading = false;
         return false;
       }
@@ -139,16 +128,15 @@ class ProfileController {
       if (response.statusCode == 200) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('auth_token');
-        
         user = null;
         errorMessage = '';
         return true;
-      } else {
-        _handleErrorResponse(response);
-        return false;
       }
+
+      _handleErrorResponse(response);
+      return false;
     } catch (e) {
-      errorMessage = "Erro ao deletar conta: $e";
+      errorMessage = 'Erro ao deletar conta: $e';
       return false;
     } finally {
       isLoading = false;
@@ -162,6 +150,22 @@ class ProfileController {
     } catch (_) {
       errorMessage = 'Erro: ${response.statusCode}';
     }
+  }
+
+  Map<String, dynamic> _extractUserMap(dynamic userData) {
+    if (userData is Map && userData.containsKey('data')) {
+      return (userData['data'] as Map).cast<String, dynamic>();
+    }
+
+    if (userData is Map && userData.containsKey('user')) {
+      return (userData['user'] as Map).cast<String, dynamic>();
+    }
+
+    if (userData is Map) {
+      return userData.cast<String, dynamic>();
+    }
+
+    throw const FormatException('Formato de resposta inválido');
   }
 
   Future<String?> _getToken() async {
