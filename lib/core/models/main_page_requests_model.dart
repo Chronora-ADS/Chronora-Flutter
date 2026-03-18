@@ -4,6 +4,7 @@ class Service {
   final String description;
   final String serviceImageUrl;
   final int timeChronos;
+  final String status;
   final UserCreator userCreator;
   final List<CategoryEntity> categoryEntities;
   final DateTime deadline;
@@ -15,6 +16,7 @@ class Service {
     required this.description,
     required this.serviceImageUrl,
     required this.timeChronos,
+    required this.status,
     required this.userCreator,
     required this.categoryEntities,
     required this.deadline,
@@ -50,6 +52,7 @@ class Service {
       description: json['description'] ?? 'Descrição não disponível',
       serviceImageUrl: json['serviceImageUrl'] ?? '',
       timeChronos: json['timeChronos'] ?? 0,
+      status: json['status']?.toString() ?? '',
       userCreator: userCreator,
       categoryEntities: (json['categoryEntities'] as List? ?? [])
           .map((e) => CategoryEntity.fromJson(e ?? {}))

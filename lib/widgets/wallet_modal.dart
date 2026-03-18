@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/api_service.dart';
@@ -155,7 +156,7 @@ class _WalletModalState extends State<WalletModal> {
             child: InkWell(
               onTap: () {
                 widget.onClose();
-                Navigator.pushNamed(context, '/buy-chronos');
+                context.pushNamed('buy-chronos');
               },
               child: Container(
                 padding: const EdgeInsets.all(16),
@@ -185,7 +186,7 @@ class _WalletModalState extends State<WalletModal> {
             child: InkWell(
               onTap: () {
                 widget.onClose();
-                Navigator.pushNamed(context, '/sell-chronos');
+                context.pushNamed('sell-chronos');
               },
               child: Container(
                 padding: const EdgeInsets.all(16),

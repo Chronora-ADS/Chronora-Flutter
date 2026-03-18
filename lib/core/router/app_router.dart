@@ -15,6 +15,7 @@ import 'package:chronora/pages/sell_chronos/sell_success_page.dart';
 import 'package:chronora/pages/buy_chronos/buy_success_page.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_creation.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_edit.dart';
+import 'package:chronora/pages/requests/request_view.dart';
 import 'package:chronora/core/models/main_page_requests_model.dart';
 
 class AppRouter {
@@ -122,6 +123,23 @@ class AppRouter {
           key: state.pageKey,
           child: const RequestCreationPage(),
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.requestView,
+        name: 'request-view',
+        pageBuilder: (context, state) {
+          Service? service;
+
+          final extra = state.extra;
+          if (extra is Service) {
+            service = extra;
+          }
+
+          return MaterialPage(
+            key: state.pageKey,
+            child: RequestView(service: service),
+          );
+        },
       ),
       GoRoute(
         path: AppRoutes.requestEditing,

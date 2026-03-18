@@ -51,10 +51,10 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   int? _serviceId;
 
   void _populateFormFromService(Service service) {
-    print('=== POPULANDO FORMULÁRIO A PARTIR DE SERVICE ===');
+    print('=== POPULANDO FORMULÃRIO A PARTIR DE SERVICE ===');
     print('Service ID: ${service.id}');
-    print('Título: ${service.title}');
-    print('Título: ${service.description}');
+    print('TÃ­tulo: ${service.title}');
+    print('TÃ­tulo: ${service.description}');
     print('Chronos: ${service.timeChronos}');
     print('Categorias: ${service.categoryEntities.map((c) => c.name).toList()}');
     
@@ -85,13 +85,13 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         .where((name) => name.isNotEmpty)
         .toList();
     
-    print('Categorias extraídas: $categoryNames');
+    print('Categorias extraÃ­das: $categoryNames');
     
     setState(() {
       _categoriesTags = categoryNames;
     });
     
-    print('=== FIM DA POPULAÇÃO ===');
+    print('=== FIM DA POPULAÃ‡ÃƒO ===');
     
     _serviceId = service.id;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -100,9 +100,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   }
 
   void _populateFormFromServiceDetail(ServiceDetailModel serviceDetail) {
-    print('=== POPULANDO FORMULÁRIO ===');
-    print('Título: ${serviceDetail.title}');
-    print('Descrição: ${serviceDetail.description}');
+    print('=== POPULANDO FORMULÃRIO ===');
+    print('TÃ­tulo: ${serviceDetail.title}');
+    print('DescriÃ§Ã£o: ${serviceDetail.description}');
     print('Chronos: ${serviceDetail.timeChronos}');
     print('Deadline: ${serviceDetail.deadline}');
     print('Modalidade: ${serviceDetail.modality}');
@@ -153,9 +153,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         return 'Presencial';
       case 'REMOTO':
         return 'Remoto';
-      case 'HÍBRIDO':
+      case 'HÃBRIDO':
       case 'HIBRIDO':
-        return 'Híbrido';
+        return 'HÃ­brido';
       default:
         return 'Presencial';
     }
@@ -174,7 +174,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       final token = prefs.getString('auth_token');
       
       if (token == null) {
-        throw Exception('Usuário não autenticado');
+        throw Exception('UsuÃ¡rio nÃ£o autenticado');
       }
 
       final response = await ApiService.get(
@@ -191,9 +191,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         throw Exception('Erro ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
-      print('Erro ao buscar dados do serviço: $e');
+      print('Erro ao buscar dados do serviÃ§o: $e');
       setState(() {
-        _errorMessage = 'Erro ao carregar dados do serviço: $e';
+        _errorMessage = 'Erro ao carregar dados do serviÃ§o: $e';
       });
       
       ScaffoldMessenger.of(context).showSnackBar(
@@ -226,7 +226,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     
     if (widget.service != null) {
       serviceToProcess = widget.service;
-      print('Service extraído do widget');
+      print('Service extraÃ­do do widget');
     }
     
     if (serviceToProcess == null) {
@@ -235,24 +235,24 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         
         if (arguments is Service) {
           serviceToProcess = arguments;
-          print('Service extraído dos argumentos da rota (direto)');
+          print('Service extraÃ­do dos argumentos da rota (direto)');
         } else if (arguments is Map && arguments['service'] is Service) {
           serviceToProcess = arguments['service'] as Service;
-          print('Service extraído dos argumentos da rota (Map)');
+          print('Service extraÃ­do dos argumentos da rota (Map)');
         }
         
         if (serviceToProcess != null) {
-          print('Populando formulário a partir do service...');
+          print('Populando formulÃ¡rio a partir do service...');
           _populateFormFromService(serviceToProcess!);
         } else {
-          print('Nenhum serviço encontrado!');
+          print('Nenhum serviÃ§o encontrado!');
           setState(() {
-            _errorMessage = 'Nenhum serviço encontrado para edição.';
+            _errorMessage = 'Nenhum serviÃ§o encontrado para ediÃ§Ã£o.';
           });
         }
       });
     } else {
-      print('Populando formulário a partir do service...');
+      print('Populando formulÃ¡rio a partir do service...');
       _populateFormFromService(serviceToProcess);
     }
   }
@@ -438,7 +438,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       if (token == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Usuário não autenticado. Faça login novamente.'),
+            content: Text('UsuÃ¡rio nÃ£o autenticado. FaÃ§a login novamente.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -455,7 +455,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       if (deadlineText.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Data de prazo é obrigatória'),
+            content: Text('Data de prazo Ã© obrigatÃ³ria'),
             backgroundColor: Colors.red,
           ),
         );
@@ -467,7 +467,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       if (deadlineParts.length != 3) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Formato de data inválido. Use DD/MM/YYYY'),
+            content: Text('Formato de data invÃ¡lido. Use DD/MM/YYYY'),
             backgroundColor: Colors.red,
           ),
         );
@@ -485,7 +485,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('A data não pode ser no passado'),
+              content: Text('A data nÃ£o pode ser no passado'),
               backgroundColor: Colors.red,
             ),
           );
@@ -497,7 +497,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Data inválida'),
+            content: Text('Data invÃ¡lida'),
             backgroundColor: Colors.red,
           ),
         );
@@ -509,7 +509,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       if (chronosText.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Tempo em Chronos é obrigatório'),
+            content: Text('Tempo em Chronos Ã© obrigatÃ³rio'),
             backgroundColor: Colors.red,
           ),
         );
@@ -533,7 +533,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Tempo em Chronos deve ser um número válido'),
+            content: Text('Tempo em Chronos deve ser um nÃºmero vÃ¡lido'),
             backgroundColor: Colors.red,
           ),
         );
@@ -552,7 +552,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         if (base64Image != null) 'serviceImage': base64Image,
       };
 
-      print('Enviando payload para edição de pedido...');
+      print('Enviando payload para ediÃ§Ã£o de pedido...');
       print('Payload: $editModel');
 
       final response = await ApiService.put(
@@ -586,11 +586,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         
         String errorMessage = 'Erro ao editar pedido';
         if (response.statusCode == 400) {
-          errorMessage = 'Dados inválidos. Verifique as informações preenchidas.';
+          errorMessage = 'Dados invÃ¡lidos. Verifique as informaÃ§Ãµes preenchidas.';
         } else if (response.statusCode == 401) {
-          errorMessage = 'Não autorizado. Faça login novamente.';
+          errorMessage = 'NÃ£o autorizado. FaÃ§a login novamente.';
         } else if (response.statusCode == 404) {
-          errorMessage = 'Serviço não encontrado.';
+          errorMessage = 'ServiÃ§o nÃ£o encontrado.';
         } else if (response.statusCode == 500) {
           errorMessage = 'Erro interno do servidor. Tente novamente.';
         }
@@ -604,7 +604,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         context.pop(false);
       }
     } catch (e) {
-      print('Erro na edição do pedido: $e');
+      print('Erro na ediÃ§Ã£o do pedido: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Erro: ${e.toString()}'),
@@ -680,7 +680,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       child: TextFormField(
         controller: _searchController,
         decoration: InputDecoration(
-          hintText: 'Pintura de parede, aula de inglês...',
+          hintText: 'Pintura de parede, aula de inglÃªs...',
           hintStyle: TextStyle(
             color: Colors.black.withOpacity(0.7),
           ),
@@ -711,18 +711,18 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
   String? _requiredValidator(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Este campo é obrigatório';
+      return 'Este campo Ã© obrigatÃ³rio';
     }
     return null;
   }
 
   String? _chronosValidator(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Este campo é obrigatório';
+      return 'Este campo Ã© obrigatÃ³rio';
     }
     final number = int.tryParse(value);
     if (number == null || number <= 0) {
-      return 'Digite um número válido maior que zero';
+      return 'Digite um nÃºmero vÃ¡lido maior que zero';
     }
     return null;
   }
@@ -784,7 +784,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         keyboardType: TextInputType.multiline,
         textInputAction: TextInputAction.newline,
         decoration: InputDecoration(
-          hintText: 'Descrição',
+          hintText: 'DescriÃ§Ã£o',
           hintStyle: TextStyle(
             color: Colors.black.withOpacity(0.7),
           ),
@@ -806,7 +806,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
   String? _dateValidator(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'Data é obrigatória';
+      return 'Data Ã© obrigatÃ³ria';
     }
     
     final parts = value.split('/');
@@ -821,10 +821,10 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       
       final date = DateTime(year, month, day);
       if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
-        return 'Data não pode ser no passado';
+        return 'Data nÃ£o pode ser no passado';
       }
     } catch (e) {
-      return 'Data inválida';
+      return 'Data invÃ¡lida';
     }
     
     return null;
@@ -897,11 +897,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       'assets/img/Paintbrush.png',
       width: 24,
       height: 24,
-      color: Colors.white,
+      color: Colors.black,
       errorBuilder: (context, error, stackTrace) {
         return const Icon(
           Icons.category,
-          color: Colors.white,
+          color: Colors.black,
           size: 24,
         );
       },
@@ -923,8 +923,8 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           Text(
             tagText,
             style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
+              color: Colors.black,
+              fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(width: 6),
@@ -932,7 +932,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
             onTap: () => _removeCategory(tagText),
             child: const Icon(
               Icons.close,
-              color: Colors.white,
+              color: Colors.black,
               size: 16,
             ),
           ),
@@ -1031,7 +1031,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           ),
           errorStyle: const TextStyle(fontSize: 12, height: 0.1),
         ),
-        items: ['Presencial', 'Remoto', 'Híbrido']
+        items: ['Presencial', 'Remoto', 'HÃ­brido']
             .map((modality) => DropdownMenuItem(
                   value: modality,
                   child: Text(modality),
@@ -1052,18 +1052,25 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         final buttonWidth = constraints.maxWidth;
         final displayText = _imageFileName != null
             ? _getDisplayFileName(_imageFileName!, buttonWidth)
-            : 'Imagem do pedido';
+            : 'nome_imagem_pedido';
 
         return GestureDetector(
           onTap: _pickImage,
           child: Container(
             height: 46,
             decoration: BoxDecoration(
+              color: const Color(0xFFE9EAEC),
               border: Border.all(
                 color: const Color(0xFFC29503),
                 width: 2,
               ),
-              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.25),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1071,33 +1078,63 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(left: 16),
-                    child: Text(
-                      displayText,
-                      style: const TextStyle(
-                        color: Color(0xFFC29503),
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            displayText,
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                        if (_imageFileName != null)
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedImage = null;
+                                _imageFileName = null;
+                                _imageBytes = null;
+                              });
+                            },
+                            child: const Padding(
+                              padding: EdgeInsets.only(left: 8),
+                              child: Icon(
+                                Icons.close,
+                                color: Colors.black,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: _imageFileName != null
-                      ? const Icon(
-                          Icons.check_circle,
-                          color: Color(0xFFC29503),
-                          size: 24,
-                        )
-                      : Image.asset(
-                          'assets/img/AddImage.png',
-                          width: 24,
-                          height: 24,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(Icons.add_photo_alternate,
-                                  color: Color(0xFFC29503)),
-                        ),
+                Container(
+                  width: 34,
+                  height: 30,
+                  margin: const EdgeInsets.only(right: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFC29503),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(5),
+                    child: Image.asset(
+                      'assets/img/AddImage.png',
+                      width: 20,
+                      height: 20,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(
+                        Icons.add_photo_alternate,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -1153,7 +1190,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
                       ),
                     )
                   : const Text(
-                      'Salvar Alterações',
+                      'Editar pedido',
                       style: TextStyle(
                         color: Color(0xFFE9EAEC),
                         fontWeight: FontWeight.bold,
@@ -1173,113 +1210,63 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   }
 
   Widget _buildForm() {
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Título
-          const Text(
-            'Título do pedido',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+    return Container(
+      padding: const EdgeInsets.fromLTRB(25, 20, 25, 24),
+      decoration: const BoxDecoration(
+        color: Color(0xFFE9EAEC),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(36),
+          topRight: Radius.circular(48),
+          bottomLeft: Radius.circular(28),
+          bottomRight: Radius.circular(28),
+        ),
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Center(
+              child: Text(
+                'Edi\u00e7\u00e3o do pedido',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          _buildFormField('Título', _titleController, validator: _requiredValidator),
-          const SizedBox(height: 24),
-
-          // Descrição
-          const Text(
-            'Descrição',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+            const SizedBox(height: 25),
+            _buildFormField(
+              'Título do pedido',
+              _titleController,
+              validator: _requiredValidator,
             ),
-          ),
-          const SizedBox(height: 8),
-          _buildDescriptionField(),
-          const SizedBox(height: 24),
-
-          // Tempo em Chronos
-          const Text(
-            'Tempo em Chronos',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+            const SizedBox(height: 15),
+            _buildDescriptionField(),
+            const SizedBox(height: 15),
+            _buildFormField(
+              'Tempo em Chronos',
+              _chronosController,
+              validator: _chronosValidator,
             ),
-          ),
-          const SizedBox(height: 8),
-          _buildFormField('Chronos', _chronosController, validator: _chronosValidator),
-          const SizedBox(height: 24),
-
-          // Data de Prazo
-          const Text(
-            'Data de prazo',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildDateField('DD/MM/YYYY'),
-          const SizedBox(height: 24),
-
-          // Categorias
-          const Text(
-            'Categoria(s)',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildCategoriesField(),
-          const SizedBox(height: 24),
-
-          // Modalidade
-          const Text(
-            'Modalidade',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildModalityDropdown(),
-          const SizedBox(height: 24),
-
-          // Imagem
-          const Text(
-            'Imagem',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildImageButton(),
-          const SizedBox(height: 32),
-
-          // Botões de ação
-          _buildActionButtons(),
-          const SizedBox(height: 20),
-        ],
+            const SizedBox(height: 15),
+            _buildDateField('Prazo'),
+            const SizedBox(height: 15),
+            _buildCategoriesField(),
+            const SizedBox(height: 15),
+            _buildModalityDropdown(),
+            const SizedBox(height: 15),
+            _buildImageButton(),
+            const SizedBox(height: 22),
+            _buildActionButtons(),
+          ],
+        ),
       ),
     );
   }
-
   @override
   Widget build(BuildContext context) {
-    // Verifica se está carregando e não há erro
+    // Verifica se estÃ¡ carregando e nÃ£o hÃ¡ erro
     if (!_isReadyToShowForm && !_isFetchingData && _errorMessage == null) {
       return const Scaffold(
         backgroundColor: Color(0xFF0B0C0C),
@@ -1292,7 +1279,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
               ),
               SizedBox(height: 20),
               Text(
-                'Preparando formulário...',
+                'Preparando formulÃ¡rio...',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -1304,7 +1291,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       );
     }
 
-    // Verifica se há erro
+    // Verifica se hÃ¡ erro
     if (_errorMessage != null) {
       return Scaffold(
         backgroundColor: const Color(0xFF0B0C0C),
@@ -1429,3 +1416,4 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     );
   }
 }
+

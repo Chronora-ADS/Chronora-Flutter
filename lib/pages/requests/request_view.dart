@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/constants/app_routes.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/main_page_requests_model.dart';
 import '../../core/models/service_detail_model.dart';
@@ -258,14 +260,8 @@ class _RequestViewState extends State<RequestView> {
   }
 
   void _editRequest() {
-    // Navega para a página de edição passando o serviço original
-    Navigator.pushNamed(
-      context,
-      '/request-editing',
-      arguments: _extractedService,
-    ).then((edited) {
+    context.push(AppRoutes.requestEditing, extra: _extractedService).then((edited) {
       if (edited == true) {
-        // Se editado, recarrega os detalhes
         _fetchServiceDetail(_extractedService!.id);
       }
     });
