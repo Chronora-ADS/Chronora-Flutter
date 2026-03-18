@@ -4,6 +4,7 @@ import 'package:chronora/pages/main_page.dart';
 import 'package:chronora/pages/buy_chronos/buy_chronos_page.dart';
 import 'package:chronora/pages/sell_chronos/sell_chronos_page.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_creation.dart';
+import 'package:chronora/pages/requests/request_accepted_view.dart';
 import 'package:chronora/pages/requests/request_view.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_edit.dart';
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ class AppRoutes {
   static const String main = '/main';
   static const String requestCreation = '/request-creation';
   static const String requestView = '/request-view';
+  static const String requestAcceptedView = '/request-accepted-view';
   static const String requestEditing = '/request-editing';
   static const String buyChronos = '/buy-chronos';
   static const String sellChronos = '/sell-chronos';
@@ -27,6 +29,7 @@ class AppRoutes {
       sellChronos: (context) => const SellChronosPage(),
       requestCreation: (context) => const RequestCreationPage(),
       requestView: (context) => const RequestView(),
+      requestAcceptedView: (context) => const RequestAcceptedView(),
       requestEditing: (context) => const RequestEditingPage(),
     };
   }

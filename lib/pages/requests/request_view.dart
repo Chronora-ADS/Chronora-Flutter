@@ -711,7 +711,9 @@ class _RequestViewState extends State<RequestView> {
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton(
-          onPressed: _acceptRequest,
+          onPressed: () {
+            Navigator.pushNamed(context, '/request-accepted-view');
+          },
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.amareloUmPoucoEscuro,
             foregroundColor: AppColors.branco,
