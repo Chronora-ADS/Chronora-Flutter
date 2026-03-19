@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/app_colors.dart';
@@ -41,6 +42,23 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     final arguments = ModalRoute.of(context)?.settings.arguments;
     if (arguments is ServiceDetailModel) {
       _resolvedServiceDetail = arguments;
+    } else if (arguments is Map) {
+      final serviceDetail = arguments['serviceDetail'];
+      if (serviceDetail is ServiceDetailModel) {
+        _resolvedServiceDetail = serviceDetail;
+      } else {
+        _resolvedServiceDetail = widget.serviceDetail;
+      }
+
+      final acceptedUserName = (arguments['acceptedUserName'] as String?)?.trim();
+      final acceptedUserPhone = arguments['acceptedUserPhone'];
+
+      if (acceptedUserName != null && acceptedUserName.isNotEmpty) {
+        _acceptedUserName = acceptedUserName;
+      }
+      if (acceptedUserPhone is int) {
+        _acceptedUserPhone = acceptedUserPhone;
+      }
     } else {
       _resolvedServiceDetail = widget.serviceDetail;
     }
@@ -65,6 +83,20 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     setState(() {
       _isWalletOpen = false;
     });
+  }
+
+  Future<void> _copyPhoneNumber(String phone) async {
+    await Clipboard.setData(ClipboardData(text: phone));
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Numero copiado para a area de transferencia'),
+          backgroundColor: Colors.green,
+        ),
+      );
   }
 
   void _updateRequestCardHeight() {
@@ -94,12 +126,15 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       if (response.statusCode != 200) return;
 
       final userData = json.decode(response.body) as Map<String, dynamic>;
+      final resolvedUserData = userData['user'] is Map<String, dynamic>
+          ? userData['user'] as Map<String, dynamic>
+          : userData;
       if (!mounted) return;
 
       setState(() {
-        final name = (userData['name'] as String?)?.trim();
+        final name = (resolvedUserData['name'] as String?)?.trim();
         _acceptedUserName = name != null && name.isNotEmpty ? name : _acceptedUserName;
-        _acceptedUserPhone = userData['phoneNumber'] as int?;
+        _acceptedUserPhone = resolvedUserData['phoneNumber'] as int? ?? _acceptedUserPhone;
       });
     } catch (_) {}
   }
@@ -240,7 +275,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: const [
           BoxShadow(
             color: Colors.black26,
@@ -253,12 +288,12 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+            padding: const EdgeInsets.all(10),
             decoration: const BoxDecoration(
               color: AppColors.branco,
               borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(14),
-                topRight: Radius.circular(14),
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
               ),
             ),
             child: Text(
@@ -266,18 +301,20 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
                   ? serviceDetail!.title
                   : 'Título do pedido Lorem Ipsum',
               style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w500,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
                 color: AppColors.preto,
               ),
             ),
           ),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             decoration: const BoxDecoration(
               color: AppColors.preto,
               border: Border(
+                top: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
+                bottom: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
                 left: BorderSide(color: AppColors.amareloUmPoucoEscuro, width: 3),
                 right: BorderSide(color: AppColors.amareloUmPoucoEscuro, width: 3),
               ),
@@ -285,17 +322,17 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 6,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    height: 140,
-                    color: AppColors.branco,
+                    width: 200,
+                    height: 113,
+                    color: AppColors.cinza,
                     child: _buildServiceImage(),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 Expanded(
-                  flex: 4,
                   child: _RequestSummary(
                     deadline: _formatDate(serviceDetail?.deadline),
                     modality: _formatModality(serviceDetail?.modality),
@@ -478,21 +515,28 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
                 ),
               ),
               const SizedBox(height: 18),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    phone,
-                    style: const TextStyle(
-                      color: AppColors.preto,
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                      decoration: TextDecoration.underline,
-                    ),
+              InkWell(
+                onTap: () => _copyPhoneNumber(phone),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        phone,
+                        style: const TextStyle(
+                          color: AppColors.preto,
+                          fontSize: 19,
+                          fontWeight: FontWeight.w800,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.phone_in_talk, color: AppColors.preto, size: 24),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.phone_in_talk, color: AppColors.preto, size: 24),
-                ],
+                ),
               ),
             ],
           ),
@@ -603,13 +647,16 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   }
 
   Widget _buildFallbackImage() {
-    return Image.asset(
-      'assets/img/Paintbrush.png',
-      fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => const Icon(
-        Icons.image,
-        color: AppColors.cinza,
-        size: 56,
+    return Container(
+      color: AppColors.cinza,
+      child: Image.asset(
+        'assets/img/Paintbrush.png',
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => const Icon(
+          Icons.image,
+          color: AppColors.cinza,
+          size: 40,
+        ),
       ),
     );
   }
@@ -699,37 +746,39 @@ class _RequestSummary extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         _buildChip('Prazo: $deadline'),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         _buildChip(modality),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/img/CoinYellow.png',
-              width: 34,
-              height: 34,
-              errorBuilder: (_, __, ___) => const Icon(
-                Icons.monetization_on,
-                color: AppColors.amareloMuitoEscura,
-                size: 30,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                '$timeChronos Chronos',
-                maxLines: 2,
-                textAlign: TextAlign.right,
-                style: const TextStyle(
-                  color: AppColors.amareloClaro,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/img/CoinYellow.png',
+                width: 20,
+                height: 20,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.monetization_on,
+                  color: AppColors.amareloUmPoucoEscuro,
+                  size: 20,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  '$timeChronos Chronos',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.amareloClaro,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -739,14 +788,14 @@ class _RequestSummary extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.amareloMuitoEscura,
-        borderRadius: BorderRadius.circular(999),
+        color: AppColors.amareloUmPoucoEscuro,
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         text,
         style: const TextStyle(
           color: AppColors.branco,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.bold,
           fontSize: 14,
         ),
       ),

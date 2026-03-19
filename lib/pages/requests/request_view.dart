@@ -25,6 +25,8 @@ class _RequestViewState extends State<RequestView> {
   String? _errorMessage;
   bool _isOwner = false;
   int? _currentUserId;
+  String? _currentUserName;
+  int? _currentUserPhone;
 
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
@@ -109,8 +111,13 @@ class _RequestViewState extends State<RequestView> {
       final response = await ApiService.get('/user/get', token: token);
       if (response.statusCode == 200) {
         final Map<String, dynamic> userData = json.decode(response.body);
+        final resolvedUserData = userData['user'] is Map<String, dynamic>
+            ? userData['user'] as Map<String, dynamic>
+            : userData;
         setState(() {
-          _currentUserId = userData['id']; // ou userData['user']['id']
+          _currentUserId = resolvedUserData['id']; // ou userData['user']['id']
+          _currentUserName = (resolvedUserData['name'] as String?)?.trim();
+          _currentUserPhone = resolvedUserData['phoneNumber'] as int?;
         });
         print('Current user ID from API: $_currentUserId');
       } else {
@@ -120,6 +127,8 @@ class _RequestViewState extends State<RequestView> {
       print('Erro ao obter usuário: $e');
       setState(() {
         _currentUserId = null;
+        _currentUserName = null;
+        _currentUserPhone = null;
       });
     }
   }
@@ -712,7 +721,15 @@ class _RequestViewState extends State<RequestView> {
         width: double.infinity,
         child: ElevatedButton(
           onPressed: () {
-            Navigator.pushNamed(context, '/request-accepted-view');
+            Navigator.pushNamed(
+              context,
+              '/request-accepted-view',
+              arguments: {
+                'serviceDetail': _serviceDetail,
+                'acceptedUserName': _currentUserName,
+                'acceptedUserPhone': _currentUserPhone,
+              },
+            );
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.amareloUmPoucoEscuro,
