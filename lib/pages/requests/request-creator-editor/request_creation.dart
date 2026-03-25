@@ -97,7 +97,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         });
       }
     } catch (e) {
-      print('Error picking image: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Erro ao selecionar imagem'),
@@ -180,7 +179,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       }
       return null;
     } catch (e) {
-      print('Erro ao converter imagem: $e');
       return null;
     }
   }
@@ -340,8 +338,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         serviceImage: base64Image,
       );
 
-      print('Enviando payload para criação de pedido...');
-      print('Payload: ${requestModel.toJson()}');
 
       final response = await ApiService.post(
         '/service/post', 
@@ -371,7 +367,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         
       } else {
         final error = response.body;
-        print('Erro do servidor: ${response.statusCode} - $error');
         
         String errorMessage = 'Erro ao criar pedido';
         if (response.statusCode == 400) {
@@ -390,7 +385,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         );
       }
     } catch (e) {
-      print('Erro na criação do pedido: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Erro: ${e.toString()}'),
@@ -573,9 +567,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             ),
           ),
         ),
-        onChanged: (value) {
-          print('Texto da busca: $value');
-        },
       ),
     );
   }

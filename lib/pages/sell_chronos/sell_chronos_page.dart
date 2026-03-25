@@ -377,9 +377,6 @@ class _SellChronosPageState extends State<SellChronosPage> {
             ),
           ),
         ),
-        onChanged: (value) {
-          print('Texto da busca: $value');
-        },
       ),
     );
   }

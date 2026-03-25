@@ -610,9 +610,6 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
             ),
           ),
         ),
-        onChanged: (value) {
-          print('Texto da busca: $value');
-        },
       ),
     );
   }

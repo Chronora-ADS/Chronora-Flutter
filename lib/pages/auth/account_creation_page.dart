@@ -143,7 +143,6 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
         }
       };
 
-      print('Enviando payload para cadastro...');
       final response = await ApiService.post('/auth/register', payload);
 
       if (response.statusCode == 200) {
@@ -156,7 +155,6 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
         Navigator.pushReplacementNamed(context, AppRoutes.login);
       } else {
         final error = response.body;
-        print('Erro do servidor: ${response.statusCode} - $error');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content:
@@ -164,7 +162,6 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
         );
       }
     } catch (e) {
-      print('Erro no cadastro: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro: $e')),
       );
@@ -179,9 +176,8 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_token', token);
-      print('Token salvo com sucesso!');
     } catch (e) {
-      print('Erro ao salvar token: $e');
+      // Ignora falha ao salvar token para nao bloquear o cadastro.
     }
   }
 

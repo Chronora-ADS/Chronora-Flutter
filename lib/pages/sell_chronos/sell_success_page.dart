@@ -107,9 +107,6 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
             ),
           ),
         ),
-        onChanged: (value) {
-          print('Texto da busca: $value');
-        },
       ),
     );
   }

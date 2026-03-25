@@ -26,9 +26,8 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_token', token);
-      print('Token salvo com sucesso!');
     } catch (e) {
-      print('Erro ao salvar token: $e');
+      // Ignora falha ao salvar token para nao bloquear o login.
     }
   }
 
@@ -53,7 +52,6 @@ class _LoginPageState extends State<LoginPage> {
         final responseData = json.decode(response.body);
         final token = responseData['access_token']; // Extrair o token do JSON
 
-        print('🔐 Token recebido: ${token != null ? "SIM" : "NÃO"}');
 
         if (token == null) {
           throw Exception('Token não encontrado na resposta');
@@ -68,13 +66,11 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.pushReplacementNamed(context, AppRoutes.main);
       } else {
         final error = response.body;
-        print('Erro no login: $error');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erro no login: $error')),
         );
       }
     } catch (e) {
-      print('Erro de conexão: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro de conexão: $e')),
       );

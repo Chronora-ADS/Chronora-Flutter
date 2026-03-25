@@ -81,7 +81,6 @@ class _MainPageState extends State<MainPage> {
         });
       }
     } catch (error) {
-      print('Erro na requisição: $error');
       if (mounted) {
         setState(() {
           isLoading = false;

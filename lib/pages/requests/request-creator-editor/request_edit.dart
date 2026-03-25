@@ -50,16 +50,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
   // Método para popular o formulário com dados do serviço
   void _populateFormFromService(Service service) {
-    print('=== POPULANDO FORMULÁRIO A PARTIR DE SERVICE ===');
-    print('Service ID: ${service.id}');
-    print('Título: ${service.title}');
-    print('Título: ${service.description}');
-    print('Chronos: ${service.timeChronos}');
-    print('Categorias: ${service.categoryEntities.map((c) => c.name).toList()}');
     
     // Garante que o serviceId seja setado
     _serviceId = service.id;
-    print('ServiceId definido: $_serviceId');
       
     // Preenche os campos básicos
     _titleController.text = service.title;
@@ -75,9 +68,8 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           _selectedImage = _imageBytes;
           _imageFileName = 'imagem_servico.jpg';
         });
-        print('Imagem carregada com sucesso');
       } catch (e) {
-        print('Erro ao decodificar imagem: $e');
+        // Ignora erro de decodificacao da imagem para nao travar a tela.
       }
     }
     
@@ -87,13 +79,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         .where((name) => name.isNotEmpty)
         .toList();
     
-    print('Categorias extraídas: $categoryNames');
     
     setState(() {
       _categoriesTags = categoryNames;
     });
     
-    print('=== FIM DA POPULAÇÃO ===');
     
     // NOTA: Para description, deadline e modality,
     // você precisará buscar via API (método _fetchServiceData)
@@ -106,14 +96,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
   // Método para popular o formulário com ServiceDetailModel
   void _populateFormFromServiceDetail(ServiceDetailModel serviceDetail) {
-    print('=== POPULANDO FORMULÁRIO ===');
-    print('Título: ${serviceDetail.title}');
-    print('Descrição: ${serviceDetail.description}');
-    print('Chronos: ${serviceDetail.timeChronos}');
-    print('Deadline: ${serviceDetail.deadline}');
-    print('Modalidade: ${serviceDetail.modality}');
-    print('Categorias: ${serviceDetail.categoryEntities.map((c) => c.name).toList()}');
-    print('ServiceImage presente: ${serviceDetail.serviceImage != null && serviceDetail.serviceImage!.isNotEmpty}');
     
     // Preenche os campos do formulário
     _titleController.text = serviceDetail.title;
@@ -152,7 +134,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           _imageFileName = 'imagem_servico.jpg';
         });
       } catch (e) {
-        print('Erro ao decodificar imagem: $e');
+        // Ignora erro de decodificacao da imagem para nao travar a tela.
       }
     }
   }
@@ -204,7 +186,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         throw Exception('Erro ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
-      print('Erro ao buscar dados do serviço: $e');
       setState(() {
         _errorMessage = 'Erro ao carregar dados do serviço: $e';
       });
@@ -228,8 +209,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     super.initState();
     _categoriesTags = [];
     
-    print('=== INIT STATE EDIT PAGE ===');
-    print('Service recebido via widget: ${widget.service != null}');
     
     // Adicione este método para extrair o serviço de diferentes formas
     _extractAndProcessService();
@@ -242,7 +221,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     // 1. Primeiro verifica se veio pelo widget
     if (widget.service != null) {
       serviceToProcess = widget.service;
-      print('Service extraído do widget');
     }
     
     // 2. Se não veio pelo widget, verifica se foi passado como argumento da rota
@@ -252,18 +230,14 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         
         if (arguments is Service) {
           serviceToProcess = arguments;
-          print('Service extraído dos argumentos da rota (direto)');
         } else if (arguments is Map && arguments['service'] is Service) {
           serviceToProcess = arguments['service'] as Service;
-          print('Service extraído dos argumentos da rota (Map)');
         }
         
         // Se encontrou algum serviço, processa
         if (serviceToProcess != null) {
-          print('Populando formulário a partir do service...');
           _populateFormFromService(serviceToProcess!);
         } else {
-          print('Nenhum serviço encontrado!');
           setState(() {
             _errorMessage = 'Nenhum serviço encontrado para edição.';
           });
@@ -271,7 +245,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       });
     } else {
       // Se já tinha no widget, processa imediatamente
-      print('Populando formulário a partir do service...');
       _populateFormFromService(serviceToProcess);
     }
   }
@@ -293,7 +266,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         });
       }
     } catch (e) {
-      print('Error picking image: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Erro ao selecionar imagem'),
@@ -419,7 +391,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       }
       return null;
     } catch (e) {
-      print('Erro ao converter imagem: $e');
       return null;
     }
   }
@@ -577,8 +548,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         if (base64Image != null) 'serviceImage': base64Image,
       };
 
-      print('Enviando payload para edição de pedido...');
-      print('Payload: $editModel');
 
       final response = await ApiService.put(
         '/service/put', // Note: endpoint diferente para edição
@@ -609,7 +578,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         
       } else {
         final error = response.body;
-        print('Erro do servidor: ${response.statusCode} - $error');
         
         String errorMessage = 'Erro ao editar pedido';
         if (response.statusCode == 400) {
@@ -631,7 +599,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         Navigator.pop(context, false);
       }
     } catch (e) {
-      print('Erro na edição do pedido: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Erro: ${e.toString()}'),
@@ -729,9 +696,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
             ),
           ),
         ),
-        onChanged: (value) {
-          print('Texto da busca: $value');
-        },
       ),
     );
   }

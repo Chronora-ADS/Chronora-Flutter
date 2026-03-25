@@ -188,9 +188,6 @@ class _PixSellPageState extends State<PixSellPage> {
             ),
           ),
         ),
-        onChanged: (value) {
-          print('Texto da busca: $value');
-        },
       ),
     );
   }
