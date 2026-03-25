@@ -27,6 +27,7 @@ class _MainPageState extends State<MainPage> {
   List<Service> services = [];
   bool isLoading = true;
   String errorMessage = '';
+  bool _isFetching = false;
 
   int? _page;
   int? _size;
@@ -43,38 +44,56 @@ class _MainPageState extends State<MainPage> {
     _fetchServices();
   }
 
-  Future<void> _fetchServices() async {
+  Future<void> _fetchServices({bool showLoading = false}) async {
+    if (_isFetching) return;
+    _isFetching = true;
+
+    if ((showLoading || services.isEmpty) && mounted) {
+      setState(() {
+        isLoading = true;
+        errorMessage = '';
+      });
+    }
+
     try {
       final result = await _serviceCatalogService.fetchServices();
 
-      setState(() {
-        services = result.services;
-        _page = result.page;
-        _size = result.size;
-        _totalElements = result.totalElements;
-        _totalPages = result.totalPages;
-        isLoading = false;
-        errorMessage = '';
-      });
+      if (mounted) {
+        setState(() {
+          services = result.services;
+          _page = result.page;
+          _size = result.size;
+          _totalElements = result.totalElements;
+          _totalPages = result.totalPages;
+          isLoading = false;
+          errorMessage = '';
+        });
+      }
     } on ServiceCatalogException catch (error) {
-      setState(() {
-        isLoading = false;
-        _page = null;
-        _size = null;
-        _totalElements = null;
-        _totalPages = null;
-        errorMessage = error.message;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          _page = null;
+          _size = null;
+          _totalElements = null;
+          _totalPages = null;
+          errorMessage = error.message;
+        });
+      }
     } catch (error) {
       print('Erro na requisição: $error');
-      setState(() {
-        isLoading = false;
-        _page = null;
-        _size = null;
-        _totalElements = null;
-        _totalPages = null;
-        errorMessage = "Falha ao carregar os serviços: $error";
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          _page = null;
+          _size = null;
+          _totalElements = null;
+          _totalPages = null;
+          errorMessage = "Falha ao carregar os serviços: $error";
+        });
+      }
+    } finally {
+      _isFetching = false;
     }
   }
 
@@ -113,6 +132,8 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0B0C0C),
       body: Stack(
@@ -221,7 +242,7 @@ class _MainPageState extends State<MainPage> {
                         Align(
                             alignment: Alignment.center,
                             child: Container(
-                                width: MediaQuery.of(context).size.width * 0.8,
+                                width: screenWidth * 0.8,
                                 height: 3,
                                 color: AppColors.branco,
                             ),
@@ -230,7 +251,7 @@ class _MainPageState extends State<MainPage> {
                         Align(
                             alignment: Alignment.center,
                             child: Container(
-                                width: MediaQuery.of(context).size.width * 0.5,
+                                width: screenWidth * 0.5,
                                 height: 3,
                                 color: AppColors.branco,
                             ),
@@ -284,7 +305,7 @@ class _MainPageState extends State<MainPage> {
                 child: Row(
                   children: [
                     SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
+                      width: screenWidth * 0.6,
                       child: SideMenu(
                         onWalletPressed: _openWallet, // Usa a nova função
                       ),
