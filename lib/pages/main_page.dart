@@ -28,6 +28,11 @@ class _MainPageState extends State<MainPage> {
   bool isLoading = true;
   String errorMessage = '';
 
+  int? _page;
+  int? _size;
+  int? _totalElements;
+  int? _totalPages;
+
   double tempoValue = 5.0;
   String avaliacaoValue = "0";
   String ordenacaoValue = "0";
@@ -50,6 +55,10 @@ class _MainPageState extends State<MainPage> {
       if (token == null) {
         setState(() {
           isLoading = false;
+          _page = null;
+          _size = null;
+          _totalElements = null;
+          _totalPages = null;
           errorMessage =
               "Você precisa estar logado para visualizar os serviços.";
         });
@@ -59,30 +68,23 @@ class _MainPageState extends State<MainPage> {
       final response = await ApiService.get('/service/get/all', token: token);
 
       if (response.statusCode == 200) {
-        final dynamic responseData = json.decode(response.body);
-        List<dynamic> data = [];
-
-        if (responseData is Map<String, dynamic>) {
-          if (responseData.containsKey('services')) {
-            data = responseData['services'] as List<dynamic>;
-          } else if (responseData.containsKey('data')) {
-            data = responseData['data'] as List<dynamic>;
-          } else if (responseData.containsKey('content')) {
-            data = responseData['content'] as List<dynamic>;
-          } else {
-            print('Estrutura inesperada: $responseData');
-          }
-        } else if (responseData is List<dynamic>) {
-          data = responseData;
-        }
+        final parsed = _parseServicesResponse(response.body);
 
         setState(() {
-          services = data.map((item) => Service.fromJson(item)).toList();
+          services = parsed.services;
+          _page = parsed.page;
+          _size = parsed.size;
+          _totalElements = parsed.totalElements;
+          _totalPages = parsed.totalPages;
           isLoading = false;
         });
       } else {
         setState(() {
           isLoading = false;
+          _page = null;
+          _size = null;
+          _totalElements = null;
+          _totalPages = null;
           errorMessage = "Erro ${response.statusCode} ao carregar os serviços.";
         });
       }
@@ -90,9 +92,60 @@ class _MainPageState extends State<MainPage> {
       print('Erro na requisição: $error');
       setState(() {
         isLoading = false;
+        _page = null;
+        _size = null;
+        _totalElements = null;
+        _totalPages = null;
         errorMessage = "Falha ao carregar os serviços: $error";
       });
     }
+  }
+
+  _ServiceListResult _parseServicesResponse(String body) {
+    final dynamic decoded = json.decode(body);
+
+    if (decoded is List) {
+      return _ServiceListResult(services: _mapToServices(decoded));
+    }
+
+    if (decoded is Map<String, dynamic>) {
+      final list = _extractListFromMap(decoded);
+      return _ServiceListResult(
+        services: _mapToServices(list),
+        page: _toInt(decoded['page']),
+        size: _toInt(decoded['size']),
+        totalElements: _toInt(decoded['totalElements']),
+        totalPages: _toInt(decoded['totalPages']),
+        message: decoded['message']?.toString(),
+      );
+    }
+
+    return _ServiceListResult(services: const []);
+  }
+
+  List<Service> _mapToServices(List<dynamic> items) {
+    return items
+        .whereType<Map<String, dynamic>>()
+        .map(Service.fromJson)
+        .toList();
+  }
+
+  List<dynamic> _extractListFromMap(Map<String, dynamic> map) {
+    const keys = ['services', 'data', 'content'];
+    for (final key in keys) {
+      final value = map[key];
+      if (value is List) {
+        return value;
+      }
+    }
+    return const [];
+  }
+
+  int? _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 
   void _showFiltersModal() {
@@ -425,4 +478,22 @@ class _MainPageState extends State<MainPage> {
     _searchController.dispose();
     super.dispose();
   }
+}
+
+class _ServiceListResult {
+  final List<Service> services;
+  final int? page;
+  final int? size;
+  final int? totalElements;
+  final int? totalPages;
+  final String? message;
+
+  _ServiceListResult({
+    required this.services,
+    this.page,
+    this.size,
+    this.totalElements,
+    this.totalPages,
+    this.message,
+  });
 }
