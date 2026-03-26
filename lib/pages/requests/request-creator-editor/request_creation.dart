@@ -11,7 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../widgets/header.dart';
 import '../../../widgets/side_menu.dart';
 import '../../../widgets/wallet_modal.dart';
-import '../../../core/services/api_service.dart';
+import '../../../core/api/api_service.dart';
 import '../../../core/models/create_request_model.dart';
 
 class RequestCreationPage extends StatefulWidget {

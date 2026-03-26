@@ -9,7 +9,7 @@ import 'dart:html' as html if (dart.library.io) 'dart:io';
 import 'dart:typed_data';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:chronora/core/services/api_service.dart';
+import 'package:chronora/core/api/api_service.dart';
 import 'package:chronora/core/models/service_detail_model.dart';
 import 'package:chronora/core/models/main_page_requests_model.dart';
 

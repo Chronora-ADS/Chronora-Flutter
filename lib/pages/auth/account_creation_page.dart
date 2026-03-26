@@ -8,7 +8,7 @@ import '../../widgets/backgrounds/background_auth_widget.dart';
 import '../../widgets/auth_text_field.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
-import '../../core/services/api_service.dart';
+import '../../core/api/api_service.dart';
 
 class AccountCreationPage extends StatefulWidget {
   const AccountCreationPage({super.key});

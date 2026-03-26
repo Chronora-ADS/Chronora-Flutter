@@ -2,7 +2,7 @@ import 'package:chronora/core/models/main_page_requests_model.dart';
 import 'package:flutter/material.dart';
 
 import '../core/constants/app_colors.dart';
-import 'package:chronora/core/services/service_catalog_service.dart';
+import 'package:chronora/core/api/service_catalog_service.dart';
 import '../widgets/backgrounds/background_default_widget.dart';
 import '../widgets/header.dart';
 import '../widgets/service_card.dart';
