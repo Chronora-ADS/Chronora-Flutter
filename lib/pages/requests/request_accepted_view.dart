@@ -11,10 +11,17 @@ import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
 
+enum RequestAcceptedAudience { provider, requester }
+
 class RequestAcceptedView extends StatefulWidget {
   final ServiceDetailModel? serviceDetail;
+  final RequestAcceptedAudience audience;
 
-  const RequestAcceptedView({super.key, this.serviceDetail});
+  const RequestAcceptedView({
+    super.key,
+    this.serviceDetail,
+    this.audience = RequestAcceptedAudience.provider,
+  });
 
   @override
   State<RequestAcceptedView> createState() => _RequestAcceptedViewState();
@@ -25,12 +32,26 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   bool _isWalletOpen = false;
   bool _isShowingDetails = false;
   bool _didLoadArguments = false;
+
   ServiceDetailModel? _resolvedServiceDetail;
+  late RequestAcceptedAudience _resolvedAudience;
+
   final GlobalKey _requestCardKey = GlobalKey();
   double _requestCardHeight = 260;
+
   String _acceptedUserName = 'Prestador';
   int? _acceptedUserPhone;
-  final DateTime _acceptedAt = DateTime.now();
+  DateTime _acceptedAt = DateTime.now();
+  String _authenticationCode = '1234';
+
+  bool get _isRequesterView =>
+      _resolvedAudience == RequestAcceptedAudience.requester;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolvedAudience = widget.audience;
+  }
 
   @override
   void didChangeDependencies() {
@@ -40,6 +61,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     _didLoadArguments = true;
 
     final arguments = ModalRoute.of(context)?.settings.arguments;
+
     if (arguments is ServiceDetailModel) {
       _resolvedServiceDetail = arguments;
     } else if (arguments is Map) {
@@ -52,18 +74,54 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
       final acceptedUserName = (arguments['acceptedUserName'] as String?)?.trim();
       final acceptedUserPhone = arguments['acceptedUserPhone'];
+      final audience = arguments['audience'];
+      final isRequesterView = arguments['isRequesterView'] == true;
+      final authenticationCode =
+          (arguments['authenticationCode'] as String?)?.trim() ??
+          (arguments['startAuthenticationCode'] as String?)?.trim();
+      final acceptedAt = arguments['acceptedAt'];
 
       if (acceptedUserName != null && acceptedUserName.isNotEmpty) {
         _acceptedUserName = acceptedUserName;
       }
+
       if (acceptedUserPhone is int) {
         _acceptedUserPhone = acceptedUserPhone;
+      }
+
+      if (audience is RequestAcceptedAudience) {
+        _resolvedAudience = audience;
+      } else if (audience is String) {
+        final normalizedAudience = audience.trim().toLowerCase();
+        if (normalizedAudience == 'requester' ||
+            normalizedAudience == 'solicitante') {
+          _resolvedAudience = RequestAcceptedAudience.requester;
+        } else if (normalizedAudience == 'provider' ||
+            normalizedAudience == 'prestador') {
+          _resolvedAudience = RequestAcceptedAudience.provider;
+        }
+      } else if (isRequesterView) {
+        _resolvedAudience = RequestAcceptedAudience.requester;
+      }
+
+      if (authenticationCode != null && authenticationCode.isNotEmpty) {
+        _authenticationCode = authenticationCode;
+      }
+
+      if (acceptedAt is DateTime) {
+        _acceptedAt = acceptedAt;
+      } else if (acceptedAt is String && acceptedAt.isNotEmpty) {
+        try {
+          _acceptedAt = DateTime.parse(acceptedAt);
+        } catch (_) {}
       }
     } else {
       _resolvedServiceDetail = widget.serviceDetail;
     }
 
-    _loadAcceptedUser();
+    if (!_isRequesterView) {
+      _loadAcceptedUser();
+    }
   }
 
   void _toggleDrawer() {
@@ -133,8 +191,10 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
       setState(() {
         final name = (resolvedUserData['name'] as String?)?.trim();
-        _acceptedUserName = name != null && name.isNotEmpty ? name : _acceptedUserName;
-        _acceptedUserPhone = resolvedUserData['phoneNumber'] as int? ?? _acceptedUserPhone;
+        _acceptedUserName =
+            name != null && name.isNotEmpty ? name : _acceptedUserName;
+        _acceptedUserPhone =
+            resolvedUserData['phoneNumber'] as int? ?? _acceptedUserPhone;
       });
     } catch (_) {}
   }
@@ -240,12 +300,19 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             ),
             const SizedBox(height: 16),
             _buildPosterCard(),
-            const SizedBox(height: 12),
-            _buildCalloutCard(),
-            const SizedBox(height: 12),
-            _buildAcceptedProviderCard(),
-            const SizedBox(height: 18),
-            _buildStartButton(),
+            if (_isRequesterView) ...[
+              const SizedBox(height: 12),
+              _buildAcceptedProviderCard(),
+              const SizedBox(height: 18),
+              _buildAuthenticationCodeCard(),
+            ] else ...[
+              const SizedBox(height: 12),
+              _buildCalloutCard(),
+              const SizedBox(height: 12),
+              _buildAcceptedProviderCard(),
+              const SizedBox(height: 18),
+              _buildStartButton(),
+            ],
           ],
         ),
         Positioned(
@@ -257,7 +324,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             child: AnimatedSlide(
               duration: const Duration(milliseconds: 280),
               curve: Curves.easeOutCubic,
-              offset: _isShowingDetails ? Offset.zero : const Offset(0, -0.16),
+              offset:
+                  _isShowingDetails ? Offset.zero : const Offset(0, -0.16),
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 220),
                 opacity: _isShowingDetails ? 1 : 0,
@@ -299,7 +367,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             child: Text(
               serviceDetail?.title.isNotEmpty == true
                   ? serviceDetail!.title
-                  : 'Título do pedido Lorem Ipsum',
+                  : 'Titulo do pedido Lorem Ipsum',
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -313,10 +381,22 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             decoration: const BoxDecoration(
               color: AppColors.preto,
               border: Border(
-                top: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
-                bottom: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
-                left: BorderSide(color: AppColors.amareloUmPoucoEscuro, width: 3),
-                right: BorderSide(color: AppColors.amareloUmPoucoEscuro, width: 3),
+                top: BorderSide(
+                  color: AppColors.amareloUmPoucoMaisEscuro,
+                  width: 3,
+                ),
+                bottom: BorderSide(
+                  color: AppColors.amareloUmPoucoMaisEscuro,
+                  width: 3,
+                ),
+                left: BorderSide(
+                  color: AppColors.amareloUmPoucoEscuro,
+                  width: 3,
+                ),
+                right: BorderSide(
+                  color: AppColors.amareloUmPoucoEscuro,
+                  width: 3,
+                ),
               ),
             ),
             child: Row(
@@ -416,7 +496,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       child: Text(
         description != null && description.isNotEmpty
             ? description
-            : 'Preciso de um profissional para realizar a pintura de uma parede interna, com acabamento uniforme e atenção aos detalhes.',
+            : 'Preciso de um profissional para realizar a pintura de uma parede interna, com acabamento uniforme e atencao aos detalhes.',
         style: const TextStyle(
           color: AppColors.branco,
           fontSize: 17.5,
@@ -430,8 +510,10 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     final creator = _resolvedServiceDetail?.userCreator;
 
     return _InfoCard(
-      header: 'Postado às ${_formatTime(_resolvedServiceDetail?.postedAt)} por:',
+      header: 'Postado as ${_formatTime(_resolvedServiceDetail?.postedAt)} por:',
+      highlightBorder: _isRequesterView,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildAvatar(),
           const SizedBox(width: 12),
@@ -458,6 +540,26 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
                     Icon(Icons.star, size: 19, color: AppColors.preto),
                   ],
                 ),
+                if (_isRequesterView) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Text(
+                        _formatPhoneNumber(creator?.phoneNumber),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: AppColors.preto,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(
+                        Icons.phone_in_talk,
+                        color: AppColors.preto,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -504,7 +606,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 18),
                 child: Text(
-                  'Antes de aceitar o\npedido,contate o solicitante\npelo telefone:',
+                  'Antes de aceitar o\npedido, contate o solicitante\npelo telefone:',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: AppColors.preto,
@@ -519,7 +621,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
                 onTap: () => _copyPhoneNumber(phone),
                 borderRadius: BorderRadius.circular(8),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -533,7 +636,11 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Icon(Icons.phone_in_talk, color: AppColors.preto, size: 24),
+                      const Icon(
+                        Icons.phone_in_talk,
+                        color: AppColors.preto,
+                        size: 24,
+                      ),
                     ],
                   ),
                 ),
@@ -549,7 +656,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     final acceptedPhone = _formatPhoneNumber(_acceptedUserPhone);
 
     return _InfoCard(
-      header: 'Aceito às ${_formatTimeFromDateTime(_acceptedAt)} por:',
+      header: 'Aceito as ${_formatTimeFromDateTime(_acceptedAt)} por:',
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -589,13 +696,54 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Icon(Icons.phone_in_talk, color: AppColors.preto, size: 20),
+                    const Icon(
+                      Icons.phone_in_talk,
+                      color: AppColors.preto,
+                      size: 20,
+                    ),
                   ],
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAuthenticationCodeCard() {
+    return _InfoCard(
+      headerWidget: Row(
+        children: const [
+          Expanded(
+            child: Text(
+              'Codigo de autenticacao de inicio',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.preto,
+              ),
+            ),
+          ),
+          Icon(
+            Icons.help,
+            size: 18,
+            color: AppColors.preto,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 2, left: 6),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            _authenticationCode,
+            style: const TextStyle(
+              fontSize: 28,
+              color: AppColors.vermelho,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -682,7 +830,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     }
 
     final normalized = modality.trim().toLowerCase();
-    if (normalized == 'remote' || normalized == 'remoto' || normalized == 'à distância') {
+    if (normalized == 'remote' ||
+        normalized == 'remoto' ||
+        normalized == 'a distancia') {
       return 'Remoto';
     }
 
@@ -699,7 +849,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       return digits;
     }
 
-    final normalized = digits.length > 11 ? digits.substring(digits.length - 11) : digits;
+    final normalized =
+        digits.length > 11 ? digits.substring(digits.length - 11) : digits;
     final ddd = normalized.substring(0, 2);
     final prefix = normalized.substring(2, 7);
     final suffix = normalized.substring(7);
@@ -805,11 +956,15 @@ class _RequestSummary extends StatelessWidget {
 
 class _InfoCard extends StatelessWidget {
   final String header;
+  final Widget? headerWidget;
   final Widget child;
+  final bool highlightBorder;
 
   const _InfoCard({
-    required this.header,
+    this.header = '',
+    this.headerWidget,
     required this.child,
+    this.highlightBorder = false,
   });
 
   @override
@@ -820,18 +975,22 @@ class _InfoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.branco,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.cinza, width: 1.5),
+        border: Border.all(
+          color: highlightBorder ? AppColors.azul : AppColors.cinza,
+          width: highlightBorder ? 2.2 : 1.5,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            header,
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppColors.preto,
-            ),
-          ),
+          headerWidget ??
+              Text(
+                header,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.preto,
+                ),
+              ),
           const SizedBox(height: 4),
           child,
         ],

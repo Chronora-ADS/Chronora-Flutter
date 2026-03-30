@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/models/main_page_requests_model.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/services/api_service.dart';
+import 'request_accepted_view.dart';
 import '../../widgets/backgrounds/background_default_widget.dart';
 import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
@@ -278,6 +279,23 @@ class _RequestViewState extends State<RequestView> {
         _fetchServiceDetail(_extractedService!.id);
       }
     });
+  }
+
+  void _openRequesterAcceptedPreview() {
+    if (_serviceDetail == null) return;
+
+    Navigator.pushNamed(
+      context,
+      '/request-accepted-view',
+      arguments: {
+        'serviceDetail': _serviceDetail,
+        'audience': RequestAcceptedAudience.requester,
+        'acceptedUserName': 'Prestador aceito',
+        'acceptedUserPhone': 554799121221,
+        'acceptedAt': DateTime.now(),
+        'authenticationCode': '1234',
+      },
+    );
   }
 
   void _acceptRequest() {
@@ -710,6 +728,32 @@ class _RequestViewState extends State<RequestView> {
               child: const Text(
                 'Cancelar pedido',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: _openRequesterAcceptedPreview,
+              style: OutlinedButton.styleFrom(
+                backgroundColor: AppColors.amareloClaro,
+                foregroundColor: AppColors.preto,
+                side: const BorderSide(
+                  color: AppColors.amareloUmPoucoEscuro,
+                  width: 2,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+              ),
+              child: const Text(
+                'Ver pedido aceito',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
