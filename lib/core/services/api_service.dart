@@ -81,26 +81,6 @@ class ApiService {
     }
   }
 
-  static Future<http.Response> changeStatus(String endpoint, String status,
-    {String? token}) async {
-    try {
-      final headers = {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        if (token != null) 'Authorization': 'Bearer $token',
-      };
-
-      final response = await http.put(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: headers,
-        body: jsonEncode(status),
-      );
-      return response;
-    } catch (e) {
-      throw Exception('Erro de conexão: $e');
-    }
-  }
-
   static Future<http.Response> delete(String endpoint, {String? token}) async {
     try {
       final headers = {

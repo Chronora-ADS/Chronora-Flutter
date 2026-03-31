@@ -229,9 +229,8 @@ class _RequestViewState extends State<RequestView> {
 
       const status = "CANCELADO";
 
-      final response = await ApiService.changeStatus(
-        '/service/changeStatus/${_serviceDetail!.id}',
-        status,
+      final response = await ApiService.delete(
+        '/service/cancelService/${_serviceDetail!.id}',
         token: token,
       );
 
