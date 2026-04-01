@@ -1,11 +1,9 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../core/constants/app_routes.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/services/api_service.dart';
@@ -45,11 +43,6 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   int? _acceptedUserPhone;
   DateTime _acceptedAt = DateTime.now();
   String _authenticationCode = '1234';
-  DateTime? _authenticationCodeExpiresAt;
-  Duration _remainingCodeTime = Duration.zero;
-  Timer? _countdownTimer;
-  bool _hasHandledCodeExpiration = false;
-  bool _isStartingService = false;
 
   bool get _isRequesterView =>
       _resolvedAudience == RequestAcceptedAudience.requester;
@@ -87,7 +80,6 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
           (arguments['authenticationCode'] as String?)?.trim() ??
           (arguments['startAuthenticationCode'] as String?)?.trim();
       final acceptedAt = arguments['acceptedAt'];
-      final authenticationCodeExpiresAt = arguments['authenticationCodeExpiresAt'];
 
       if (acceptedUserName != null && acceptedUserName.isNotEmpty) {
         _acceptedUserName = acceptedUserName;
@@ -123,53 +115,13 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
           _acceptedAt = DateTime.parse(acceptedAt);
         } catch (_) {}
       }
-
-      if (authenticationCodeExpiresAt is DateTime) {
-        _authenticationCodeExpiresAt = authenticationCodeExpiresAt;
-      } else if (authenticationCodeExpiresAt is String &&
-          authenticationCodeExpiresAt.isNotEmpty) {
-        try {
-          _authenticationCodeExpiresAt =
-              DateTime.parse(authenticationCodeExpiresAt);
-        } catch (_) {}
-      }
     } else {
       _resolvedServiceDetail = widget.serviceDetail;
-    }
-
-    final acceptedInfo = _resolvedServiceDetail?.acceptedRequestInfo;
-    if (acceptedInfo?.acceptedUser?.name.trim().isNotEmpty == true &&
-        _acceptedUserName == 'Prestador') {
-      _acceptedUserName = acceptedInfo!.acceptedUser!.name.trim();
-    }
-    _acceptedUserPhone ??= acceptedInfo?.acceptedUser?.phoneNumber;
-    _authenticationCode =
-        (acceptedInfo?.authenticationCode?.trim().isNotEmpty ?? false)
-            ? acceptedInfo!.authenticationCode!.trim()
-            : _authenticationCode;
-    if (acceptedInfo?.acceptedAt?.trim().isNotEmpty == true) {
-      try {
-        _acceptedAt = DateTime.parse(acceptedInfo!.acceptedAt!.trim());
-      } catch (_) {}
-    }
-    if (acceptedInfo?.expiresAt?.trim().isNotEmpty == true) {
-      try {
-        _authenticationCodeExpiresAt =
-            DateTime.parse(acceptedInfo!.expiresAt!.trim());
-      } catch (_) {}
     }
 
     if (!_isRequesterView) {
       _loadAcceptedUser();
     }
-
-    _startCountdown();
-  }
-
-  @override
-  void dispose() {
-    _countdownTimer?.cancel();
-    super.dispose();
   }
 
   void _toggleDrawer() {
@@ -189,93 +141,6 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     setState(() {
       _isWalletOpen = false;
     });
-  }
-
-  void _startCountdown() {
-    _countdownTimer?.cancel();
-    _syncRemainingCodeTime();
-
-    if (_authenticationCodeExpiresAt == null || _hasHandledCodeExpiration) {
-      return;
-    }
-
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      _syncRemainingCodeTime();
-    });
-  }
-
-  void _syncRemainingCodeTime() {
-    final expiresAt = _authenticationCodeExpiresAt;
-    if (expiresAt == null) return;
-
-    final remaining = expiresAt.difference(DateTime.now());
-    final nextValue = remaining.isNegative ? Duration.zero : remaining;
-
-    if (mounted) {
-      setState(() {
-        _remainingCodeTime = nextValue;
-      });
-    } else {
-      _remainingCodeTime = nextValue;
-    }
-
-    if (nextValue == Duration.zero && !_hasHandledCodeExpiration) {
-      _handleCodeExpiration();
-    }
-  }
-
-  Future<void> _handleCodeExpiration() async {
-    if (_hasHandledCodeExpiration || !mounted) return;
-
-    _hasHandledCodeExpiration = true;
-    _countdownTimer?.cancel();
-
-    await _clearAcceptedRequestCache();
-    await _resetAcceptedRequestOnServerIfNeeded();
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text('O tempo para usar o codigo terminou.'),
-          backgroundColor: AppColors.vermelho,
-        ),
-      );
-
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      AppRoutes.main,
-      (route) => false,
-    );
-  }
-
-  Future<void> _clearAcceptedRequestCache() async {
-    final serviceId = _resolvedServiceDetail?.id;
-    if (serviceId == null) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('accepted_request_info_$serviceId');
-  }
-
-  Future<void> _resetAcceptedRequestOnServerIfNeeded() async {
-    if (_isRequesterView) return;
-
-    final serviceId = _resolvedServiceDetail?.id;
-    if (serviceId == null) return;
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-      if (token == null) return;
-
-      await ApiService.put(
-        '/service/cancelService/$serviceId',
-        const {},
-        token: token,
-      );
-    } catch (_) {}
   }
 
   Future<void> _copyPhoneNumber(String phone) async {
@@ -332,141 +197,6 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             resolvedUserData['phoneNumber'] as int? ?? _acceptedUserPhone;
       });
     } catch (_) {}
-  }
-
-  Future<void> _openStartServiceModal() async {
-    final codeController = TextEditingController();
-
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: !_isStartingService,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            Future<void> submit() async {
-              if (_isStartingService) return;
-
-              final code = codeController.text.trim();
-              if (code.isEmpty) {
-                ScaffoldMessenger.of(this.context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Informe o codigo para iniciar o servico.'),
-                    backgroundColor: AppColors.vermelho,
-                  ),
-                );
-                return;
-              }
-
-              setModalState(() => _isStartingService = true);
-
-              try {
-                await _startService(code);
-                if (!mounted) return;
-                Navigator.of(dialogContext).pop();
-              } finally {
-                if (dialogContext.mounted) {
-                  setModalState(() => _isStartingService = false);
-                } else {
-                  _isStartingService = false;
-                }
-              }
-            }
-
-            return AlertDialog(
-              backgroundColor: AppColors.branco,
-              title: const Text('Iniciar servico'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Digite o codigo informado pelo requisitante.'),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: codeController,
-                    keyboardType: TextInputType.number,
-                    maxLength: 4,
-                    decoration: const InputDecoration(
-                      hintText: '0000',
-                      counterText: '',
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildLiveCountdownStatus(
-                    emphasizeExpired: true,
-                    textColor: AppColors.preto,
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: _isStartingService
-                      ? null
-                      : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancelar'),
-                ),
-                ElevatedButton(
-                  onPressed:
-                      (_remainingCodeTime == Duration.zero || _isStartingService)
-                          ? null
-                          : submit,
-                  child: _isStartingService
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Confirmar'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _startService(String code) async {
-    final serviceId = _resolvedServiceDetail?.id;
-    if (serviceId == null) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token');
-    if (token == null) {
-      throw Exception('Usuario nao autenticado');
-    }
-
-    final response = await ApiService.putString(
-      '/service/startService/$serviceId',
-      code,
-      token: token,
-    );
-
-    if (response.statusCode == 200 || response.statusCode == 204) {
-      await _clearAcceptedRequestCache();
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Servico iniciado com sucesso.'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        AppRoutes.main,
-        (route) => false,
-      );
-      return;
-    }
-
-    final body = response.body.toLowerCase();
-    if (body.contains('expir')) {
-      await _handleCodeExpiration();
-      return;
-    }
-
-    throw Exception(response.body);
   }
 
   @override
@@ -983,9 +713,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
   Widget _buildAuthenticationCodeCard() {
     return _InfoCard(
-      headerWidget: Row(
+      headerWidget: const Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Text(
               'Codigo de autenticacao de inicio',
               style: TextStyle(
@@ -994,106 +724,29 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
               ),
             ),
           ),
-          const Icon(
+          Icon(
             Icons.help,
             size: 18,
             color: AppColors.preto,
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: _buildCountdownStatus(textColor: AppColors.preto),
           ),
         ],
       ),
       child: Padding(
         padding: const EdgeInsets.only(top: 2, left: 6),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                _remainingCodeTime == Duration.zero ? '----' : _authenticationCode,
-                style: const TextStyle(
-                  fontSize: 28,
-                  color: AppColors.vermelho,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            _authenticationCode,
+            style: const TextStyle(
+              fontSize: 28,
+              color: AppColors.vermelho,
+              fontWeight: FontWeight.w500,
             ),
-            const SizedBox(height: 6),
-            _buildCountdownStatus(
-              textColor: AppColors.preto,
-              emphasizeExpired: true,
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
-
-  Widget _buildCountdownStatus({
-    Color textColor = AppColors.branco,
-    bool emphasizeExpired = false,
-  }) {
-    final hasCountdown = _authenticationCodeExpiresAt != null;
-    final isExpired = hasCountdown && _remainingCodeTime == Duration.zero;
-
-    final text = !hasCountdown
-        ? 'Sem tempo definido'
-        : isExpired
-            ? 'Tempo esgotado'
-            : 'Tempo restante: ${_formatDuration(_remainingCodeTime)}';
-
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: 13,
-        color: isExpired && emphasizeExpired ? AppColors.vermelho : textColor,
-        fontWeight:
-            isExpired || !hasCountdown ? FontWeight.w700 : FontWeight.w500,
-      ),
-    );
-  }
-
-  Widget _buildLiveCountdownStatus({
-    Color textColor = AppColors.branco,
-    bool emphasizeExpired = false,
-  }) {
-    if (_authenticationCodeExpiresAt == null) {
-      return _buildCountdownStatus(
-        textColor: textColor,
-        emphasizeExpired: emphasizeExpired,
-      );
-    }
-
-    return StreamBuilder<int>(
-      stream: Stream.periodic(const Duration(seconds: 1), (value) => value),
-      builder: (context, snapshot) {
-        return _buildCountdownStatus(
-          textColor: textColor,
-          emphasizeExpired: emphasizeExpired,
-        );
-      },
-    );
-  }
-
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
-    final hours = duration.inHours;
-
-    if (hours > 0) {
-      return '$hours:$minutes:$seconds';
-    }
-
-    return '$minutes:$seconds';
-  }
-
-  bool get _canStartService =>
-      _remainingCodeTime > Duration.zero &&
-      _resolvedServiceDetail?.id != null &&
-      _authenticationCode.trim().isNotEmpty;
 
   Widget _buildAvatar() {
     return const CircleAvatar(
@@ -1107,22 +760,18 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _canStartService ? _openStartServiceModal : null,
+        onPressed: () {},
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.amareloUmPoucoEscuro,
           foregroundColor: AppColors.branco,
-          disabledBackgroundColor: AppColors.cinza,
-          disabledForegroundColor: AppColors.branco,
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
         ),
-        child: Text(
-          _remainingCodeTime == Duration.zero
-              ? 'Tempo esgotado'
-              : 'Iniciar pedido',
-          style: const TextStyle(
+        child: const Text(
+          'Iniciar pedido',
+          style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w700,
           ),
