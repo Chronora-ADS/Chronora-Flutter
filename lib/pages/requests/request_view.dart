@@ -4,9 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/main_page_requests_model.dart';
 import '../../core/models/service_detail_model.dart';
+import '../../core/models/user_creator.dart' as detail_user;
 import '../../core/services/api_service.dart';
 import 'request_accepted_view.dart';
-import '../../widgets/backgrounds/background_default_widget.dart';
 import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
@@ -21,6 +21,8 @@ class RequestView extends StatefulWidget {
 }
 
 class _RequestViewState extends State<RequestView> {
+  static const List<String> _acceptedStatuses = ['ACEITO', 'ACCEPTED'];
+
   ServiceDetailModel? _serviceDetail;
   bool _isLoading = true;
   String? _errorMessage;
@@ -28,6 +30,7 @@ class _RequestViewState extends State<RequestView> {
   int? _currentUserId;
   String? _currentUserName;
   int? _currentUserPhone;
+  AcceptedRequestInfo? _acceptedRequestInfo;
 
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
@@ -166,16 +169,21 @@ class _RequestViewState extends State<RequestView> {
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         final detail = ServiceDetailModel.fromJson(data);
+        final cachedAcceptedInfo = await _loadAcceptedRequestInfo(serviceId);
+        final acceptedInfo = detail.acceptedRequestInfo?.hasAcceptedUser == true
+            ? detail.acceptedRequestInfo
+            : cachedAcceptedInfo;
 
         print('Current user ID: $_currentUserId');
-        print('Creator ID: ${detail.userCreator?.id}');
+        print('Creator ID: ${detail.userCreator.id}');
 
         // Verifica se o usuário atual é o dono do serviço
-        final isOwner = detail.userCreator?.id.toString() == _currentUserId?.toString();
+        final isOwner = detail.userCreator.id.toString() == _currentUserId?.toString();
 
         setState(() {
           _serviceDetail = detail;
           _isOwner = isOwner;
+          _acceptedRequestInfo = acceptedInfo;
           _isLoading = false;
         });
       } else {
@@ -246,6 +254,11 @@ class _RequestViewState extends State<RequestView> {
       );
 
       if (response.statusCode == 200 || response.statusCode == 204) {
+        final serviceId = _serviceDetail?.id;
+        if (serviceId != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove(_acceptedRequestStorageKey(serviceId));
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Pedido cancelado com sucesso'),
@@ -282,7 +295,7 @@ class _RequestViewState extends State<RequestView> {
   }
 
   void _openRequesterAcceptedPreview() {
-    if (_serviceDetail == null) return;
+    if (_serviceDetail == null || _acceptedRequestInfo == null) return;
 
     Navigator.pushNamed(
       context,
@@ -290,22 +303,187 @@ class _RequestViewState extends State<RequestView> {
       arguments: {
         'serviceDetail': _serviceDetail,
         'audience': RequestAcceptedAudience.requester,
-        'acceptedUserName': 'Prestador aceito',
-        'acceptedUserPhone': 554799121221,
-        'acceptedAt': DateTime.now(),
-        'authenticationCode': '1234',
+        'acceptedUserName': _acceptedRequestInfo!.acceptedUser?.name,
+        'acceptedUserPhone': _acceptedRequestInfo!.acceptedUser?.phoneNumber,
+        'acceptedAt': _acceptedRequestInfo!.acceptedAt,
+        'authenticationCode': _acceptedRequestInfo!.authenticationCode,
+        'authenticationCodeExpiresAt': _acceptedRequestInfo!.expiresAt,
       },
     );
   }
 
-  void _acceptRequest() {
-    // TODO: Implementar lógica de aceitar pedido
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Funcionalidade de aceitar pedido em desenvolvimento'),
-        backgroundColor: AppColors.amareloUmPoucoEscuro,
-      ),
+  Future<void> _acceptRequest() async {
+    final serviceDetail = _serviceDetail;
+    if (serviceDetail?.id == null) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null) {
+        throw Exception('Usuário não autenticado');
+      }
+
+      final response = await ApiService.put(
+        '/service/acceptService/${serviceDetail!.id}',
+        const {},
+        token: token,
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw Exception('Erro ${response.statusCode}: ${response.body}');
+      }
+
+      final acceptedAt = DateTime.now();
+      final responseBody = response.body.trim();
+      AcceptedRequestInfo acceptedRequestInfo;
+
+      if (responseBody.isNotEmpty) {
+        final decoded = json.decode(responseBody);
+        if (decoded is Map<String, dynamic>) {
+          final updatedServiceDetail = ServiceDetailModel.fromJson(decoded);
+          _serviceDetail = updatedServiceDetail;
+          acceptedRequestInfo = updatedServiceDetail.acceptedRequestInfo ??
+              AcceptedRequestInfo(
+                acceptedUser: detail_user.UserCreator(
+                  id: _currentUserId,
+                  name: (_currentUserName?.trim().isNotEmpty ?? false)
+                      ? _currentUserName!.trim()
+                      : 'Prestador',
+                  phoneNumber: _currentUserPhone,
+                ),
+                acceptedAt: acceptedAt.toIso8601String(),
+              );
+        } else {
+          acceptedRequestInfo = AcceptedRequestInfo(
+            acceptedUser: detail_user.UserCreator(
+              id: _currentUserId,
+              name: (_currentUserName?.trim().isNotEmpty ?? false)
+                  ? _currentUserName!.trim()
+                  : 'Prestador',
+              phoneNumber: _currentUserPhone,
+            ),
+            acceptedAt: acceptedAt.toIso8601String(),
+          );
+        }
+      } else {
+        acceptedRequestInfo = AcceptedRequestInfo(
+          acceptedUser: detail_user.UserCreator(
+            id: _currentUserId,
+            name: (_currentUserName?.trim().isNotEmpty ?? false)
+                ? _currentUserName!.trim()
+                : 'Prestador',
+            phoneNumber: _currentUserPhone,
+          ),
+          acceptedAt: acceptedAt.toIso8601String(),
+        );
+      }
+
+      if ((acceptedRequestInfo.acceptedAt?.trim().isEmpty ?? true)) {
+        acceptedRequestInfo = AcceptedRequestInfo(
+          acceptedUser: acceptedRequestInfo.acceptedUser,
+          acceptedAt: acceptedAt.toIso8601String(),
+          authenticationCode: acceptedRequestInfo.authenticationCode,
+        );
+      }
+
+      await _persistAcceptedRequestInfo(serviceDetail.id!, acceptedRequestInfo);
+
+      if (!mounted) return;
+
+      setState(() {
+        _serviceDetail = _serviceDetail ?? serviceDetail;
+        _acceptedRequestInfo = acceptedRequestInfo;
+        _isLoading = false;
+      });
+
+      Navigator.pushNamed(
+        context,
+        '/request-accepted-view',
+        arguments: {
+          'serviceDetail': _serviceDetail ?? serviceDetail,
+          'acceptedUserName': acceptedRequestInfo.acceptedUser?.name,
+          'acceptedUserPhone': acceptedRequestInfo.acceptedUser?.phoneNumber,
+          'acceptedAt': acceptedRequestInfo.acceptedAt,
+          'authenticationCode': acceptedRequestInfo.authenticationCode,
+          'authenticationCodeExpiresAt': acceptedRequestInfo.expiresAt,
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao aceitar pedido: $e'),
+          backgroundColor: AppColors.vermelho,
+        ),
+      );
+    }
+  }
+
+  Future<void> _changeStatusToAccepted(int serviceId, String token) async {
+    Object? lastError;
+
+    for (final status in _acceptedStatuses) {
+      try {
+        final response = await ApiService.changeStatus(
+          '/service/changeStatus/$serviceId',
+          status,
+          token: token,
+        );
+
+        if (response.statusCode == 200 || response.statusCode == 204) {
+          return;
+        }
+
+        lastError = Exception('Erro ${response.statusCode}: ${response.body}');
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw lastError ?? Exception('Não foi possível aceitar o pedido');
+  }
+
+  Future<AcceptedRequestInfo?> _loadAcceptedRequestInfo(int serviceId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final rawValue = prefs.getString(_acceptedRequestStorageKey(serviceId));
+      if (rawValue == null || rawValue.isEmpty) {
+        return null;
+      }
+
+      final decoded = json.decode(rawValue);
+      if (decoded is! Map<String, dynamic>) {
+        return null;
+      }
+
+      final acceptedInfo = AcceptedRequestInfo.fromJson(decoded);
+      return acceptedInfo.hasAcceptedUser ? acceptedInfo : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _persistAcceptedRequestInfo(
+    int serviceId,
+    AcceptedRequestInfo acceptedRequestInfo,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _acceptedRequestStorageKey(serviceId),
+      json.encode(acceptedRequestInfo.toJson()),
     );
+  }
+
+  String _acceptedRequestStorageKey(int serviceId) =>
+      'accepted_request_info_$serviceId';
+
+  String _generateAuthenticationCode() {
+    final seed = DateTime.now().millisecondsSinceEpoch % 10000;
+    return seed.toString().padLeft(4, '0');
   }
 
   @override
@@ -602,7 +780,7 @@ class _RequestViewState extends State<RequestView> {
             ],
 
             // Informações do criador em container separado
-            if (_serviceDetail!.userCreator != null) ...[
+            ...[
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
@@ -623,7 +801,9 @@ class _RequestViewState extends State<RequestView> {
                         CircleAvatar(
                           backgroundColor: AppColors.amareloClaro,
                           child: Text(
-                            _serviceDetail!.userCreator!.name[0].toUpperCase(),
+                            _serviceDetail!.userCreator.name.isNotEmpty
+                                ? _serviceDetail!.userCreator.name[0].toUpperCase()
+                                : '?',
                             style: const TextStyle(color: AppColors.branco),
                           ), // imagem perfil
                         ),
@@ -633,14 +813,14 @@ class _RequestViewState extends State<RequestView> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                _serviceDetail!.userCreator!.name,
+                                _serviceDetail!.userCreator.name,
                                 style: const TextStyle(fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(height: 4),
                               const Row(
                                 children: [
                                   Text(
-                                    // _serviceDetail!.userCreator!.rating?.toStringAsFixed(1) ?? 
+                                    // _serviceDetail!.userCreator.rating?.toStringAsFixed(1) ?? 
                                     "5.0",
                                     style: TextStyle(fontSize: 14),
                                   ),
@@ -686,6 +866,8 @@ class _RequestViewState extends State<RequestView> {
 
   Widget _buildActionButtons() {
     if (_isOwner) {
+      final hasAcceptedRequest = _acceptedRequestInfo?.hasAcceptedUser == true;
+
       // Botões para o criador: Editar e Cancelar (empilhados)
       return Column(
         children: [
@@ -732,31 +914,32 @@ class _RequestViewState extends State<RequestView> {
             ),
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: _openRequesterAcceptedPreview,
-              style: OutlinedButton.styleFrom(
-                backgroundColor: AppColors.amareloClaro,
-                foregroundColor: AppColors.preto,
-                side: const BorderSide(
-                  color: AppColors.amareloUmPoucoEscuro,
-                  width: 2,
+          if (hasAcceptedRequest)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: _openRequesterAcceptedPreview,
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: AppColors.amareloClaro,
+                  foregroundColor: AppColors.preto,
+                  side: const BorderSide(
+                    color: AppColors.amareloUmPoucoEscuro,
+                    width: 2,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 8),
-              ),
-              child: const Text(
-                'Ver pedido aceito',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+                child: const Text(
+                  'Ver pedido aceito',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       );
     } else {
@@ -764,17 +947,7 @@ class _RequestViewState extends State<RequestView> {
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton(
-          onPressed: () {
-            Navigator.pushNamed(
-              context,
-              '/request-accepted-view',
-              arguments: {
-                'serviceDetail': _serviceDetail,
-                'acceptedUserName': _currentUserName,
-                'acceptedUserPhone': _currentUserPhone,
-              },
-            );
-          },
+          onPressed: _acceptRequest,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.amareloUmPoucoEscuro,
             foregroundColor: AppColors.branco,

@@ -63,6 +63,26 @@ class ApiService {
     }
   }
 
+  static Future<http.Response> putString(String endpoint, String data,
+    {String? token}) async {
+    try {
+      final headers = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+
+      final response = await http.put(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: headers,
+        body: jsonEncode(data),
+      );
+      return response;
+    } catch (e) {
+      throw Exception('Erro de conexÃ£o: $e');
+    }
+  }
+
   static Future<http.Response> putWithHeaders(String endpoint, Map<String, String> headers) async {
     try {
       final finalHeaders = {
