@@ -50,7 +50,7 @@ class SideMenu extends StatelessWidget {
                       icon: 'assets/img/NotificationsWhite.png',
                       title: 'Notificações',
                       onTap: () {
-                        Navigator.pushNamed(context, '/notifications');
+                        Navigator.pushNamed(context, '/notification');
                       },
                     ),
                   ],

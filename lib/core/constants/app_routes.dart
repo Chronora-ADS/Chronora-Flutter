@@ -2,6 +2,7 @@ import 'package:chronora/pages/auth/account_creation_page.dart';
 import 'package:chronora/pages/auth/login_page.dart';
 import 'package:chronora/pages/main_page.dart';
 import 'package:chronora/pages/buy_chronos/buy_chronos_page.dart';
+import 'package:chronora/pages/notification/notification.dart';
 import 'package:chronora/pages/sell_chronos/sell_chronos_page.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_creation.dart';
 import 'package:chronora/pages/requests/request_view.dart';
@@ -17,6 +18,7 @@ class AppRoutes {
   static const String requestEditing = '/request-editing';
   static const String buyChronos = '/buy-chronos';
   static const String sellChronos = '/sell-chronos';
+  static const String notification = '/notification';
 
   static Map<String, WidgetBuilder> get routes {
     return {
@@ -28,6 +30,7 @@ class AppRoutes {
       requestCreation: (context) => const RequestCreationPage(),
       requestView: (context) => const RequestView(),
       requestEditing: (context) => const RequestEditingPage(),
+      notification: (context) => const NotificationPage(),
     };
   }
 }
