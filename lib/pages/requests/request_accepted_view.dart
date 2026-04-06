@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -43,6 +44,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   int? _acceptedUserPhone;
   DateTime _acceptedAt = DateTime.now();
   String _authenticationCode = '1234';
+  DateTime? _authenticationCodeExpiresAt;
+  Duration _remainingAuthenticationCodeTime = Duration.zero;
+  Timer? _countdownTimer;
 
   bool get _isRequesterView =>
       _resolvedAudience == RequestAcceptedAudience.requester;
@@ -51,6 +55,12 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   void initState() {
     super.initState();
     _resolvedAudience = widget.audience;
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -79,6 +89,10 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       final authenticationCode =
           (arguments['authenticationCode'] as String?)?.trim() ??
           (arguments['startAuthenticationCode'] as String?)?.trim();
+      final authenticationCodeExpiresAt =
+          (arguments['authenticationCodeExpiresAt'] as String?)?.trim() ??
+          (arguments['verificationCodeExpiresAt'] as String?)?.trim() ??
+          (arguments['expiresAt'] as String?)?.trim();
       final acceptedAt = arguments['acceptedAt'];
 
       if (acceptedUserName != null && acceptedUserName.isNotEmpty) {
@@ -108,6 +122,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         _authenticationCode = authenticationCode;
       }
 
+      _applyAuthenticationCodeExpiresAt(authenticationCodeExpiresAt);
+
       if (acceptedAt is DateTime) {
         _acceptedAt = acceptedAt;
       } else if (acceptedAt is String && acceptedAt.isNotEmpty) {
@@ -118,6 +134,36 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     } else {
       _resolvedServiceDetail = widget.serviceDetail;
     }
+
+    final acceptedRequestInfo = _resolvedServiceDetail?.acceptedRequestInfo;
+
+    final acceptedUser = acceptedRequestInfo?.acceptedUser;
+    if (acceptedUser != null) {
+      if ((acceptedUser.name).trim().isNotEmpty) {
+        _acceptedUserName = acceptedUser.name.trim();
+      }
+      _acceptedUserPhone ??= acceptedUser.phoneNumber;
+    }
+
+    final acceptedCode = acceptedRequestInfo?.authenticationCode?.trim();
+    if (acceptedCode != null && acceptedCode.isNotEmpty) {
+      _authenticationCode = acceptedCode;
+    }
+
+    if (_authenticationCodeExpiresAt == null) {
+      _applyAuthenticationCodeExpiresAt(acceptedRequestInfo?.expiresAt);
+    }
+
+    final serviceAcceptedAt = acceptedRequestInfo?.acceptedAt?.trim();
+    if (serviceAcceptedAt != null && serviceAcceptedAt.isNotEmpty) {
+      try {
+        _acceptedAt = DateTime.parse(serviceAcceptedAt);
+      } catch (_) {}
+    }
+
+    _authenticationCodeExpiresAt ??=
+        _acceptedAt.add(const Duration(minutes: 2));
+    _startAuthenticationCodeCountdown();
 
     if (!_isRequesterView) {
       _loadAcceptedUser();
@@ -197,6 +243,200 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             resolvedUserData['phoneNumber'] as int? ?? _acceptedUserPhone;
       });
     } catch (_) {}
+  }
+
+  void _applyAuthenticationCodeExpiresAt(String? rawExpiresAt) {
+    if (rawExpiresAt == null || rawExpiresAt.isEmpty) return;
+
+    try {
+      _authenticationCodeExpiresAt = DateTime.parse(rawExpiresAt);
+    } catch (_) {}
+  }
+
+  void _startAuthenticationCodeCountdown() {
+    _countdownTimer?.cancel();
+    _syncRemainingAuthenticationCodeTime();
+
+    if (_isAuthenticationCodeExpired) {
+      return;
+    }
+
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+
+      _syncRemainingAuthenticationCodeTime();
+      if (_isAuthenticationCodeExpired) {
+        _countdownTimer?.cancel();
+      }
+    });
+  }
+
+  void _syncRemainingAuthenticationCodeTime() {
+    final expiresAt = _authenticationCodeExpiresAt;
+    final remaining = expiresAt == null
+        ? Duration.zero
+        : expiresAt.difference(DateTime.now());
+
+    final safeRemaining =
+        remaining.isNegative ? Duration.zero : remaining;
+
+    if (!mounted) {
+      _remainingAuthenticationCodeTime = safeRemaining;
+      return;
+    }
+
+    setState(() {
+      _remainingAuthenticationCodeTime = safeRemaining;
+    });
+  }
+
+  bool get _isAuthenticationCodeExpired =>
+      _remainingAuthenticationCodeTime.inSeconds <= 0;
+
+  String get _formattedAuthenticationCodeCountdown {
+    final totalSeconds = _remainingAuthenticationCodeTime.inSeconds;
+    final safeSeconds = totalSeconds < 0 ? 0 : totalSeconds;
+    final minutes = (safeSeconds ~/ 60).toString().padLeft(2, '0');
+    final seconds = (safeSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  Future<void> _openStartRequestDialog() async {
+    final pageContext = context;
+    final codeController = TextEditingController();
+    String? validationMessage;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (_, setDialogState) {
+            return AlertDialog(
+              title: const Text('Iniciar pedido'),
+              content: StreamBuilder<int>(
+                stream: Stream<int>.periodic(const Duration(seconds: 1), (tick) => tick),
+                initialData: 0,
+                builder: (_, __) {
+                  final remaining = _authenticationCodeExpiresAt == null
+                      ? Duration.zero
+                      : _authenticationCodeExpiresAt!.difference(DateTime.now());
+                  final safeRemaining =
+                      remaining.isNegative ? Duration.zero : remaining;
+                  final isExpired = safeRemaining.inSeconds <= 0;
+                  final countdown =
+                      '${(safeRemaining.inSeconds ~/ 60).toString().padLeft(2, '0')}:${(safeRemaining.inSeconds % 60).toString().padLeft(2, '0')}';
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Digite o codigo de autenticacao de 4 digitos.',
+                        style: TextStyle(fontSize: 15),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: codeController,
+                        keyboardType: TextInputType.number,
+                        maxLength: 4,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(4),
+                        ],
+                        decoration: const InputDecoration(
+                          labelText: 'Codigo de autenticacao',
+                          border: OutlineInputBorder(),
+                          counterText: '',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tempo restante: $countdown',
+                        style: TextStyle(
+                          color:
+                              isExpired ? AppColors.vermelho : AppColors.preto,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (isExpired) ...[
+                        const SizedBox(height: 8),
+                        const Text(
+                          'O tempo do codigo expirou.',
+                          style: TextStyle(
+                            color: AppColors.vermelho,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ] else if (validationMessage != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          validationMessage!,
+                          style: const TextStyle(
+                            color: AppColors.vermelho,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                },
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (_isAuthenticationCodeExpired) {
+                      setDialogState(() {
+                        validationMessage = 'O tempo do codigo expirou.';
+                      });
+                      return;
+                    }
+
+                    final typedCode = codeController.text.trim();
+
+                    if (typedCode.length != 4) {
+                      setDialogState(() {
+                        validationMessage =
+                            'Informe os 4 digitos do codigo.';
+                      });
+                      return;
+                    }
+
+                    if (typedCode != _authenticationCode) {
+                      setDialogState(() {
+                        validationMessage = 'Codigo invalido.';
+                      });
+                      return;
+                    }
+
+                    Navigator.of(dialogContext).pop();
+                    ScaffoldMessenger.of(pageContext)
+                      ..hideCurrentSnackBar()
+                      ..showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Codigo validado. Pedido iniciado com sucesso.',
+                          ),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                  },
+                  child: const Text('Confirmar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    codeController.dispose();
   }
 
   @override
@@ -732,17 +972,43 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.only(top: 2, left: 6),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            _authenticationCode,
-            style: const TextStyle(
-              fontSize: 28,
-              color: AppColors.vermelho,
-              fontWeight: FontWeight.w500,
+        padding: const EdgeInsets.only(top: 2, left: 6, right: 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _authenticationCode,
+              style: const TextStyle(
+                fontSize: 28,
+                color: AppColors.vermelho,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
+            const SizedBox(height: 6),
+            Text(
+              _isAuthenticationCodeExpired
+                  ? 'Tempo restante: 00:00'
+                  : 'Tempo restante: $_formattedAuthenticationCodeCountdown',
+              style: TextStyle(
+                fontSize: 15,
+                color: _isAuthenticationCodeExpired
+                    ? AppColors.vermelho
+                    : AppColors.preto,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (_isAuthenticationCodeExpired) ...[
+              const SizedBox(height: 6),
+              const Text(
+                'O tempo do codigo expirou.',
+                style: TextStyle(
+                  color: AppColors.vermelho,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -760,7 +1026,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: () {},
+        onPressed: _openStartRequestDialog,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.amareloUmPoucoEscuro,
           foregroundColor: AppColors.branco,

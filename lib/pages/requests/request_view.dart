@@ -295,7 +295,18 @@ class _RequestViewState extends State<RequestView> {
   }
 
   void _openRequesterAcceptedPreview() {
-    if (_serviceDetail == null || _acceptedRequestInfo == null) return;
+    final hasAcceptedRequest = _acceptedRequestInfo?.hasAcceptedUser == true;
+    if (_serviceDetail == null || !hasAcceptedRequest) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('O pedido ainda nao foi aceito.'),
+            backgroundColor: AppColors.vermelho,
+          ),
+        );
+      return;
+    }
 
     Navigator.pushNamed(
       context,
@@ -385,8 +396,23 @@ class _RequestViewState extends State<RequestView> {
           acceptedUser: acceptedRequestInfo.acceptedUser,
           acceptedAt: acceptedAt.toIso8601String(),
           authenticationCode: acceptedRequestInfo.authenticationCode,
+          expiresAt: acceptedRequestInfo.expiresAt,
         );
       }
+
+      final resolvedAuthenticationCode =
+          (acceptedRequestInfo.authenticationCode?.trim().isNotEmpty ?? false)
+              ? acceptedRequestInfo.authenticationCode!.trim()
+              : _generateAuthenticationCode();
+      final resolvedExpiresAt =
+          _resolveAuthenticationCodeExpiresAt(acceptedRequestInfo, acceptedAt);
+
+      acceptedRequestInfo = AcceptedRequestInfo(
+        acceptedUser: acceptedRequestInfo.acceptedUser,
+        acceptedAt: acceptedRequestInfo.acceptedAt ?? acceptedAt.toIso8601String(),
+        authenticationCode: resolvedAuthenticationCode,
+        expiresAt: resolvedExpiresAt.toIso8601String(),
+      );
 
       await _persistAcceptedRequestInfo(serviceDetail.id!, acceptedRequestInfo);
 
@@ -480,6 +506,27 @@ class _RequestViewState extends State<RequestView> {
 
   String _acceptedRequestStorageKey(int serviceId) =>
       'accepted_request_info_$serviceId';
+
+  DateTime _resolveAuthenticationCodeExpiresAt(
+    AcceptedRequestInfo acceptedRequestInfo,
+    DateTime fallbackAcceptedAt,
+  ) {
+    final rawExpiresAt = acceptedRequestInfo.expiresAt?.trim();
+    if (rawExpiresAt != null && rawExpiresAt.isNotEmpty) {
+      try {
+        return DateTime.parse(rawExpiresAt);
+      } catch (_) {}
+    }
+
+    final rawAcceptedAt = acceptedRequestInfo.acceptedAt?.trim();
+    if (rawAcceptedAt != null && rawAcceptedAt.isNotEmpty) {
+      try {
+        return DateTime.parse(rawAcceptedAt).add(const Duration(minutes: 2));
+      } catch (_) {}
+    }
+
+    return fallbackAcceptedAt.add(const Duration(minutes: 2));
+  }
 
   String _generateAuthenticationCode() {
     final seed = DateTime.now().millisecondsSinceEpoch % 10000;
@@ -866,8 +913,6 @@ class _RequestViewState extends State<RequestView> {
 
   Widget _buildActionButtons() {
     if (_isOwner) {
-      final hasAcceptedRequest = _acceptedRequestInfo?.hasAcceptedUser == true;
-
       // Botões para o criador: Editar e Cancelar (empilhados)
       return Column(
         children: [
@@ -914,32 +959,31 @@ class _RequestViewState extends State<RequestView> {
             ),
           ),
           const SizedBox(height: 16),
-          if (hasAcceptedRequest)
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: _openRequesterAcceptedPreview,
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: AppColors.amareloClaro,
-                  foregroundColor: AppColors.preto,
-                  side: const BorderSide(
-                    color: AppColors.amareloUmPoucoEscuro,
-                    width: 2,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: _openRequesterAcceptedPreview,
+              style: OutlinedButton.styleFrom(
+                backgroundColor: AppColors.amareloClaro,
+                foregroundColor: AppColors.preto,
+                side: const BorderSide(
+                  color: AppColors.amareloUmPoucoEscuro,
+                  width: 2,
                 ),
-                child: const Text(
-                  'Ver pedido aceito',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+              ),
+              child: const Text(
+                'Ver pedido aceito',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
+          ),
         ],
       );
     } else {
