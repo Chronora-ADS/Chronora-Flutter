@@ -2,7 +2,7 @@ import 'package:chronora/pages/auth/account_creation_page.dart';
 import 'package:chronora/pages/auth/login_page.dart';
 import 'package:chronora/pages/main_page.dart';
 import 'package:chronora/pages/buy_chronos/buy_chronos_page.dart';
-import 'package:chronora/pages/notification/notification.dart';
+import 'package:chronora/pages/notification/notification_page.dart';
 import 'package:chronora/pages/sell_chronos/sell_chronos_page.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_creation.dart';
 import 'package:chronora/pages/requests/request_view.dart';
@@ -23,13 +23,11 @@ class AppRoutes {
   // Remove o mapa de rotas e usa apenas onGenerateRoute
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     final String routeName = settings.name ?? '';
-    print('Navegando para: $routeName'); // Para debug
     
     // Rota para visualizar serviço: /request-view/2
     if (routeName.startsWith('/request-view/')) {
       final idString = routeName.split('/').last;
       final int? id = int.tryParse(idString);
-      print('Service ID para visualização: $id');
       return MaterialPageRoute(
         builder: (context) => RequestView(serviceId: id),
         settings: settings,
@@ -38,7 +36,6 @@ class AppRoutes {
     
     // Rota para visualizar serviço sem ID (fallback)
     if (routeName == '/request-view') {
-      print('Rota /request-view sem ID - redirecionando para main');
       return MaterialPageRoute(
         builder: (context) => const MainPage(),
         settings: settings,
@@ -49,7 +46,6 @@ class AppRoutes {
     if (routeName.startsWith('/request-editing/')) {
       final idString = routeName.split('/').last;
       final int? id = int.tryParse(idString);
-      print('Service ID para edição: $id');
       return MaterialPageRoute(
         builder: (context) => RequestEditingPage(serviceId: id),
         settings: settings,
@@ -58,7 +54,6 @@ class AppRoutes {
     
     // Rota para editar serviço sem ID (fallback)
     if (routeName == '/request-editing') {
-      print('Rota /request-editing sem ID - redirecionando para main');
       return MaterialPageRoute(
         builder: (context) => const MainPage(),
         settings: settings,
@@ -82,7 +77,6 @@ class AppRoutes {
       case notification:
         return MaterialPageRoute(builder: (context) => const NotificationPage());
       default:
-        print('Rota não encontrada: $routeName');
         // Rota padrão: volta para a main
         return MaterialPageRoute(builder: (context) => const MainPage());
     }

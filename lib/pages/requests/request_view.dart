@@ -33,8 +33,6 @@ class _RequestViewState extends State<RequestView> {
   @override
   void initState() {
     super.initState();
-    print('RequestView initState - serviceId: ${widget.serviceId}');
-    print('RequestView initState - service: ${widget.service}');
     _loadData();
   }
 
@@ -50,12 +48,10 @@ class _RequestViewState extends State<RequestView> {
         setState(() {
           _currentUserId = userData['id'];
         });
-        print('Current user ID from API: $_currentUserId');
       } else {
         throw Exception('Falha ao obter dados do usuário');
       }
     } catch (e) {
-      print('Erro ao obter usuário: $e');
       setState(() {
         _currentUserId = null;
       });
@@ -63,39 +59,28 @@ class _RequestViewState extends State<RequestView> {
   }
 
   Future<void> _loadData() async {
-    print('=== _loadData chamado ===');
-    print('widget.serviceId: ${widget.serviceId}');
-    print('widget.service: ${widget.service}');
-    
     await _getCurrentUserFromApi();
     
     int? serviceId;
     
     if (widget.serviceId != null) {
       serviceId = widget.serviceId;
-      print('Usando serviceId do widget: $serviceId');
     } else if (widget.service != null) {
       serviceId = widget.service!.id;
-      print('Usando service.id do widget: $serviceId');
     } else {
       // Tenta pegar dos argumentos da rota
       final args = ModalRoute.of(context)?.settings.arguments;
-      print('Argumentos da rota: $args');
       
       if (args is Service) {
         serviceId = args.id;
-        print('Service extraído dos argumentos: $serviceId');
       } else if (args is Map && args['service'] is Service) {
         serviceId = (args['service'] as Service).id;
-        print('Service extraído do Map: $serviceId');
       }
     }
     
     if (serviceId != null) {
-      print('Carregando serviço com ID: $serviceId');
       await _fetchServiceDetail(serviceId);
     } else {
-      print('ERRO: Nenhum ID de serviço encontrado!');
       setState(() {
         _errorMessage = 'ID do serviço não informado na URL.';
         _isLoading = false;
@@ -122,9 +107,6 @@ class _RequestViewState extends State<RequestView> {
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         final detail = ServiceDetailModel.fromJson(data);
-
-        print('Current user ID: $_currentUserId');
-        print('Creator ID: ${detail.userCreator.id}');
 
         final isOwner = detail.userCreator.id.toString() == _currentUserId?.toString();
 

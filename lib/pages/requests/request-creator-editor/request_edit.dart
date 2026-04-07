@@ -54,11 +54,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   void initState() {
     super.initState();
     _categoriesTags = [];
-    
-    print('=== INIT STATE EDIT PAGE ===');
-    print('Service recebido via widget: ${widget.service != null}');
-    print('ServiceId recebido via widget: ${widget.serviceId}');
-    
     _extractAndProcessService();
   }
 
@@ -67,7 +62,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     // Prioridade: serviceId (da URL) > widget.service > argumentos da rota
     if (widget.serviceId != null) {
       _serviceId = widget.serviceId;
-      print('ServiceId extraído do widget.serviceId: $_serviceId');
       _fetchServiceData();
     } else if (widget.service != null) {
       _populateFormFromService(widget.service!);
@@ -81,7 +75,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         } else if (arguments is Map && arguments['service'] is Service) {
           _populateFormFromService(arguments['service'] as Service);
         } else {
-          print('Nenhum serviço encontrado!');
           setState(() {
             _errorMessage = 'Nenhum serviço encontrado para edição.';
           });
@@ -92,15 +85,8 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
   // Método para popular o formulário com dados do serviço
   void _populateFormFromService(Service service) {
-    print('=== POPULANDO FORMULÁRIO A PARTIR DE SERVICE ===');
-    print('Service ID: ${service.id}');
-    print('Título: ${service.title}');
-    print('Chronos: ${service.timeChronos}');
-    print('Categorias: ${service.categoryEntities.map((c) => c.name).toList()}');
-    
     // Garante que o serviceId seja setado
     _serviceId = service.id;
-    print('ServiceId definido: $_serviceId');
       
     // Preenche os campos básicos
     _titleController.text = service.title;
@@ -116,7 +102,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           _selectedImage = _imageBytes;
           _imageFileName = 'imagem_servico.jpg';
         });
-        print('Imagem carregada com sucesso');
       } catch (e) {
         print('Erro ao decodificar imagem: $e');
       }
@@ -128,13 +113,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         .where((name) => name.isNotEmpty)
         .toList();
     
-    print('Categorias extraídas: $categoryNames');
-    
     setState(() {
       _categoriesTags = categoryNames;
     });
-    
-    print('=== FIM DA POPULAÇÃO ===');
     
     // Busca dados completos via API
     _fetchServiceData();
@@ -142,15 +123,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
   // Método para popular o formulário com ServiceDetailModel
   void _populateFormFromServiceDetail(ServiceDetailModel serviceDetail) {
-    print('=== POPULANDO FORMULÁRIO ===');
-    print('Título: ${serviceDetail.title}');
-    print('Descrição: ${serviceDetail.description}');
-    print('Chronos: ${serviceDetail.timeChronos}');
-    print('Deadline: ${serviceDetail.deadline}');
-    print('Modalidade: ${serviceDetail.modality}');
-    print('Categorias: ${serviceDetail.categoryEntities.map((c) => c.name).toList()}');
-    print('ServiceImage presente: ${serviceDetail.serviceImageUrl != null && serviceDetail.serviceImageUrl!.isNotEmpty}');
-    
     // Preenche os campos do formulário
     _titleController.text = serviceDetail.title;
     _descriptionController.text = serviceDetail.description;
@@ -557,9 +529,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         'categories': _categoriesTags,
         if (base64Image != null) 'serviceImage': base64Image,
       };
-
-      print('Enviando payload para edição de pedido...');
-      print('Payload: $editModel');
 
       final response = await ApiService.put(
         '/service/put',

@@ -1,10 +1,10 @@
-import 'dart:convert';
+// notification_page.dart
 
+import 'dart:convert';
 import 'package:chronora/widgets/notification_card.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
-
 import '../../../widgets/header.dart';
 import '../../../widgets/side_menu.dart';
 import '../../../widgets/wallet_modal.dart';
@@ -44,9 +44,11 @@ class _notificationState extends State<NotificationPage> {
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         setState(() {
-          _notifications = data.map((json) => NotificationCard.fromJson(json)).toList();
-          _isLoading = false;
-        });
+        final notifications = data.map((json) => NotificationCard.fromJson(json)).toList();
+        notifications.sort((a, b) => b.notificationTime.compareTo(a.notificationTime));
+        _notifications = notifications;
+        _isLoading = false;
+      });
       } else {
         _showError('Erro ao carregar notificações (${response.statusCode})');
         setState(() => _isLoading = false);
@@ -70,13 +72,17 @@ class _notificationState extends State<NotificationPage> {
   });
   void _closeWallet() => setState(() => _isWalletOpen = false);
 
-  void _onNotificationTap(NotificationCard notification) {
-    // Navigate to service detail page
-    // Example: Navigator.pushNamed(context, '/service-detail', arguments: notification.serviceId);
-    // For now, just show a snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Abrir pedido: ${notification.service.title}')),
+  // Navegação para o serviço específico usando o ID na URL
+  void _onNotificationTap(NotificationCard notification) async {
+    final result = await Navigator.pushNamed(
+      context,
+      '/request-view/${notification.service.id}',
     );
+
+    // Opcional: recarregar notificações se a tela retornou true (indicando edição)
+    if (result == true) {
+      _loadNotifications();
+    }
   }
 
   @override
@@ -209,41 +215,41 @@ class _notificationState extends State<NotificationPage> {
   Widget _buildNotificationCard(NotificationCard notification) {
     final formattedTime = DateFormat('dd/MM/yyyy HH:mm').format(notification.notificationTime);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE9EAEC),
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            notification.message,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0B0C0C),
+    return GestureDetector(
+      onTap: () => _onNotificationTap(notification), // Card inteiro clicável
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE9EAEC),
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
             ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Text(
-                'Clique aqui para ver o pedido: ',
-                style: TextStyle(color: Colors.black87),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              notification.message,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0B0C0C),
               ),
-              GestureDetector(
-                onTap: () => _onNotificationTap(notification),
-                child: Text(
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Text(
+                  'Pedido: ',
+                  style: TextStyle(color: Colors.black87),
+                ),
+                Text(
                   notification.service.title,
                   style: const TextStyle(
                     color: Color(0xFFC29503),
@@ -251,18 +257,18 @@ class _notificationState extends State<NotificationPage> {
                     decoration: TextDecoration.underline,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            formattedTime,
-            style: const TextStyle(
-              color: Colors.black54,
-              fontSize: 12,
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              formattedTime,
+              style: const TextStyle(
+                color: Colors.black54,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

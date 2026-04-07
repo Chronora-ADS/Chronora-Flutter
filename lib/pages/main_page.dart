@@ -528,26 +528,18 @@ class _MainPageState extends State<MainPage> {
       itemCount: filteredServices.length,
       itemBuilder: (context, index) {
         final service = filteredServices[index];
-        print('=== DEBUG SERVICE CARD ===');
-        print('Service ID: ${service.id}');
-        print('Service Title: ${service.title}');
         
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           child: ServiceCard(
             service: service,
             onView: () async {
-              print('=== ON VIEW CALLED ===');
-              print('Service ID sendo navegado: ${service.id}');
-              print('URL: /request-view/${service.id}');
               
               // Usa a rota com o ID na URL
               final result = await Navigator.pushNamed(
                 context,
                 '/request-view/${service.id}', // URL com ID
               );
-              
-              print('Resultado da navegação: $result');
               
               if (result == true) {
                 await _fetchServices();
