@@ -507,7 +507,6 @@ class _MainPageState extends State<MainPage> {
       );
     }
 
-    // Usar a lista filtrada em vez da lista completa
     if (filteredServices.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 40),
@@ -528,33 +527,41 @@ class _MainPageState extends State<MainPage> {
       physics: const NeverScrollableScrollPhysics(),
       itemCount: filteredServices.length,
       itemBuilder: (context, index) {
+        final service = filteredServices[index];
+        print('=== DEBUG SERVICE CARD ===');
+        print('Service ID: ${service.id}');
+        print('Service Title: ${service.title}');
+        
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           child: ServiceCard(
-            service: services[index],
+            service: service,
             onView: () async {
-              // Navega para a página de edição com o serviço
+              print('=== ON VIEW CALLED ===');
+              print('Service ID sendo navegado: ${service.id}');
+              print('URL: /request-view/${service.id}');
+              
+              // Usa a rota com o ID na URL
               final result = await Navigator.pushNamed(
                 context,
-                '/request-view',
-                arguments: services[index],
+                '/request-view/${service.id}', // URL com ID
               );
-
-              // Se retornou true, atualiza os serviços
+              
+              print('Resultado da navegação: $result');
+              
               if (result == true) {
                 await _fetchServices();
               }
             },
             onCardEdited: (edited) async {
-              // Quando o card é editado pelo clique direto
               if (edited) {
                 await _fetchServices();
               }
             },
           ),
         );
-      },
-    );
+      }
+      );
   }
 
   @override

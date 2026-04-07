@@ -20,17 +20,71 @@ class AppRoutes {
   static const String sellChronos = '/sell-chronos';
   static const String notification = '/notification';
 
-  static Map<String, WidgetBuilder> get routes {
-    return {
-      login: (context) => const LoginPage(),
-      accountCreation: (context) => const AccountCreationPage(),
-      main: (context) => const MainPage(),
-      buyChronos: (context) => const BuyChronosPage(),
-      sellChronos: (context) => const SellChronosPage(),
-      requestCreation: (context) => const RequestCreationPage(),
-      requestView: (context) => const RequestView(),
-      requestEditing: (context) => const RequestEditingPage(),
-      notification: (context) => const NotificationPage(),
-    };
+  // Remove o mapa de rotas e usa apenas onGenerateRoute
+  static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
+    final String routeName = settings.name ?? '';
+    print('Navegando para: $routeName'); // Para debug
+    
+    // Rota para visualizar serviço: /request-view/2
+    if (routeName.startsWith('/request-view/')) {
+      final idString = routeName.split('/').last;
+      final int? id = int.tryParse(idString);
+      print('Service ID para visualização: $id');
+      return MaterialPageRoute(
+        builder: (context) => RequestView(serviceId: id),
+        settings: settings,
+      );
+    }
+    
+    // Rota para visualizar serviço sem ID (fallback)
+    if (routeName == '/request-view') {
+      print('Rota /request-view sem ID - redirecionando para main');
+      return MaterialPageRoute(
+        builder: (context) => const MainPage(),
+        settings: settings,
+      );
+    }
+    
+    // Rota para editar serviço: /request-editing/2
+    if (routeName.startsWith('/request-editing/')) {
+      final idString = routeName.split('/').last;
+      final int? id = int.tryParse(idString);
+      print('Service ID para edição: $id');
+      return MaterialPageRoute(
+        builder: (context) => RequestEditingPage(serviceId: id),
+        settings: settings,
+      );
+    }
+    
+    // Rota para editar serviço sem ID (fallback)
+    if (routeName == '/request-editing') {
+      print('Rota /request-editing sem ID - redirecionando para main');
+      return MaterialPageRoute(
+        builder: (context) => const MainPage(),
+        settings: settings,
+      );
+    }
+    
+    // Rotas normais
+    switch (routeName) {
+      case login:
+        return MaterialPageRoute(builder: (context) => const LoginPage());
+      case accountCreation:
+        return MaterialPageRoute(builder: (context) => const AccountCreationPage());
+      case main:
+        return MaterialPageRoute(builder: (context) => const MainPage());
+      case buyChronos:
+        return MaterialPageRoute(builder: (context) => const BuyChronosPage());
+      case sellChronos:
+        return MaterialPageRoute(builder: (context) => const SellChronosPage());
+      case requestCreation:
+        return MaterialPageRoute(builder: (context) => const RequestCreationPage());
+      case notification:
+        return MaterialPageRoute(builder: (context) => const NotificationPage());
+      default:
+        print('Rota não encontrada: $routeName');
+        // Rota padrão: volta para a main
+        return MaterialPageRoute(builder: (context) => const MainPage());
+    }
   }
 }

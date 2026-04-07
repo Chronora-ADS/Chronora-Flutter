@@ -11,9 +11,10 @@ import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
 
 class RequestView extends StatefulWidget {
-  final Service? service; // Serviço passado da main page (opcional via construtor)
+  final int? serviceId; // Recebe o ID pela URL
+  final Service? service; // Mantido para compatibilidade (opcional)
 
-  const RequestView({super.key, this.service});
+  const RequestView({super.key, this.serviceId, this.service});
 
   @override
   State<RequestView> createState() => _RequestViewState();
@@ -29,77 +30,14 @@ class _RequestViewState extends State<RequestView> {
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
 
-  // Serviço extraído (prioriza o widget, depois argumentos da rota)
-  Service? _extractedService;
-
   @override
   void initState() {
     super.initState();
-    _extractServiceAndLoad();
+    print('RequestView initState - serviceId: ${widget.serviceId}');
+    print('RequestView initState - service: ${widget.service}');
+    _loadData();
   }
 
-  /// Tenta obter o serviço do widget ou dos argumentos da rota
-  void _extractServiceAndLoad() {
-    // 1. Tenta pegar do widget
-    if (widget.service != null) {
-      _extractedService = widget.service;
-      _loadData();
-      return;
-    }
-
-    // 2. Se não veio pelo widget, tenta pegar dos argumentos da rota
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final arguments = ModalRoute.of(context)?.settings.arguments;
-      if (arguments is Service) {
-        _extractedService = arguments;
-      } else if (arguments is Map && arguments['service'] is Service) {
-        _extractedService = arguments['service'] as Service;
-      }
-
-      if (_extractedService != null) {
-        _loadData();
-      } else {
-        setState(() {
-          _errorMessage = 'Nenhum serviço informado.';
-          _isLoading = false;
-        });
-      }
-    });
-  }
-
-  Widget _buildBackgroundImages() {
-    return Stack(
-      children: [
-        Positioned(
-          left: 0,
-          top: 135,
-          child: Image.asset(
-            'assets/img/Comb2.png',
-            errorBuilder: (context, error, stackTrace) => const SizedBox(),
-          ),
-        ),
-        Positioned(
-          left: 0,
-          bottom: 0,
-          child: Image.asset(
-            'assets/img/BarAscending.png',
-            width: 210.47,
-            height: 178.9,
-            errorBuilder: (context, error, stackTrace) => const SizedBox(),
-          ),
-        ),
-        Positioned(
-          right: 0,
-          bottom: 60,
-          child: Image.asset(
-            'assets/img/Comb3.png',
-            errorBuilder: (context, error, stackTrace) => const SizedBox(),
-          ),
-        ),
-      ],
-    );
-  }
-  // Substitua o método _getCurrentUserId por:
   Future<void> _getCurrentUserFromApi() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -110,7 +48,7 @@ class _RequestViewState extends State<RequestView> {
       if (response.statusCode == 200) {
         final Map<String, dynamic> userData = json.decode(response.body);
         setState(() {
-          _currentUserId = userData['id']; // ou userData['user']['id']
+          _currentUserId = userData['id'];
         });
         print('Current user ID from API: $_currentUserId');
       } else {
@@ -124,20 +62,48 @@ class _RequestViewState extends State<RequestView> {
     }
   }
 
-  // Atualize o método _loadData:
   Future<void> _loadData() async {
-    await _getCurrentUserFromApi(); // <-- chamada alterada
-    if (_extractedService != null) {
-      await _fetchServiceDetail(_extractedService!.id);
+    print('=== _loadData chamado ===');
+    print('widget.serviceId: ${widget.serviceId}');
+    print('widget.service: ${widget.service}');
+    
+    await _getCurrentUserFromApi();
+    
+    int? serviceId;
+    
+    if (widget.serviceId != null) {
+      serviceId = widget.serviceId;
+      print('Usando serviceId do widget: $serviceId');
+    } else if (widget.service != null) {
+      serviceId = widget.service!.id;
+      print('Usando service.id do widget: $serviceId');
     } else {
+      // Tenta pegar dos argumentos da rota
+      final args = ModalRoute.of(context)?.settings.arguments;
+      print('Argumentos da rota: $args');
+      
+      if (args is Service) {
+        serviceId = args.id;
+        print('Service extraído dos argumentos: $serviceId');
+      } else if (args is Map && args['service'] is Service) {
+        serviceId = (args['service'] as Service).id;
+        print('Service extraído do Map: $serviceId');
+      }
+    }
+    
+    if (serviceId != null) {
+      print('Carregando serviço com ID: $serviceId');
+      await _fetchServiceDetail(serviceId);
+    } else {
+      print('ERRO: Nenhum ID de serviço encontrado!');
       setState(() {
-        _errorMessage = 'Nenhum serviço informado.';
+        _errorMessage = 'ID do serviço não informado na URL.';
         _isLoading = false;
       });
     }
   }
 
-  Future<void> _fetchServiceDetail(int serviceId) async {
+  Future<void> _fetchServiceDetail(int? serviceId) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -158,10 +124,9 @@ class _RequestViewState extends State<RequestView> {
         final detail = ServiceDetailModel.fromJson(data);
 
         print('Current user ID: $_currentUserId');
-        print('Creator ID: ${detail.userCreator?.id}');
+        print('Creator ID: ${detail.userCreator.id}');
 
-        // Verifica se o usuário atual é o dono do serviço
-        final isOwner = detail.userCreator?.id.toString() == _currentUserId?.toString();
+        final isOwner = detail.userCreator.id.toString() == _currentUserId?.toString();
 
         setState(() {
           _serviceDetail = detail;
@@ -227,8 +192,6 @@ class _RequestViewState extends State<RequestView> {
       final token = prefs.getString('auth_token');
       if (token == null) throw Exception('Usuário não autenticado');
 
-      const status = "CANCELADO";
-
       final response = await ApiService.delete(
         '/service/cancelService/${_serviceDetail!.id}',
         token: token,
@@ -257,15 +220,14 @@ class _RequestViewState extends State<RequestView> {
   }
 
   void _editRequest() {
-    // Navega para a página de edição passando o serviço original
+    // Navega para a página de edição usando o ID na URL
     Navigator.pushNamed(
       context,
-      '/request-editing',
-      arguments: _extractedService,
+      '/request-editing/${_serviceDetail!.id}',
     ).then((edited) {
       if (edited == true) {
         // Se editado, recarrega os detalhes
-        _fetchServiceDetail(_extractedService!.id);
+        _fetchServiceDetail(_serviceDetail!.id);
       }
     });
   }
@@ -280,6 +242,39 @@ class _RequestViewState extends State<RequestView> {
     );
   }
 
+  Widget _buildBackgroundImages() {
+    return Stack(
+      children: [
+        Positioned(
+          left: 0,
+          top: 135,
+          child: Image.asset(
+            'assets/img/Comb2.png',
+            errorBuilder: (context, error, stackTrace) => const SizedBox(),
+          ),
+        ),
+        Positioned(
+          left: 0,
+          bottom: 0,
+          child: Image.asset(
+            'assets/img/BarAscending.png',
+            width: 210.47,
+            height: 178.9,
+            errorBuilder: (context, error, stackTrace) => const SizedBox(),
+          ),
+        ),
+        Positioned(
+          right: 0,
+          bottom: 60,
+          child: Image.asset(
+            'assets/img/Comb3.png',
+            errorBuilder: (context, error, stackTrace) => const SizedBox(),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -291,10 +286,10 @@ class _RequestViewState extends State<RequestView> {
             children: [
               Header(onMenuPressed: _toggleDrawer),
               Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: _buildContent(),
-                  ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: _buildContent(),
+                ),
               ),
             ],
           ),
@@ -371,288 +366,263 @@ class _RequestViewState extends State<RequestView> {
       );
     }
 
-    return Container(
-      child: 
-        Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: const BoxDecoration(
-                color: AppColors.branco,
-                borderRadius: BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: const BoxDecoration(
+            color: AppColors.branco,
+            borderRadius: BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
+          ),
+          width: double.infinity,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Título
+              Text(
+                _serviceDetail!.title,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              width: double.infinity,
-              child: Column(
+            ]
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: const BoxDecoration(
+            color: AppColors.preto,
+            border: Border(
+              bottom: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
+              top: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
+              left: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
+              right: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3)
+            ),
+            borderRadius: BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
+          ),
+          child: Column(
+            children: [
+              // Linha com imagem à esquerda e informações à direita
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Título
-                  Text(
-                    _serviceDetail!.title,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ]
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              decoration: const BoxDecoration(
-                color: AppColors.preto,
-                border: Border(
-                  bottom: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
-                  top: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
-                  left: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
-                  right: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3)
-                ),
-                borderRadius: BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
-              ),
-              child: Column(
-                children: [
-                  // Linha com imagem à esquerda e informações à direita
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Imagem
-                      ClipRRect(
-                        child: Container(
-                          width: 200,
-                          height: 113,
-                          decoration: BoxDecoration(
-                            color: AppColors.cinza,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: _serviceDetail!.serviceImageUrl != null &&
-                                  _serviceDetail!.serviceImageUrl!.isNotEmpty
-                              ? Image.network(
-                                  _serviceDetail!.serviceImageUrl!,
-                                  width: 160,
-                                  height: 90,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      color: AppColors.cinza,
-                                      child: const Icon(Icons.broken_image,
-                                          size: 40, color: AppColors.cinza),
-                                    );
-                                  },
-                                  loadingBuilder: (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return const Center(
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(
-                                            AppColors.amareloClaro),
-                                      ),
-                                    );
-                                  },
-                                )
-                              : Container(
-                                  color: AppColors.cinza,
-                                  child: const Icon(Icons.image,
-                                      size: 40, color: AppColors.cinza),
-                                ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      // Informações à direita
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            // Prazo
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppColors.amareloUmPoucoEscuro,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                'Prazo: ${_formatDate(_serviceDetail!.deadline)}',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.branco,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            // Modalidade
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppColors.amareloUmPoucoEscuro,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                _serviceDetail!.modality,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.branco,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            // Chronos
-                            // Chronos com ícone alinhado à direita
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Image.asset(
-                                    'assets/img/CoinYellow.png',
-                                    width: 20,
-                                    height: 20,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        const Icon(Icons.currency_bitcoin, color: AppColors.amareloClaro, size: 20),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Flexible(
-                                    child: Text(
-                                      '${_serviceDetail!.timeChronos} Chronos',
-                                      style: const TextStyle(
-                                        color: AppColors.amareloClaro,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 20,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: 
-                      // Descrição
-                      Text(
-                        _serviceDetail!.description,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: AppColors.branco
-                        ),
-                      ),
-                  )
-                ],
-              ),
-            ),
-        
-            const SizedBox(height: 5),
-            if (_serviceDetail!.categoryEntities.isNotEmpty) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _serviceDetail!.categoryEntities.map((cat) {
-                    return Container(
+                  // Imagem
+                  ClipRRect(
+                    child: Container(
+                      width: 200,
+                      height: 113,
                       decoration: BoxDecoration(
-                        color: AppColors.amareloClaro,
-                        borderRadius: BorderRadius.circular(8),
+                        color: AppColors.cinza,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: Text(
-                        cat.name,
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
-
-            // Informações do criador em container separado
-            if (_serviceDetail!.userCreator != null) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.branco,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Postado às ${_formatTime(_serviceDetail!.postedAt)} por:',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: AppColors.amareloClaro,
-                          child: Text(
-                            _serviceDetail!.userCreator!.name[0].toUpperCase(),
-                            style: const TextStyle(color: AppColors.branco),
-                          ), // imagem perfil
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _serviceDetail!.userCreator!.name,
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 4),
-                              const Row(
-                                children: [
-                                  Text(
-                                    // _serviceDetail!.userCreator!.rating?.toStringAsFixed(1) ?? 
-                                    "5.0",
-                                    style: TextStyle(fontSize: 14),
+                      child: _serviceDetail!.serviceImageUrl != null &&
+                              _serviceDetail!.serviceImageUrl!.isNotEmpty
+                          ? Image.network(
+                              _serviceDetail!.serviceImageUrl!,
+                              width: 160,
+                              height: 90,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: AppColors.cinza,
+                                  child: const Icon(Icons.broken_image,
+                                      size: 40, color: AppColors.cinza),
+                                );
+                              },
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        AppColors.amareloClaro),
                                   ),
-                                  SizedBox(width: 4),
-                                  Icon(Icons.star, color: AppColors.amareloClaro, size: 16),
-                                ],
+                                );
+                              },
+                            )
+                          : Container(
+                              color: AppColors.cinza,
+                              child: const Icon(Icons.image,
+                                  size: 40, color: AppColors.cinza),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Informações à direita
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        // Prazo
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.amareloUmPoucoEscuro,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'Prazo: ${_formatDate(_serviceDetail!.deadline)}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.branco,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Modalidade
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.amareloUmPoucoEscuro,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _serviceDetail!.modality,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.branco,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Chronos com ícone alinhado à direita
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Image.asset(
+                                'assets/img/CoinYellow.png',
+                                width: 20,
+                                height: 20,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(Icons.currency_bitcoin, color: AppColors.amareloClaro, size: 20),
+                              ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  '${_serviceDetail!.timeChronos} Chronos',
+                                  style: const TextStyle(
+                                    color: AppColors.amareloClaro,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: Text(
+                  _serviceDetail!.description,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: AppColors.branco
+                  ),
+                ),
+              )
             ],
-
-            // Botões de ação
-            _buildActionButtons(),
-          ],
-        )
-    );
-  }
-
-  Widget _buildInfoChip({required IconData icon, required String label}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.cinza,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: AppColors.preto),
-          const SizedBox(width: 4),
-          Text(label, style: const TextStyle(fontSize: 12)),
+          ),
+        ),
+    
+        const SizedBox(height: 5),
+        if (_serviceDetail!.categoryEntities.isNotEmpty) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _serviceDetail!.categoryEntities.map((cat) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.amareloClaro,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Text(
+                    cat.name,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 20),
         ],
-      ),
+
+        // Informações do criador em container separado
+        if (_serviceDetail!.userCreator != null) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.branco,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Postado às ${_formatTime(_serviceDetail!.postedAt)} por:',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: AppColors.amareloClaro,
+                      child: Text(
+                        _serviceDetail!.userCreator!.name[0].toUpperCase(),
+                        style: const TextStyle(color: AppColors.branco),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _serviceDetail!.userCreator!.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 4),
+                          const Row(
+                            children: [
+                              Text(
+                                "5.0",
+                                style: TextStyle(fontSize: 14),
+                              ),
+                              SizedBox(width: 4),
+                              Icon(Icons.star, color: AppColors.amareloClaro, size: 16),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+
+        // Botões de ação
+        _buildActionButtons(),
+      ],
     );
   }
 
