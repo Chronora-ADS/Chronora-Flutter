@@ -147,7 +147,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
       final response = await ApiService.post('/auth/register', payload);
 
       if (response.statusCode == 200) {
-        final token = response.body;
+        final token = _extractToken(response.body);
         await _saveToken(token);
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -183,6 +183,28 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
     } catch (e) {
       print('Erro ao salvar token: $e');
     }
+  }
+
+  String _extractToken(String responseBody) {
+    try {
+      final decoded = jsonDecode(responseBody);
+
+      if (decoded is Map<String, dynamic>) {
+        final token = decoded['access_token'] ?? decoded['token'];
+        if (token is String && token.isNotEmpty) {
+          return token;
+        }
+      }
+    } catch (_) {
+      // Se o backend retornar o token puro em texto, usamos a resposta bruta.
+    }
+
+    final trimmedBody = responseBody.trim();
+    if (trimmedBody.isEmpty) {
+      throw Exception('Token não encontrado na resposta do cadastro');
+    }
+
+    return trimmedBody;
   }
 
   @override
