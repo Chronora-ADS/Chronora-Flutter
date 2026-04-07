@@ -161,8 +161,6 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       } catch (_) {}
     }
 
-    _authenticationCodeExpiresAt ??=
-        _acceptedAt.add(const Duration(minutes: 2));
     _startAuthenticationCodeCountdown();
 
     if (!_isRequesterView) {
@@ -257,7 +255,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     _countdownTimer?.cancel();
     _syncRemainingAuthenticationCodeTime();
 
-    if (_isAuthenticationCodeExpired) {
+    if (_authenticationCodeExpiresAt == null || _isAuthenticationCodeExpired) {
       return;
     }
 
@@ -293,6 +291,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   bool get _isAuthenticationCodeExpired =>
       _remainingAuthenticationCodeTime.inSeconds <= 0;
 
+  bool get _hasAuthenticationCodeExpiration =>
+      _authenticationCodeExpiresAt != null;
+
   String get _formattedAuthenticationCodeCountdown {
     final totalSeconds = _remainingAuthenticationCodeTime.inSeconds;
     final safeSeconds = totalSeconds < 0 ? 0 : totalSeconds;
@@ -303,140 +304,29 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
   Future<void> _openStartRequestDialog() async {
     final pageContext = context;
-    final codeController = TextEditingController();
-    String? validationMessage;
 
     await showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (_, setDialogState) {
-            return AlertDialog(
-              title: const Text('Iniciar pedido'),
-              content: StreamBuilder<int>(
-                stream: Stream<int>.periodic(const Duration(seconds: 1), (tick) => tick),
-                initialData: 0,
-                builder: (_, __) {
-                  final remaining = _authenticationCodeExpiresAt == null
-                      ? Duration.zero
-                      : _authenticationCodeExpiresAt!.difference(DateTime.now());
-                  final safeRemaining =
-                      remaining.isNegative ? Duration.zero : remaining;
-                  final isExpired = safeRemaining.inSeconds <= 0;
-                  final countdown =
-                      '${(safeRemaining.inSeconds ~/ 60).toString().padLeft(2, '0')}:${(safeRemaining.inSeconds % 60).toString().padLeft(2, '0')}';
-
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Digite o codigo de autenticacao de 4 digitos.',
-                        style: TextStyle(fontSize: 15),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: codeController,
-                        keyboardType: TextInputType.number,
-                        maxLength: 4,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(4),
-                        ],
-                        decoration: const InputDecoration(
-                          labelText: 'Codigo de autenticacao',
-                          border: OutlineInputBorder(),
-                          counterText: '',
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Tempo restante: $countdown',
-                        style: TextStyle(
-                          color:
-                              isExpired ? AppColors.vermelho : AppColors.preto,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      if (isExpired) ...[
-                        const SizedBox(height: 8),
-                        const Text(
-                          'O tempo do codigo expirou.',
-                          style: TextStyle(
-                            color: AppColors.vermelho,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ] else if (validationMessage != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          validationMessage!,
-                          style: const TextStyle(
-                            color: AppColors.vermelho,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ],
-                  );
-                },
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancelar'),
+        return _StartRequestDialog(
+          authenticationCode: _authenticationCode,
+          authenticationCodeExpiresAt: _authenticationCodeExpiresAt,
+          onSuccess: () {
+            ScaffoldMessenger.of(pageContext)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Codigo validado. Pedido iniciado com sucesso.',
+                  ),
+                  backgroundColor: Colors.green,
                 ),
-                ElevatedButton(
-                  onPressed: () {
-                    if (_isAuthenticationCodeExpired) {
-                      setDialogState(() {
-                        validationMessage = 'O tempo do codigo expirou.';
-                      });
-                      return;
-                    }
-
-                    final typedCode = codeController.text.trim();
-
-                    if (typedCode.length != 4) {
-                      setDialogState(() {
-                        validationMessage =
-                            'Informe os 4 digitos do codigo.';
-                      });
-                      return;
-                    }
-
-                    if (typedCode != _authenticationCode) {
-                      setDialogState(() {
-                        validationMessage = 'Codigo invalido.';
-                      });
-                      return;
-                    }
-
-                    Navigator.of(dialogContext).pop();
-                    ScaffoldMessenger.of(pageContext)
-                      ..hideCurrentSnackBar()
-                      ..showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Codigo validado. Pedido iniciado com sucesso.',
-                          ),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                  },
-                  child: const Text('Confirmar'),
-                ),
-              ],
-            );
+              );
           },
         );
       },
     );
-
-    codeController.dispose();
   }
 
   @override
@@ -986,18 +876,31 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             ),
             const SizedBox(height: 6),
             Text(
-              _isAuthenticationCodeExpired
-                  ? 'Tempo restante: 00:00'
-                  : 'Tempo restante: $_formattedAuthenticationCodeCountdown',
+              !_hasAuthenticationCodeExpiration
+                  ? 'Tempo indisponivel no momento.'
+                  : _isAuthenticationCodeExpired
+                      ? 'Tempo restante: 00:00'
+                      : 'Tempo restante: $_formattedAuthenticationCodeCountdown',
               style: TextStyle(
                 fontSize: 15,
-                color: _isAuthenticationCodeExpired
+                color: !_hasAuthenticationCodeExpiration ||
+                        _isAuthenticationCodeExpired
                     ? AppColors.vermelho
                     : AppColors.preto,
                 fontWeight: FontWeight.w700,
               ),
             ),
-            if (_isAuthenticationCodeExpired) ...[
+            if (!_hasAuthenticationCodeExpiration) ...[
+              const SizedBox(height: 6),
+              const Text(
+                'A expiracao do codigo ainda nao foi carregada do servidor.',
+                style: TextStyle(
+                  color: AppColors.vermelho,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ] else if (_isAuthenticationCodeExpired) ...[
               const SizedBox(height: 6),
               const Text(
                 'O tempo do codigo expirou.',
@@ -1261,6 +1164,196 @@ class _InfoCard extends StatelessWidget {
           child,
         ],
       ),
+    );
+  }
+}
+
+class _StartRequestDialog extends StatefulWidget {
+  final String authenticationCode;
+  final DateTime? authenticationCodeExpiresAt;
+  final VoidCallback onSuccess;
+
+  const _StartRequestDialog({
+    required this.authenticationCode,
+    required this.authenticationCodeExpiresAt,
+    required this.onSuccess,
+  });
+
+  @override
+  State<_StartRequestDialog> createState() => _StartRequestDialogState();
+}
+
+class _StartRequestDialogState extends State<_StartRequestDialog> {
+  late final TextEditingController _codeController;
+  Timer? _timer;
+  Duration _remainingTime = Duration.zero;
+  String? _validationMessage;
+
+  bool get _hasExpiration => widget.authenticationCodeExpiresAt != null;
+  bool get _isExpired => _remainingTime.inSeconds <= 0;
+
+  String get _formattedCountdown {
+    final safeSeconds = _remainingTime.inSeconds < 0 ? 0 : _remainingTime.inSeconds;
+    final minutes = (safeSeconds ~/ 60).toString().padLeft(2, '0');
+    final seconds = (safeSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _codeController = TextEditingController();
+    _syncRemainingTime();
+
+    if (_hasExpiration && !_isExpired) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) return;
+        _syncRemainingTime();
+        if (_isExpired) {
+          _timer?.cancel();
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  void _syncRemainingTime() {
+    final expiresAt = widget.authenticationCodeExpiresAt;
+    final remaining = expiresAt == null
+        ? Duration.zero
+        : expiresAt.difference(DateTime.now());
+
+    setState(() {
+      _remainingTime = remaining.isNegative ? Duration.zero : remaining;
+    });
+  }
+
+  void _submit() {
+    if (!_hasExpiration) {
+      setState(() {
+        _validationMessage =
+            'A expiracao do codigo ainda nao foi carregada do servidor.';
+      });
+      return;
+    }
+
+    if (_isExpired) {
+      setState(() {
+        _validationMessage = 'O tempo do codigo expirou.';
+      });
+      return;
+    }
+
+    final typedCode = _codeController.text.trim();
+    if (typedCode.length != 4) {
+      setState(() {
+        _validationMessage = 'Informe os 4 digitos do codigo.';
+      });
+      return;
+    }
+
+    if (typedCode != widget.authenticationCode) {
+      setState(() {
+        _validationMessage = 'Codigo invalido.';
+      });
+      return;
+    }
+
+    Navigator.of(context).pop();
+    widget.onSuccess();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Iniciar pedido'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Digite o codigo de autenticacao de 4 digitos.',
+              style: TextStyle(fontSize: 15),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _codeController,
+              keyboardType: TextInputType.number,
+              maxLength: 4,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(4),
+              ],
+              decoration: const InputDecoration(
+                labelText: 'Codigo de autenticacao',
+                border: OutlineInputBorder(),
+                counterText: '',
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              !_hasExpiration
+                  ? 'Tempo indisponivel no momento.'
+                  : 'Tempo restante: ${_isExpired ? '00:00' : _formattedCountdown}',
+              style: TextStyle(
+                color: !_hasExpiration || _isExpired
+                    ? AppColors.vermelho
+                    : AppColors.preto,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (!_hasExpiration) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'A expiracao do codigo ainda nao foi carregada do servidor.',
+                style: TextStyle(
+                  color: AppColors.vermelho,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ] else if (_isExpired) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'O tempo do codigo expirou.',
+                style: TextStyle(
+                  color: AppColors.vermelho,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ] else if (_validationMessage != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _validationMessage!,
+                style: const TextStyle(
+                  color: AppColors.vermelho,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: _submit,
+          child: const Text('Confirmar'),
+        ),
+      ],
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/constants/app_routes.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/main_page_requests_model.dart';
 import '../../core/models/service_detail_model.dart';
@@ -186,6 +187,8 @@ class _RequestViewState extends State<RequestView> {
           _acceptedRequestInfo = acceptedInfo;
           _isLoading = false;
         });
+
+        _handleAcceptedRequestRouting(detail, acceptedInfo);
       } else {
         throw Exception('Erro ${response.statusCode}: ${response.body}');
       }
@@ -326,6 +329,7 @@ class _RequestViewState extends State<RequestView> {
   Future<void> _acceptRequest() async {
     final serviceDetail = _serviceDetail;
     if (serviceDetail?.id == null) return;
+    final serviceId = serviceDetail!.id!;
 
     setState(() => _isLoading = true);
 
@@ -336,90 +340,62 @@ class _RequestViewState extends State<RequestView> {
         throw Exception('Usuário não autenticado');
       }
 
+      final latestServiceDetail = await _fetchServiceDetailSnapshot(serviceId);
+      final latestAcceptedInfo = latestServiceDetail?.acceptedRequestInfo;
+
+      if (_isAcceptedByAnotherProvider(latestAcceptedInfo)) {
+        _showSnackBar(
+          'O pedido ja foi aceito.',
+          backgroundColor: AppColors.vermelho,
+        );
+        _goToMainPage();
+        return;
+      }
+
+      final hasAnotherAcceptedRequest = await _hasAnotherAcceptedRequest(
+        currentServiceId: serviceId,
+      );
+      if (hasAnotherAcceptedRequest) {
+        _showSnackBar(
+          'Voce nao pode aceitar mais de um pedido ao mesmo tempo.',
+          backgroundColor: AppColors.vermelho,
+        );
+        setState(() => _isLoading = false);
+        return;
+      }
+
       final response = await ApiService.put(
-        '/service/acceptService/${serviceDetail!.id}',
+        '/service/acceptService/$serviceId',
         const {},
         token: token,
       );
 
       if (response.statusCode != 200 && response.statusCode != 204) {
-        throw Exception('Erro ${response.statusCode}: ${response.body}');
+        throw Exception(_extractApiErrorMessage(response.body));
       }
 
-      final acceptedAt = DateTime.now();
       final responseBody = response.body.trim();
-      AcceptedRequestInfo acceptedRequestInfo;
+      ServiceDetailModel? resolvedServiceDetail;
 
       if (responseBody.isNotEmpty) {
         final decoded = json.decode(responseBody);
         if (decoded is Map<String, dynamic>) {
-          final updatedServiceDetail = ServiceDetailModel.fromJson(decoded);
-          _serviceDetail = updatedServiceDetail;
-          acceptedRequestInfo = updatedServiceDetail.acceptedRequestInfo ??
-              AcceptedRequestInfo(
-                acceptedUser: detail_user.UserCreator(
-                  id: _currentUserId,
-                  name: (_currentUserName?.trim().isNotEmpty ?? false)
-                      ? _currentUserName!.trim()
-                      : 'Prestador',
-                  phoneNumber: _currentUserPhone,
-                ),
-                acceptedAt: acceptedAt.toIso8601String(),
-              );
-        } else {
-          acceptedRequestInfo = AcceptedRequestInfo(
-            acceptedUser: detail_user.UserCreator(
-              id: _currentUserId,
-              name: (_currentUserName?.trim().isNotEmpty ?? false)
-                  ? _currentUserName!.trim()
-                  : 'Prestador',
-              phoneNumber: _currentUserPhone,
-            ),
-            acceptedAt: acceptedAt.toIso8601String(),
-          );
+          resolvedServiceDetail = ServiceDetailModel.fromJson(decoded);
         }
-      } else {
-        acceptedRequestInfo = AcceptedRequestInfo(
-          acceptedUser: detail_user.UserCreator(
-            id: _currentUserId,
-            name: (_currentUserName?.trim().isNotEmpty ?? false)
-                ? _currentUserName!.trim()
-                : 'Prestador',
-            phoneNumber: _currentUserPhone,
-          ),
-          acceptedAt: acceptedAt.toIso8601String(),
-        );
       }
 
-      if ((acceptedRequestInfo.acceptedAt?.trim().isEmpty ?? true)) {
-        acceptedRequestInfo = AcceptedRequestInfo(
-          acceptedUser: acceptedRequestInfo.acceptedUser,
-          acceptedAt: acceptedAt.toIso8601String(),
-          authenticationCode: acceptedRequestInfo.authenticationCode,
-          expiresAt: acceptedRequestInfo.expiresAt,
-        );
-      }
+      resolvedServiceDetail ??= await _fetchServiceDetailSnapshot(serviceId);
 
-      final resolvedAuthenticationCode =
-          (acceptedRequestInfo.authenticationCode?.trim().isNotEmpty ?? false)
-              ? acceptedRequestInfo.authenticationCode!.trim()
-              : _generateAuthenticationCode();
-      final resolvedExpiresAt =
-          _resolveAuthenticationCodeExpiresAt(acceptedRequestInfo, acceptedAt);
-
-      acceptedRequestInfo = AcceptedRequestInfo(
-        acceptedUser: acceptedRequestInfo.acceptedUser,
-        acceptedAt: acceptedRequestInfo.acceptedAt ?? acceptedAt.toIso8601String(),
-        authenticationCode: resolvedAuthenticationCode,
-        expiresAt: resolvedExpiresAt.toIso8601String(),
+      final acceptedRequestInfo = _resolveAcceptedRequestInfo(
+        resolvedServiceDetail,
       );
 
-      await _persistAcceptedRequestInfo(serviceDetail.id!, acceptedRequestInfo);
+      await _persistAcceptedRequestInfo(serviceId, acceptedRequestInfo);
 
       if (!mounted) return;
 
       setState(() {
-        _serviceDetail = _serviceDetail ?? serviceDetail;
+        _serviceDetail = resolvedServiceDetail ?? _serviceDetail ?? serviceDetail;
         _acceptedRequestInfo = acceptedRequestInfo;
         _isLoading = false;
       });
@@ -428,7 +404,7 @@ class _RequestViewState extends State<RequestView> {
         context,
         '/request-accepted-view',
         arguments: {
-          'serviceDetail': _serviceDetail ?? serviceDetail,
+          'serviceDetail': resolvedServiceDetail ?? _serviceDetail ?? serviceDetail,
           'acceptedUserName': acceptedRequestInfo.acceptedUser?.name,
           'acceptedUserPhone': acceptedRequestInfo.acceptedUser?.phoneNumber,
           'acceptedAt': acceptedRequestInfo.acceptedAt,
@@ -442,7 +418,7 @@ class _RequestViewState extends State<RequestView> {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erro ao aceitar pedido: $e'),
+          content: Text(_buildAcceptRequestErrorMessage(e)),
           backgroundColor: AppColors.vermelho,
         ),
       );
@@ -507,30 +483,194 @@ class _RequestViewState extends State<RequestView> {
   String _acceptedRequestStorageKey(int serviceId) =>
       'accepted_request_info_$serviceId';
 
-  DateTime _resolveAuthenticationCodeExpiresAt(
-    AcceptedRequestInfo acceptedRequestInfo,
-    DateTime fallbackAcceptedAt,
-  ) {
-    final rawExpiresAt = acceptedRequestInfo.expiresAt?.trim();
-    if (rawExpiresAt != null && rawExpiresAt.isNotEmpty) {
-      try {
-        return DateTime.parse(rawExpiresAt);
-      } catch (_) {}
+  Future<ServiceDetailModel?> _fetchServiceDetailSnapshot(int serviceId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    if (token == null) {
+      throw Exception('Usuário não autenticado');
     }
 
-    final rawAcceptedAt = acceptedRequestInfo.acceptedAt?.trim();
-    if (rawAcceptedAt != null && rawAcceptedAt.isNotEmpty) {
-      try {
-        return DateTime.parse(rawAcceptedAt).add(const Duration(minutes: 2));
-      } catch (_) {}
+    final response = await ApiService.get(
+      '/service/get/$serviceId',
+      token: token,
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Erro ${response.statusCode}: ${response.body}');
     }
 
-    return fallbackAcceptedAt.add(const Duration(minutes: 2));
+    final decoded = json.decode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      return null;
+    }
+
+    return ServiceDetailModel.fromJson(decoded);
   }
 
-  String _generateAuthenticationCode() {
-    final seed = DateTime.now().millisecondsSinceEpoch % 10000;
-    return seed.toString().padLeft(4, '0');
+  AcceptedRequestInfo _resolveAcceptedRequestInfo(
+    ServiceDetailModel? serviceDetail,
+  ) {
+    final backendInfo = serviceDetail?.acceptedRequestInfo;
+    if (backendInfo != null &&
+        backendInfo.hasAcceptedUser &&
+        (backendInfo.authenticationCode?.trim().isNotEmpty ?? false) &&
+        (backendInfo.expiresAt?.trim().isNotEmpty ?? false)) {
+      return backendInfo;
+    }
+
+    return AcceptedRequestInfo(
+      acceptedUser: backendInfo?.acceptedUser ??
+          detail_user.UserCreator(
+            id: _currentUserId,
+            name: (_currentUserName?.trim().isNotEmpty ?? false)
+                ? _currentUserName!.trim()
+                : 'Prestador',
+            phoneNumber: _currentUserPhone,
+          ),
+      acceptedAt: backendInfo?.acceptedAt,
+      authenticationCode: backendInfo?.authenticationCode,
+      expiresAt: backendInfo?.expiresAt,
+    );
+  }
+
+  String _buildAcceptRequestErrorMessage(Object error) {
+    final rawMessage = error.toString().toLowerCase();
+
+    if (rawMessage.contains('pedido ja foi aceito por outro usuario')) {
+      return 'Erro, o pedido ja foi aceito por outro usuario.';
+    }
+
+    if (rawMessage.contains('nao pode aceitar mais de um pedido')) {
+      return 'Erro, voce nao pode aceitar mais de um pedido ao mesmo tempo.';
+    }
+
+    if (rawMessage.contains('voce nao pode aceitar o proprio pedido')) {
+      return 'Erro, voce nao pode aceitar o proprio pedido.';
+    }
+
+    return 'Erro ao aceitar pedido.';
+  }
+
+  String _extractApiErrorMessage(String rawBody) {
+    try {
+      final decoded = json.decode(rawBody);
+      if (decoded is Map<String, dynamic>) {
+        final message = decoded['message'];
+        if (message is String && message.trim().isNotEmpty) {
+          return message.trim();
+        }
+      }
+    } catch (_) {}
+
+    return rawBody;
+  }
+
+  void _handleAcceptedRequestRouting(
+    ServiceDetailModel detail,
+    AcceptedRequestInfo? acceptedInfo,
+  ) {
+    if (!mounted || _isOwner) return;
+    if (!_isAcceptedByCurrentProvider(acceptedInfo)) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.requestAcceptedView,
+        arguments: {
+          'serviceDetail': detail,
+          'acceptedUserName': acceptedInfo?.acceptedUser?.name,
+          'acceptedUserPhone': acceptedInfo?.acceptedUser?.phoneNumber,
+          'acceptedAt': acceptedInfo?.acceptedAt,
+          'authenticationCode': acceptedInfo?.authenticationCode,
+          'authenticationCodeExpiresAt': acceptedInfo?.expiresAt,
+        },
+      );
+    });
+  }
+
+  bool _isAcceptedByCurrentProvider(AcceptedRequestInfo? acceptedInfo) {
+    final acceptedUserId = acceptedInfo?.acceptedUser?.id;
+    if (acceptedUserId == null || _currentUserId == null) {
+      return false;
+    }
+
+    return acceptedUserId.toString() == _currentUserId.toString();
+  }
+
+  bool _isAcceptedByAnotherProvider(AcceptedRequestInfo? acceptedInfo) {
+    final acceptedUserId = acceptedInfo?.acceptedUser?.id;
+    if (acceptedUserId == null || _currentUserId == null) {
+      return false;
+    }
+
+    return acceptedUserId.toString() != _currentUserId.toString();
+  }
+
+  Future<bool> _hasAnotherAcceptedRequest({
+    required int currentServiceId,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    if (token == null || _currentUserId == null) {
+      return false;
+    }
+
+    final response = await ApiService.get('/service/get/all', token: token);
+    if (response.statusCode != 200) {
+      return false;
+    }
+
+    final responseData = json.decode(response.body);
+    List<dynamic> rawServices = [];
+
+    if (responseData is List<dynamic>) {
+      rawServices = responseData;
+    } else if (responseData is Map<String, dynamic>) {
+      if (responseData['services'] is List<dynamic>) {
+        rawServices = responseData['services'] as List<dynamic>;
+      } else if (responseData['data'] is List<dynamic>) {
+        rawServices = responseData['data'] as List<dynamic>;
+      } else if (responseData['content'] is List<dynamic>) {
+        rawServices = responseData['content'] as List<dynamic>;
+      }
+    }
+
+    for (final rawService in rawServices) {
+      if (rawService is! Map<String, dynamic>) continue;
+
+      final detail = ServiceDetailModel.fromJson(rawService);
+      final serviceId = detail.id;
+      if (serviceId == null || serviceId == currentServiceId) continue;
+
+      if (_isAcceptedByCurrentProvider(detail.acceptedRequestInfo)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  void _showSnackBar(
+    String message, {
+    required Color backgroundColor,
+  }) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: backgroundColor,
+        ),
+      );
+  }
+
+  void _goToMainPage() {
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(context, AppRoutes.main);
   }
 
   @override
