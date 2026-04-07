@@ -540,11 +540,11 @@ class _PerfilEditState extends State<PerfilEdit> {
     setState(() => _isLoading = true);
 
     final success = await _controller.updateUserProfile(
+      id: _user.id,
       name: nameController.text,
       email: emailController.text,
       phoneNumber: phoneController.text,
-      newPassword: newPasswordController.text.isNotEmpty ? newPasswordController.text : null,
-      currentPassword: currentPasswordController.text.isNotEmpty ? currentPasswordController.text : null,
+      password: newPasswordController.text.isNotEmpty ? newPasswordController.text : null,
     );
 
     setState(() => _isLoading = false);

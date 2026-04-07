@@ -183,16 +183,14 @@ class _ProfilePageState extends State<ProfilePage> {
     final document = await _buildDocumentPayload();
 
     final success = await _controller.updateUserProfile(
+      id: _controller.user?.id ?? '',
       name: _nameController.text.trim(),
       email: _emailController.text.trim(),
       phoneNumber: _phoneController.text.trim(),
       document: document,
-      newPassword: _newPasswordController.text.trim().isEmpty
+      password: _newPasswordController.text.trim().isEmpty
           ? null
           : _newPasswordController.text.trim(),
-      currentPassword: _currentPasswordController.text.trim().isEmpty
-          ? null
-          : _currentPasswordController.text.trim(),
     );
 
     if (!mounted) return;

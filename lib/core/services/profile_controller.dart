@@ -18,13 +18,13 @@ class ProfileController {
     try {
       final token = await _getToken();
       if (token == null) {
-        errorMessage = 'Token não encontrado';
+        errorMessage = 'Token nÃ£o encontrado';
         isLoading = false;
         return;
       }
 
       if (kDebugMode) {
-        debugPrint('[ProfileController] Carregando perfil do usuário...');
+        debugPrint('[ProfileController] Carregando perfil do usuÃ¡rio...');
       }
 
       final response = await ApiService.get('/user/get', token: token);
@@ -52,12 +52,12 @@ class ProfileController {
   }
 
   Future<bool> updateUserProfile({
+    required String id,
     required String name,
     required String email,
     required String phoneNumber,
     Map<String, String>? document,
-    String? newPassword,
-    String? currentPassword,
+    String? password,
   }) async {
     isLoading = true;
     errorMessage = '';
@@ -65,31 +65,40 @@ class ProfileController {
     try {
       final token = await _getToken();
       if (token == null) {
-        errorMessage = 'Token não encontrado';
+        errorMessage = 'Token nÃ£o encontrado';
+        isLoading = false;
+        return false;
+      }
+
+      final parsedId = int.tryParse(id);
+      if (parsedId == null) {
+        errorMessage = 'ID do usuÃ¡rio invÃ¡lido';
+        isLoading = false;
+        return false;
+      }
+
+      final normalizedPhoneNumber = phoneNumber.replaceAll(RegExp(r'\D'), '');
+      final parsedPhoneNumber = int.tryParse(normalizedPhoneNumber);
+      if (parsedPhoneNumber == null) {
+        errorMessage = 'Telefone invÃ¡lido';
         isLoading = false;
         return false;
       }
 
       final body = {
+        'id': parsedId,
         'name': name,
         'email': email,
-        'phoneNumber': phoneNumber,
+        'phoneNumber': parsedPhoneNumber,
         if (document != null) 'document': document,
-        if (newPassword != null && newPassword.isNotEmpty)
-          'newPassword': newPassword,
-        if (currentPassword != null && currentPassword.isNotEmpty)
-          'currentPassword': currentPassword,
+        if (password != null && password.isNotEmpty) 'password': password,
       };
 
       if (kDebugMode) {
         debugPrint('[ProfileController] Atualizando perfil: $body');
       }
 
-      final response = await ApiService.put(
-        '/user/put',
-        body,
-        token: token,
-      );
+      final response = await ApiService.put('/user/put', body, token: token);
 
       if (response.statusCode == 200) {
         final userData = jsonDecode(response.body);
@@ -115,15 +124,12 @@ class ProfileController {
     try {
       final token = await _getToken();
       if (token == null) {
-        errorMessage = 'Token não encontrado';
+        errorMessage = 'Token nÃ£o encontrado';
         isLoading = false;
         return false;
       }
 
-      final response = await ApiService.delete(
-        '/user/delete',
-        token: token,
-      );
+      final response = await ApiService.delete('/user/delete', token: token);
 
       if (response.statusCode == 200) {
         final prefs = await SharedPreferences.getInstance();
@@ -165,7 +171,7 @@ class ProfileController {
       return userData.cast<String, dynamic>();
     }
 
-    throw const FormatException('Formato de resposta inválido');
+    throw const FormatException('Formato de resposta invÃ¡lido');
   }
 
   Future<String?> _getToken() async {
