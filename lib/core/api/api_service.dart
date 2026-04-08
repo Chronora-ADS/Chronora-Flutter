@@ -1,10 +1,26 @@
 import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String _defaultBaseUrl = 'http://localhost:8085';
-  static const String baseUrl =
-      String.fromEnvironment('API_BASE_URL', defaultValue: _defaultBaseUrl);
+  static const String _defaultLocalBaseUrl = 'http://localhost:8085';
+  static const String _androidEmulatorBaseUrl = 'http://10.0.2.2:8085';
+  static const String _configuredBaseUrl =
+      String.fromEnvironment('API_BASE_URL', defaultValue: '');
+
+  static String get baseUrl {
+    final configuredBaseUrl = _configuredBaseUrl.trim();
+    if (configuredBaseUrl.isNotEmpty) {
+      return configuredBaseUrl;
+    }
+
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return _androidEmulatorBaseUrl;
+    }
+
+    return _defaultLocalBaseUrl;
+  }
 
   static Map<String, String> _buildHeaders({
     String? token,
@@ -17,19 +33,52 @@ class ApiService {
     };
   }
 
-  static Future<http.Response> post(String endpoint, Map<String, dynamic> data,
-      {String? token}) async {
+  static Uri _buildUri(String endpoint) {
+    final normalizedEndpoint =
+        endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+    return Uri.parse(baseUrl).resolve(normalizedEndpoint);
+  }
+
+  static String extractErrorMessage(
+    String body, {
+    String fallback = 'Erro ao processar a requisicao.',
+  }) {
+    final trimmedBody = body.trim();
+    if (trimmedBody.isEmpty) {
+      return fallback;
+    }
+
+    try {
+      final decoded = jsonDecode(trimmedBody);
+      if (decoded is Map<String, dynamic>) {
+        final message =
+            decoded['message'] ?? decoded['error_description'] ?? decoded['error'];
+        if (message is String && message.trim().isNotEmpty) {
+          return message.trim();
+        }
+      }
+    } catch (_) {
+      // If the backend did not return JSON, use the raw response body.
+    }
+
+    return trimmedBody;
+  }
+
+  static Future<http.Response> post(
+    String endpoint,
+    Map<String, dynamic> data, {
+    String? token,
+  }) async {
     try {
       final headers = _buildHeaders(token: token);
 
-      final response = await http.post(
-        Uri.parse('$baseUrl$endpoint'),
+      return await http.post(
+        _buildUri(endpoint),
         headers: headers,
         body: jsonEncode(data),
       );
-      return response;
     } catch (e) {
-      throw Exception('Erro de conexão: $e');
+      throw Exception('Erro de conexao: $e');
     }
   }
 
@@ -37,29 +86,30 @@ class ApiService {
     try {
       final headers = _buildHeaders(token: token);
 
-      final response = await http.get(
-        Uri.parse('$baseUrl$endpoint'),
+      return await http.get(
+        _buildUri(endpoint),
         headers: headers,
       );
-      return response;
     } catch (e) {
-      throw Exception('Erro de conexão: $e');
+      throw Exception('Erro de conexao: $e');
     }
   }
 
-  static Future<http.Response> put(String endpoint, Map<String, dynamic> data,
-      {String? token}) async {
+  static Future<http.Response> put(
+    String endpoint,
+    Map<String, dynamic> data, {
+    String? token,
+  }) async {
     try {
       final headers = _buildHeaders(token: token);
 
-      final response = await http.put(
-        Uri.parse('$baseUrl$endpoint'),
+      return await http.put(
+        _buildUri(endpoint),
         headers: headers,
         body: jsonEncode(data),
       );
-      return response;
     } catch (e) {
-      throw Exception('Erro de conexão: $e');
+      throw Exception('Erro de conexao: $e');
     }
   }
 
@@ -70,13 +120,12 @@ class ApiService {
     try {
       final finalHeaders = _buildHeaders(extra: headers);
 
-      final response = await http.put(
-        Uri.parse('$baseUrl$endpoint'),
+      return await http.put(
+        _buildUri(endpoint),
         headers: finalHeaders,
       );
-      return response;
     } catch (e) {
-      throw Exception('Erro de conexão: $e');
+      throw Exception('Erro de conexao: $e');
     }
   }
 }

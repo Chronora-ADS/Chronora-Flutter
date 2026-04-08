@@ -48,7 +48,8 @@ class Service {
       id: json['id'],
       title: json['title'] ?? 'Título não disponível',
       description: json['description'] ?? 'Descrição não disponível',
-      serviceImage: json['serviceImage'] ?? '',
+      serviceImage:
+          (json['serviceImageUrl'] ?? json['serviceImage'] ?? '').toString(),
       timeChronos: json['timeChronos'] ?? 0,
       userCreator: userCreator,
       categoryEntities: (json['categoryEntities'] as List? ?? [])

@@ -2,6 +2,7 @@ import 'package:chronora/core/constants/app_colors.dart';
 import 'package:chronora/core/models/main_page_requests_model.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import '../core/api/api_service.dart';
 
 class ServiceCard extends StatelessWidget {
   final Service service;
@@ -42,25 +43,7 @@ class ServiceCard extends StatelessWidget {
             // Service Image com informações sobrepostas
             Stack(
               children: [
-                Container(
-                  height: 300,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(30),
-                    ),
-                    image: service.serviceImage.isNotEmpty
-                        ? DecorationImage(
-                            image: MemoryImage(base64.decode(service.serviceImage)),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                  ),
-                  child: service.serviceImage.isEmpty
-                      ? const Icon(Icons.image, size: 50, color: Colors.grey)
-                      : null,
-                ),
+                _buildServiceImage(),
 
                 // Informações sobrepostas no canto superior direito
                 Positioned(
@@ -212,5 +195,113 @@ class ServiceCard extends StatelessWidget {
   // Função para formatar a data
   String _formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  Widget _buildServiceImage() {
+    final imageValue = _normalizeImageValue(service.serviceImage);
+
+    if (imageValue.isEmpty) {
+      return _buildImagePlaceholder();
+    }
+
+    if (_isDataUriImage(imageValue)) {
+      return _buildBase64Image(imageValue.split(',').last);
+    }
+
+    if (_isNetworkImage(imageValue)) {
+      return ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(30),
+          topRight: Radius.circular(30),
+        ),
+        child: Image.network(
+          imageValue,
+          height: 300,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => _buildImagePlaceholder(),
+        ),
+      );
+    }
+
+    return _buildBase64Image(imageValue);
+  }
+
+  Widget _buildImagePlaceholder() {
+    return Container(
+      height: 300,
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: Color(0xFFD8DBD2),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(30),
+          topRight: Radius.circular(30),
+        ),
+      ),
+      child: const Icon(Icons.image, size: 50, color: Colors.grey),
+    );
+  }
+
+  bool _isNetworkImage(String value) {
+    return value.startsWith('http://') || value.startsWith('https://');
+  }
+
+  bool _isDataUriImage(String value) {
+    return value.startsWith('data:image/');
+  }
+
+  Widget _buildBase64Image(String value) {
+    try {
+      return ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(30),
+          topRight: Radius.circular(30),
+        ),
+        child: Image.memory(
+          base64.decode(value),
+          height: 300,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => _buildImagePlaceholder(),
+        ),
+      );
+    } catch (_) {
+      return _buildImagePlaceholder();
+    }
+  }
+
+  String _normalizeImageValue(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return '';
+    }
+
+    if (_isDataUriImage(trimmed)) {
+      return trimmed;
+    }
+
+    final imageUri = Uri.tryParse(trimmed);
+    if (imageUri == null) {
+      return trimmed;
+    }
+
+    if (!imageUri.hasScheme) {
+      return Uri.parse(ApiService.baseUrl).resolveUri(imageUri).toString();
+    }
+
+    if (_isLocalhostUri(imageUri)) {
+      final apiBaseUri = Uri.parse(ApiService.baseUrl);
+      return imageUri.replace(
+        scheme: apiBaseUri.scheme,
+        host: apiBaseUri.host,
+        port: apiBaseUri.hasPort ? apiBaseUri.port : null,
+      ).toString();
+    }
+
+    return trimmed;
+  }
+
+  bool _isLocalhostUri(Uri uri) {
+    return uri.host == 'localhost' || uri.host == '127.0.0.1';
   }
 }

@@ -59,18 +59,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     _descriptionController.text = service.description;
     _chronosController.text = service.timeChronos.toString();
     
-    // Se tiver imagem, converte de base64
+    // Se tiver imagem, mantem apenas a referencia visual do arquivo atual.
     if (service.serviceImage.isNotEmpty) {
-      try {
-        final imageBytes = base64.decode(service.serviceImage);
-        setState(() {
-          _imageBytes = imageBytes;
-          _selectedImage = _imageBytes;
-          _imageFileName = 'imagem_servico.jpg';
-        });
-      } catch (e) {
-        // Ignora erro de decodificacao da imagem para nao travar a tela.
-      }
+      setState(() {
+        _imageFileName = _extractImageFileName(service.serviceImage);
+      });
     }
     
     // Preenche categorias
@@ -126,16 +119,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     _selectedModality = normalizedModality;
     
     // Carrega imagem se existir
-    if (serviceDetail.serviceImage != null && serviceDetail.serviceImage!.isNotEmpty) {
-      try {
-        setState(() {
-          _imageBytes = base64.decode(serviceDetail.serviceImage!);
-          _selectedImage = _imageBytes;
-          _imageFileName = 'imagem_servico.jpg';
-        });
-      } catch (e) {
-        // Ignora erro de decodificacao da imagem para nao travar a tela.
-      }
+    if (serviceDetail.serviceImage != null &&
+        serviceDetail.serviceImage!.isNotEmpty) {
+      setState(() {
+        _imageFileName = _extractImageFileName(serviceDetail.serviceImage!);
+      });
     }
   }
 
@@ -152,6 +140,24 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       default:
         return 'Presencial'; // Valor padrão
     }
+  }
+
+  String _extractImageFileName(String imageValue) {
+    final normalizedValue = imageValue.trim();
+    if (normalizedValue.isEmpty) {
+      return 'imagem_servico';
+    }
+
+    if (normalizedValue.startsWith('http://') ||
+        normalizedValue.startsWith('https://')) {
+      final uri = Uri.tryParse(normalizedValue);
+      if (uri != null && uri.pathSegments.isNotEmpty) {
+        return uri.pathSegments.last;
+      }
+      return 'imagem_servico';
+    }
+
+    return 'imagem_servico.jpg';
   }
 
   // Método para buscar os dados completos do serviço por ID
@@ -525,6 +531,16 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           setState(() { _isLoading = false; });
           return;
         }
+        if (timeChronos > 100) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Tempo em Chronos deve ser no maximo 100'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() { _isLoading = false; });
+          return;
+        }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -544,15 +560,16 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         'timeChronos': timeChronos,
         'modality': _selectedModality!,
         'deadline': formattedDeadline,
-        'categories': _categoriesTags,
+        'categoryEntities':
+            _categoriesTags.map((category) => {'name': category}).toList(),
         if (base64Image != null) 'serviceImage': base64Image,
       };
 
 
       final response = await ApiService.put(
         '/service/put', // Note: endpoint diferente para edição
+        editModel,
         token: token,
-        editModel
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {

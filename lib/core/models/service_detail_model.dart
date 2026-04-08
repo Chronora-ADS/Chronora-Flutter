@@ -32,9 +32,11 @@ class ServiceDetailModel {
       description: json['description'] ?? '',
       timeChronos: json['timeChronos'] ?? 0,
       deadline: json['deadline'] ?? '',
-      categoryEntities: _parseCategories(json['categoryEntities']),
+      categoryEntities: _parseCategories(
+        json['categoryEntities'] ?? json['categories'],
+      ),
       modality: json['modality'] ?? '',
-      serviceImage: json['serviceImage'],
+      serviceImage: json['serviceImageUrl'] ?? json['serviceImage'],
       userCreator: UserCreator.fromJson(json['userCreator'] ?? {}),
     );
   }
@@ -56,7 +58,7 @@ class ServiceDetailModel {
       'description': description,
       'timeChronos': timeChronos,
       'deadline': deadline,
-      'categories': categoryEntities.map((e) => e.name).toList(),
+      'categoryEntities': categoryEntities.map((e) => e.toJson()).toList(),
       'modality': modality,
       if (serviceImage != null) 'serviceImage': serviceImage,
     };

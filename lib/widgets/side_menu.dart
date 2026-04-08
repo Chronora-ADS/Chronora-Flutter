@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants/app_routes.dart';
 import '../core/constants/app_colors.dart';
+import '../core/api/api_service.dart';
 
 class SideMenu extends StatelessWidget {
   final VoidCallback onWalletPressed;
@@ -180,7 +182,26 @@ class SideMenu extends StatelessWidget {
     );
   }
 
-  void _logout(BuildContext context) {
-    Navigator.pushReplacementNamed(context, AppRoutes.login);
+  Future<void> _logout(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+
+    if (token != null) {
+      try {
+        await ApiService.post('/auth/logout', {}, token: token);
+      } catch (_) {
+        // Mesmo se o logout remoto falhar, limpamos o token localmente.
+      }
+    }
+
+    await prefs.remove('auth_token');
+
+    if (!context.mounted) return;
+
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.login,
+      (route) => false,
+    );
   }
 }

@@ -197,6 +197,16 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       return;
     }
 
+    if (_selectedImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecione uma imagem para o pedido'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     if (_selectedModality == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -231,6 +241,16 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       String? base64Image;
       if (_selectedImage != null) {
         base64Image = await _convertImageToBase64();
+      }
+      if (base64Image == null || base64Image.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Nao foi possivel processar a imagem do pedido'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() { _isLoading = false; });
+        return;
       }
 
       // VALIDAÇÃO E FORMATAÇÃO CORRETA DA DATA
@@ -316,6 +336,16 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           setState(() { _isLoading = false; });
           return;
         }
+        if (timeChronos > 100) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Tempo em Chronos deve ser no maximo 100'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() { _isLoading = false; });
+          return;
+        }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -340,9 +370,9 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
 
 
       final response = await ApiService.post(
-        '/service/post', 
+        '/service/post',
+        requestModel.toJson(),
         token: token,
-        requestModel.toJson()
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {

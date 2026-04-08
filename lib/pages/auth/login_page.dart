@@ -4,16 +4,17 @@ import 'package:chronora/core/constants/app_routes.dart';
 import 'package:chronora/pages/auth/account_creation_page.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../widgets/backgrounds/background_auth_widget.dart';
-import '../../widgets/auth_text_field.dart';
-import '../../core/constants/app_colors.dart';
+
 import '../../core/api/api_service.dart';
+import '../../core/constants/app_colors.dart';
+import '../../widgets/auth_text_field.dart';
+import '../../widgets/backgrounds/background_auth_widget.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
-  _LoginPageState createState() => _LoginPageState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
@@ -29,6 +30,13 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       // Ignora falha ao salvar token para nao bloquear o login.
     }
+  }
+
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   Future<void> _login() async {
@@ -48,33 +56,28 @@ class _LoginPageState extends State<LoginPage> {
       });
 
       if (response.statusCode == 200) {
-        // A API está retornando um JSON, precisamos extrair o token
         final responseData = json.decode(response.body);
-        final token = responseData['access_token']; // Extrair o token do JSON
-
+        final token = responseData['access_token'] ?? responseData['token'];
 
         if (token == null) {
-          throw Exception('Token não encontrado na resposta');
+          throw Exception('Token nao encontrado na resposta');
         }
 
         await _saveToken(token);
+        if (!mounted) return;
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Login realizado com sucesso!')),
-        );
-
+        _showSnackBar('Login realizado com sucesso!');
         Navigator.pushReplacementNamed(context, AppRoutes.main);
       } else {
-        final error = response.body;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro no login: $error')),
+        _showSnackBar(
+          'Erro no login: '
+          '${ApiService.extractErrorMessage(response.body, fallback: 'Nao foi possivel fazer login.')}',
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro de conexão: $e')),
-      );
+      _showSnackBar('Erro de conexao: $e');
     } finally {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -121,29 +124,20 @@ class _LoginPageState extends State<LoginPage> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 30),
-
                   AuthTextField(
                     hintText: 'E-mail',
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                   ),
-
                   const SizedBox(height: 16),
-
                   AuthTextField(
                     hintText: 'Senha',
                     controller: _passwordController,
                     obscureText: true,
                   ),
-
                   const SizedBox(height: 20),
-
-                  // CORREÇÃO: Checkbox e "Esqueceu a senha" sempre na mesma linha
                   _buildRememberForgotSection(isMobile),
-
                   const SizedBox(height: 20),
-
-                  // Botão de Login
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -163,7 +157,8 @@ class _LoginPageState extends State<LoginPage> {
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
                           : Text(
@@ -176,10 +171,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
-                  // Botão de Criar Conta
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
@@ -189,7 +181,8 @@ class _LoginPageState extends State<LoginPage> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const AccountCreationPage(),
+                                  builder: (context) =>
+                                      const AccountCreationPage(),
                                 ),
                               );
                             },
@@ -224,12 +217,10 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // MÉTODO NOVO: Constroi a seção "Lembre-se de mim" e "Esqueceu a senha"
   Widget _buildRememberForgotSection(bool isMobile) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Checkbox "Lembre-se de mim"
         Flexible(
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -237,7 +228,7 @@ class _LoginPageState extends State<LoginPage> {
               Checkbox(
                 value: false,
                 onChanged: (value) {
-                  // Implementar lembrar de mim
+                  // Implementar lembrar de mim.
                 },
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity.compact,
@@ -256,14 +247,11 @@ class _LoginPageState extends State<LoginPage> {
             ],
           ),
         ),
-
         const SizedBox(width: 8),
-
-        // "Esqueceu a senha"
         Flexible(
           child: TextButton(
             onPressed: () {
-              // Navegar para esqueci a senha
+              // Navegar para esqueci a senha.
             },
             style: TextButton.styleFrom(
               padding: EdgeInsets.zero,

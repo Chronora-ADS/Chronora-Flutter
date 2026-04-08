@@ -15,7 +15,7 @@ import 'pix_sell_page.dart';
 class SellChronosController extends ChangeNotifier {
   static const double CHRONOS_SELL_PRICE = 2.00; // R$ por Chronos
   static const double TAX_PERCENTAGE = 0.10; // 10%
-  static const int MIN_CHRONOS_KEEP = 1; // Mínimo de Chronos que deve permanecer na carteira
+  static const int MIN_CHRONOS_KEEP = 0; // Backend permite vender ate zerar a carteira
   static const String TOOLTIP_TEXT =
       'O valor de venda de Chronos é equivalente a R\$2,00 reais. No final, é aplicada uma taxa de 10% sobre o total.';
 
@@ -146,7 +146,7 @@ class SellChronosController extends ChangeNotifier {
         errorMessage = 'Saldo insuficiente para vender $amount Chronos.';
         sellAmount = amount;
       } else if (chronosAfterSale < MIN_CHRONOS_KEEP) {
-        errorMessage = 'Você deve manter pelo menos $MIN_CHRONOS_KEEP Chronos em sua carteira.';
+        errorMessage = 'Voce nao pode vender mais Chronos do que possui.';
         sellAmount = amount;
       } else {
         sellAmount = amount;
@@ -185,7 +185,7 @@ class SellChronosController extends ChangeNotifier {
     }
     
     if (chronosAfterSale < MIN_CHRONOS_KEEP) {
-      onError('Você deve manter pelo menos $MIN_CHRONOS_KEEP Chronos em sua carteira.');
+      onError('Voce nao pode vender mais Chronos do que possui.');
       return;
     }
     
@@ -589,7 +589,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
               if (_controller.chronosAfterSale >= 0) ...{
                 const SizedBox(height: 8),
                 Text(
-                  'Você deve manter pelo menos ${SellChronosController.MIN_CHRONOS_KEEP} Chronos em sua carteira.',
+                  'O backend permite vender ate zerar seu saldo de Chronos.',
                   style: TextStyle(
                     color: Colors.black.withOpacity(0.6),
                     fontSize: 11,

@@ -1,20 +1,21 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../widgets/backgrounds/background_auth_widget.dart';
-import '../../widgets/auth_text_field.dart';
+
+import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
-import '../../core/api/api_service.dart';
+import '../../widgets/auth_text_field.dart';
+import '../../widgets/backgrounds/background_auth_widget.dart';
 
 class AccountCreationPage extends StatefulWidget {
   const AccountCreationPage({super.key});
 
   @override
-  _AccountCreationPageState createState() => _AccountCreationPageState();
+  State<AccountCreationPage> createState() => _AccountCreationPageState();
 }
 
 class _AccountCreationPageState extends State<AccountCreationPage> {
@@ -31,7 +32,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
 
   Future<void> _pickFile() async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
       );
@@ -43,6 +44,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao selecionar arquivo: $e')),
       );
@@ -53,47 +55,66 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
     if (kIsWeb) {
       final bytes = file.bytes;
       if (bytes == null) throw Exception('Arquivo vazio');
-      String base64String = base64Encode(bytes);
-      return base64String;
-    } else {
-      final file = File(_pickedFile!.path!);
-      List<int> fileBytes = await file.readAsBytes();
-      String base64String = base64Encode(fileBytes);
-      return base64String;
+      return base64Encode(bytes);
     }
+
+    final selectedFile = File(_pickedFile!.path!);
+    final fileBytes = await selectedFile.readAsBytes();
+    return base64Encode(fileBytes);
+  }
+
+  String _resolveDocumentMimeType(PlatformFile file) {
+    switch ((file.extension ?? '').toLowerCase()) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   String? _validateName(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Nome é obrigatório';
+      return 'Nome e obrigatorio';
     }
     return null;
   }
 
   String? _validateEmail(String? value) {
     if (value == null || value.isEmpty) {
-      return 'E-mail é obrigatório';
+      return 'E-mail e obrigatorio';
     }
     if (!value.contains('@')) {
-      return 'E-mail inválido';
+      return 'E-mail invalido';
     }
     return null;
   }
 
   String? _validatePhone(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Telefone é obrigatório';
+      return 'Telefone e obrigatorio';
     }
     final digitsOnly = value.replaceAll(RegExp(r'\D'), '');
     if (digitsOnly.length < 10) {
-      return 'Telefone inválido';
+      return 'Telefone invalido';
     }
     return null;
   }
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Senha é obrigatória';
+      return 'Senha e obrigatoria';
     }
     if (value.length < 6) {
       return 'Senha deve ter pelo menos 6 caracteres';
@@ -103,10 +124,10 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
 
   String? _validateConfirmPassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Confirmação de senha é obrigatória';
+      return 'Confirmacao de senha e obrigatoria';
     }
     if (value != _passwordController.text) {
-      return 'Senhas não coincidem';
+      return 'Senhas nao coincidem';
     }
     return null;
   }
@@ -115,9 +136,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_pickedFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecione um documento com foto')),
-      );
+      _showSnackBar('Selecione um documento com foto');
       return;
     }
 
@@ -126,58 +145,40 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
     });
 
     try {
-      String base64Data = await _convertToBase64(_pickedFile!);
-
+      final base64Data = await _convertToBase64(_pickedFile!);
       final phoneDigits = _phoneController.text.replaceAll(RegExp(r'\D'), '');
 
       final payload = {
-        "name": _nameController.text.trim(),
-        "email": _emailController.text.trim(),
-        "phoneNumber": int.parse(phoneDigits),
-        "password": _passwordController.text,
-        "confirmPassword": _confirmPasswordController.text,
-        "document": {
-          "name": _pickedFile!.name,
-          "type": _pickedFile!.extension ?? 'jpg',
-          "data": base64Data
-        }
+        'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'phoneNumber': int.parse(phoneDigits),
+        'password': _passwordController.text,
+        'document': {
+          'name': _pickedFile!.name,
+          'type': _resolveDocumentMimeType(_pickedFile!),
+          'data': base64Data,
+        },
       };
 
       final response = await ApiService.post('/auth/register', payload);
+      if (!mounted) return;
 
-      if (response.statusCode == 200) {
-        final token = response.body;
-        await _saveToken(token);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cadastro realizado com sucesso!')),
-        );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _showSnackBar('Cadastro realizado com sucesso!');
         Navigator.pushReplacementNamed(context, AppRoutes.login);
       } else {
-        final error = response.body;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content:
-                  Text('Erro no cadastro: ${response.statusCode} - $error')),
+        _showSnackBar(
+          'Erro no cadastro: '
+          '${ApiService.extractErrorMessage(response.body, fallback: 'Nao foi possivel concluir o cadastro.')}',
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro: $e')),
-      );
+      _showSnackBar('Erro: $e');
     } finally {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
-    }
-  }
-
-  Future<void> _saveToken(String token) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('auth_token', token);
-    } catch (e) {
-      // Ignora falha ao salvar token para nao bloquear o cadastro.
     }
   }
 
@@ -215,57 +216,40 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 30),
-
-                  // Nome completo
                   AuthTextField(
                     hintText: 'Nome completo',
                     controller: _nameController,
                     validator: _validateName,
                   ),
-
                   const SizedBox(height: 16),
-
-                  // E-mail
                   AuthTextField(
                     hintText: 'E-mail',
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     validator: _validateEmail,
                   ),
-
                   const SizedBox(height: 16),
-
-                  // Número de celular
                   AuthTextField(
-                    hintText: 'Número de celular (com DDD)',
+                    hintText: 'Numero de celular (com DDD)',
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
                     validator: _validatePhone,
                   ),
-
                   const SizedBox(height: 16),
-
-                  // Senha
                   AuthTextField(
                     hintText: 'Senha',
                     controller: _passwordController,
                     obscureText: true,
                     validator: _validatePassword,
                   ),
-
                   const SizedBox(height: 16),
-
-                  // Confirmar Senha
                   AuthTextField(
                     hintText: 'Confirmar Senha',
                     controller: _confirmPasswordController,
                     obscureText: true,
                     validator: _validateConfirmPassword,
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Botão para anexar documento
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
@@ -307,7 +291,6 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                       ),
                     ),
                   ),
-
                   if (_fileName != null) ...{
                     const SizedBox(height: 10),
                     Text(
@@ -319,10 +302,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                       textAlign: TextAlign.center,
                     ),
                   },
-
                   const SizedBox(height: 16),
-
-                  // Botão de criar conta
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -354,10 +334,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                             ),
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
-                  // Botão de voltar para login
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
