@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:core';
 import 'package:chronora/core/models/main_page_requests_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
@@ -21,8 +22,10 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   final TextEditingController _searchController = TextEditingController();
+
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
+
 
   List<Service> services = [];
   List<Service> filteredServices = [];
@@ -490,6 +493,7 @@ class _MainPageState extends State<MainPage> {
         ),
       );
     }
+
 
     if (errorMessage.isNotEmpty) {
       return Padding(

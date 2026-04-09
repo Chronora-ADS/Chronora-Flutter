@@ -3,6 +3,7 @@ import '../core/constants/app_routes.dart';
 import '../core/constants/app_colors.dart';
 
 class SideMenu extends StatelessWidget {
+
   final VoidCallback onWalletPressed;
 
   const SideMenu({super.key, required this.onWalletPressed});
@@ -10,6 +11,7 @@ class SideMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+
       color: AppColors.amareloUmPoucoEscuro,
       child: Column(
         children: [
@@ -17,10 +19,12 @@ class SideMenu extends StatelessWidget {
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
+
                 _buildMenuSection(
                   title: '',
                   children: [
                     _buildMenuItem(
+
                       icon: 'assets/img/HomeWhite.png',
                       title: 'Página Inicial',
                       onTap: () {
@@ -31,14 +35,14 @@ class SideMenu extends StatelessWidget {
                       icon: 'assets/img/PlusWhite.png',
                       title: 'Crie um pedido',
                       onTap: () {
-                        Navigator.pushNamed(context, '/request-creation');
+                        Navigator.pushNamed(context, AppRoutes.requestCreation);
                       },
                     ),
                     _buildMenuItem(
                       icon: 'assets/img/SuitcaseWhite.png',
                       title: 'Meus pedidos',
                       onTap: () {
-                        Navigator.pushNamed(context, '/my-orders');
+                        Navigator.pushNamed(context, AppRoutes.myRequests);
                       },
                     ),
                     _buildMenuItem(
@@ -72,7 +76,7 @@ class SideMenu extends StatelessWidget {
                     icon: 'assets/img/UserIconWhite.png',
                     title: 'Perfil',
                     onTap: () {
-                      Navigator.pushNamed(context, '/profile');
+                      Navigator.pushNamed(context, AppRoutes.profile);
                     },
                   ),
                   _buildMenuItem(
@@ -145,6 +149,8 @@ class SideMenu extends StatelessWidget {
             child: Text(
               title,
               style: const TextStyle(
+
+
                 fontSize: 20,
                 color: AppColors.branco,
               ),
@@ -156,11 +162,13 @@ class SideMenu extends StatelessWidget {
   }
 
   Widget _buildMenuItem({
+
     required String icon,
     required String title,
     required VoidCallback onTap,
   }) {
     return ListTile(
+
       leading: Image.asset(
         icon,
         width: 24,
@@ -169,6 +177,7 @@ class SideMenu extends StatelessWidget {
       title: Text(
         title,
         style: const TextStyle(
+
           fontSize: 20,
           color: AppColors.branco,
           fontWeight: FontWeight.w700,
@@ -176,6 +185,7 @@ class SideMenu extends StatelessWidget {
       ),
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+
       minLeadingWidth: 0,
     );
   }
