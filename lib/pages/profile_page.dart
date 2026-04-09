@@ -338,6 +338,10 @@ class _ProfilePageState extends State<ProfilePage> {
       return;
     }
 
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Conta deletada com sucesso.')),
+    );
+
     Navigator.pushNamedAndRemoveUntil(
       context,
       AppRoutes.login,

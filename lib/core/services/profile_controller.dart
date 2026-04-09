@@ -131,12 +131,14 @@ class ProfileController {
 
       final response = await ApiService.delete('/user/delete', token: token);
 
-      if (response.statusCode == 200) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove('auth_token');
-        user = null;
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        await _clearSession();
         errorMessage = '';
         return true;
+      }
+
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        await _clearSession();
       }
 
       _handleErrorResponse(response);
@@ -147,6 +149,12 @@ class ProfileController {
     } finally {
       isLoading = false;
     }
+  }
+
+  Future<void> _clearSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
+    user = null;
   }
 
   void _handleErrorResponse(dynamic response) {
