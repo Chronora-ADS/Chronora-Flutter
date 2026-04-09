@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:html' as html if (dart.library.io) 'dart:io';
 import 'dart:typed_data';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,7 +16,7 @@ import '../../../core/models/create_request_model.dart';
 class RequestCreationPage extends StatefulWidget {
   const RequestCreationPage({super.key});
   @override
-  _RequestCreationPageState createState() => _RequestCreationPageState();
+  State<RequestCreationPage> createState() => _RequestCreationPageState();
 }
 
 class _RequestCreationPageState extends State<RequestCreationPage> {
@@ -73,14 +72,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   }
 
   Future<void> _pickImage() async {
-    if (kIsWeb) {
-      _pickImageWeb();
-    } else {
-      _pickImageMobile();
-    }
-  }
-
-  Future<void> _pickImageMobile() async {
     final ImagePicker picker = ImagePicker();
     try {
       final XFile? image = await picker.pickImage(
@@ -90,13 +81,20 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         maxHeight: 1024,
       );
 
-      if (image != null) {
-        setState(() {
-          _selectedImage = File(image.path);
-          _imageFileName = image.name;
-        });
+      if (image == null) {
+        return;
       }
+
+      final imageBytes = await image.readAsBytes();
+      if (!mounted) return;
+
+      setState(() {
+        _imageBytes = imageBytes;
+        _selectedImage = kIsWeb ? imageBytes : File(image.path);
+        _imageFileName = image.name;
+      });
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Erro ao selecionar imagem'),
@@ -106,29 +104,24 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     }
   }
 
-  void _pickImageWeb() {
-    final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
-    uploadInput.accept = 'image/png,image/jpeg,image/jpg,image/webp,image/bmp';
-    
-    uploadInput.onChange.listen((e) {
-      final files = uploadInput.files;
-      if (files != null && files.isNotEmpty) {
-        final file = files[0];
-        final reader = html.FileReader();
-        
-        reader.onLoadEnd.listen((e) {
-          setState(() {
-            _imageBytes = reader.result as Uint8List?;
-            _imageFileName = file.name;
-            _selectedImage = _imageBytes;
-          });
-        });
-        
-        reader.readAsArrayBuffer(file);
-      }
+  void _showFeedback(
+    String message, {
+    Color backgroundColor = Colors.red,
+  }) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: backgroundColor,
+      ),
+    );
+  }
+
+  void _stopLoading() {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
     });
-    
-    uploadInput.click();
   }
 
   String _getDisplayFileName(String fileName, double maxWidth) {
@@ -165,17 +158,13 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   // Método para converter imagem para base64
   Future<String?> _convertImageToBase64() async {
     try {
-      if (kIsWeb) {
-        if (_imageBytes != null) {
-          String base64String = base64Encode(_imageBytes!);
-          return base64String;
-        }
-      } else {
-        if (_selectedImage != null && _selectedImage is File) {
-          List<int> fileBytes = await _selectedImage.readAsBytes();
-          String base64String = base64Encode(fileBytes);
-          return base64String;
-        }
+      if (_imageBytes != null) {
+        return base64Encode(_imageBytes!);
+      }
+
+      if (_selectedImage != null && _selectedImage is File) {
+        final List<int> fileBytes = await _selectedImage.readAsBytes();
+        return base64Encode(fileBytes);
       }
       return null;
     } catch (e) {
@@ -374,13 +363,12 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         requestModel.toJson(),
         token: token,
       );
+      if (!mounted) return;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pedido criado com sucesso!'),
-            backgroundColor: Colors.green,
-          ),
+        _showFeedback(
+          'Pedido criado com sucesso!',
+          backgroundColor: Colors.green,
         );
         
         // Limpar formulário após sucesso
@@ -396,10 +384,16 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         Navigator.pop(context, true);
         
       } else {
-        final error = response.body;
+        String errorMessage = ApiService.extractErrorMessage(
+          response.body,
+          fallback: 'Erro ao criar pedido.',
+        );
+        _showFeedback(
+          '$errorMessage (${response.statusCode})',
+          backgroundColor: Colors.red,
+        );
+        /*
         
-        String errorMessage = 'Erro ao criar pedido';
-        if (response.statusCode == 400) {
           errorMessage = 'Dados inválidos. Verifique as informações preenchidas.';
         } else if (response.statusCode == 401) {
           errorMessage = 'Não autorizado. Faça login novamente.';
@@ -413,18 +407,15 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             backgroundColor: Colors.red,
           ),
         );
+        */
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
+      _showFeedback(
+        'Erro: ${e.toString()}',
+        backgroundColor: Colors.red,
       );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      _stopLoading();
     }
   }
 

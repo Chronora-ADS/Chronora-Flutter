@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:html' as html if (dart.library.io) 'dart:io';
 import 'dart:typed_data';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,7 +21,7 @@ class RequestEditingPage extends StatefulWidget {
   });
 
   @override
-  _RequestEditingPageState createState() => _RequestEditingPageState();
+  State<RequestEditingPage> createState() => _RequestEditingPageState();
 }
 
 class _RequestEditingPageState extends State<RequestEditingPage> {
@@ -58,6 +57,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     _titleController.text = service.title;
     _descriptionController.text = service.description;
     _chronosController.text = service.timeChronos.toString();
+    _deadlineController.text =
+        '${service.deadline.day.toString().padLeft(2, '0')}/'
+        '${service.deadline.month.toString().padLeft(2, '0')}/'
+        '${service.deadline.year}';
+    _selectedModality = _normalizeModality(service.modality);
     
     // Se tiver imagem, mantem apenas a referencia visual do arquivo atual.
     if (service.serviceImage.isNotEmpty) {
@@ -106,25 +110,17 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       }
     }
     
-    // Preenche categorias - extraindo apenas os nomes
     setState(() {
       _categoriesTags = serviceDetail.categoryEntities
           .map((category) => category.name)
           .where((name) => name.isNotEmpty)
           .toList();
-    });
-    
-    // Normaliza a modalidade para corresponder aos valores do dropdown
-    String normalizedModality = _normalizeModality(serviceDetail.modality);
-    _selectedModality = normalizedModality;
-    
-    // Carrega imagem se existir
-    if (serviceDetail.serviceImage != null &&
-        serviceDetail.serviceImage!.isNotEmpty) {
-      setState(() {
+      _selectedModality = _normalizeModality(serviceDetail.modality);
+      if (serviceDetail.serviceImage != null &&
+          serviceDetail.serviceImage!.isNotEmpty) {
         _imageFileName = _extractImageFileName(serviceDetail.serviceImage!);
-      });
-    }
+      }
+    });
   }
 
   // Método para normalizar a modalidade
@@ -185,6 +181,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         final serviceDetail = ServiceDetailModel.fromJson(responseData);
+        if (!mounted) return;
         
         // Preenche o formulário com os dados do serviço
         _populateFormFromServiceDetail(serviceDetail);
@@ -203,6 +200,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         ),
       );
     } finally {
+      if (!mounted) return;
       setState(() {
         _isFetchingData = false;
       });
@@ -255,7 +253,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     }
   }
 
-  Future<void> _pickImageMobile() async {
+  Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     try {
       final XFile? image = await picker.pickImage(
@@ -265,13 +263,21 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         maxHeight: 1024,
       );
 
-      if (image != null) {
-        setState(() {
-          _selectedImage = File(image.path);
-          _imageFileName = image.name;
-        });
+      if (image == null) {
+        return;
       }
+
+      final imageBytes = await image.readAsBytes();
+      if (!mounted) return;
+
+      setState(() {
+        _imageBytes = imageBytes;
+        _selectedImage = kIsWeb ? imageBytes : File(image.path);
+        _imageFileName = image.name;
+      });
     } catch (e) {
+      if (!mounted) return;
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Erro ao selecionar imagem'),
@@ -281,30 +287,24 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     }
   }
 
-  void _pickImageWeb() {
-    final html.FileUploadInputElement uploadInput =
-        html.FileUploadInputElement();
-    uploadInput.accept = 'image/png,image/jpeg,image/jpg,image/webp,image/bmp';
+  void _showFeedback(
+    String message, {
+    Color backgroundColor = Colors.red,
+  }) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: backgroundColor,
+      ),
+    );
+  }
 
-    uploadInput.onChange.listen((e) {
-      final files = uploadInput.files;
-      if (files != null && files.isNotEmpty) {
-        final file = files[0];
-        final reader = html.FileReader();
-
-        reader.onLoadEnd.listen((e) {
-          setState(() {
-            _imageBytes = reader.result as Uint8List?;
-            _imageFileName = file.name;
-            _selectedImage = _imageBytes;
-          });
-        });
-
-        reader.readAsArrayBuffer(file);
-      }
+  void _stopLoading() {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
     });
-
-    uploadInput.click();
   }
 
   @override
@@ -332,15 +332,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       _categoriesTags.remove(category);
     });
   }
-
-  Future<void> _pickImage() async {
-    if (kIsWeb) {
-      _pickImageWeb();
-    } else {
-      _pickImageMobile();
-    }
-  }
-
 
   String _getDisplayFileName(String fileName, double maxWidth) {
     const double maxPercentage = 0.45;
@@ -383,17 +374,13 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   // Método para converter imagem para base64
   Future<String?> _convertImageToBase64() async {
     try {
-      if (kIsWeb) {
-        if (_imageBytes != null) {
-          String base64String = base64Encode(_imageBytes!);
-          return base64String;
-        }
-      } else {
-        if (_selectedImage != null && _selectedImage is File) {
-          List<int> fileBytes = await _selectedImage.readAsBytes();
-          String base64String = base64Encode(fileBytes);
-          return base64String;
-        }
+      if (_imageBytes != null) {
+        return base64Encode(_imageBytes!);
+      }
+
+      if (_selectedImage != null && _selectedImage is File) {
+        final List<int> fileBytes = await _selectedImage.readAsBytes();
+        return base64Encode(fileBytes);
       }
       return null;
     } catch (e) {
@@ -572,12 +559,12 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         token: token,
       );
 
+      if (!mounted) return;
+
       if (response.statusCode == 200 || response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pedido editado com sucesso!'),
-            backgroundColor: Colors.green,
-          ),
+        _showFeedback(
+          'Pedido editado com sucesso!',
+          backgroundColor: Colors.green,
         );
 
                 // Limpar formulário após sucesso
@@ -594,9 +581,10 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         Navigator.pop(context, true);
         
       } else {
-        final error = response.body;
-        
-        String errorMessage = 'Erro ao editar pedido';
+        String errorMessage = ApiService.extractErrorMessage(
+          response.body,
+          fallback: 'Erro ao editar pedido.',
+        );
         if (response.statusCode == 400) {
           errorMessage = 'Dados inválidos. Verifique as informações preenchidas.';
         } else if (response.statusCode == 401) {
@@ -607,25 +595,19 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           errorMessage = 'Erro interno do servidor. Tente novamente.';
         }
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$errorMessage (${response.statusCode})'),
-            backgroundColor: Colors.red,
-          ),
+        _showFeedback(
+          '$errorMessage (${response.statusCode})',
+          backgroundColor: Colors.red,
         );
         Navigator.pop(context, false);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
+      _showFeedback(
+        'Erro: ${e.toString()}',
+        backgroundColor: Colors.red,
       );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      _stopLoading();
     }
   }
 
@@ -1013,6 +995,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         ],
       ),
       child: DropdownButtonFormField<String>(
+        key: ValueKey(_selectedModality),
         initialValue: _selectedModality,
         validator: (value) => value == null ? 'Selecione uma modalidade' : null,
         decoration: InputDecoration(
