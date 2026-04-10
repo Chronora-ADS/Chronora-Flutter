@@ -170,10 +170,17 @@ class _RequestViewState extends State<RequestView> {
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         final detail = ServiceDetailModel.fromJson(data);
-        final cachedAcceptedInfo = await _loadAcceptedRequestInfo(serviceId);
-        final acceptedInfo = detail.acceptedRequestInfo?.hasAcceptedUser == true
+        final backendAcceptedInfo = detail.acceptedRequestInfo?.hasAcceptedUser == true
             ? detail.acceptedRequestInfo
-            : cachedAcceptedInfo;
+            : null;
+        final cachedAcceptedInfo = backendAcceptedInfo == null
+            ? await _loadAcceptedRequestInfo(serviceId)
+            : null;
+        final acceptedInfo = backendAcceptedInfo ?? cachedAcceptedInfo;
+
+        if (backendAcceptedInfo == null && cachedAcceptedInfo != null) {
+          await _clearAcceptedRequestInfo(serviceId);
+        }
 
         print('Current user ID: $_currentUserId');
         print('Creator ID: ${detail.userCreator.id}');
@@ -352,17 +359,19 @@ class _RequestViewState extends State<RequestView> {
         return;
       }
 
-      final hasAnotherAcceptedRequest = await _hasAnotherAcceptedRequest(
-        currentServiceId: serviceId,
-      );
-      if (hasAnotherAcceptedRequest) {
-        _showSnackBar(
-          'Voce nao pode aceitar mais de um pedido ao mesmo tempo.',
-          backgroundColor: AppColors.vermelho,
-        );
-        setState(() => _isLoading = false);
-        return;
-      }
+      // Regra temporariamente desabilitada para permitir testes de aceite
+      // simultaneo em multiplas contas/navegadores.
+      // final hasAnotherAcceptedRequest = await _hasAnotherAcceptedRequest(
+      //   currentServiceId: serviceId,
+      // );
+      // if (hasAnotherAcceptedRequest) {
+      //   _showSnackBar(
+      //     'Voce nao pode aceitar mais de um pedido ao mesmo tempo.',
+      //     backgroundColor: AppColors.vermelho,
+      //   );
+      //   setState(() => _isLoading = false);
+      //   return;
+      // }
 
       final response = await ApiService.put(
         '/service/acceptService/$serviceId',
@@ -463,7 +472,12 @@ class _RequestViewState extends State<RequestView> {
       }
 
       final acceptedInfo = AcceptedRequestInfo.fromJson(decoded);
-      return acceptedInfo.hasAcceptedUser ? acceptedInfo : null;
+      if (!acceptedInfo.hasAcceptedUser || _isAcceptedRequestExpired(acceptedInfo)) {
+        await prefs.remove(_acceptedRequestStorageKey(serviceId));
+        return null;
+      }
+
+      return acceptedInfo;
     } catch (_) {
       return null;
     }
@@ -482,6 +496,24 @@ class _RequestViewState extends State<RequestView> {
 
   String _acceptedRequestStorageKey(int serviceId) =>
       'accepted_request_info_$serviceId';
+
+  Future<void> _clearAcceptedRequestInfo(int serviceId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_acceptedRequestStorageKey(serviceId));
+  }
+
+  bool _isAcceptedRequestExpired(AcceptedRequestInfo acceptedInfo) {
+    final expiresAt = acceptedInfo.expiresAt?.trim();
+    if (expiresAt == null || expiresAt.isEmpty) {
+      return false;
+    }
+
+    try {
+      return !DateTime.now().isBefore(DateTime.parse(expiresAt));
+    } catch (_) {
+      return false;
+    }
+  }
 
   Future<ServiceDetailModel?> _fetchServiceDetailSnapshot(int serviceId) async {
     final prefs = await SharedPreferences.getInstance();

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/constants/app_routes.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/services/api_service.dart';
@@ -47,6 +48,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   DateTime? _authenticationCodeExpiresAt;
   Duration _remainingAuthenticationCodeTime = Duration.zero;
   Timer? _countdownTimer;
+  Timer? _acceptedRequestSyncTimer;
+  bool _isHandlingExpiration = false;
+  bool _isLeavingAcceptedView = false;
 
   bool get _isRequesterView =>
       _resolvedAudience == RequestAcceptedAudience.requester;
@@ -60,6 +64,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   @override
   void dispose() {
     _countdownTimer?.cancel();
+    _acceptedRequestSyncTimer?.cancel();
     super.dispose();
   }
 
@@ -162,6 +167,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     }
 
     _startAuthenticationCodeCountdown();
+    _startAcceptedRequestSync();
 
     if (!_isRequesterView) {
       _loadAcceptedUser();
@@ -255,7 +261,12 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     _countdownTimer?.cancel();
     _syncRemainingAuthenticationCodeTime();
 
-    if (_authenticationCodeExpiresAt == null || _isAuthenticationCodeExpired) {
+    if (_authenticationCodeExpiresAt == null) {
+      return;
+    }
+
+    if (_isAuthenticationCodeExpired) {
+      _handleAcceptedRequestExpiration();
       return;
     }
 
@@ -265,6 +276,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       _syncRemainingAuthenticationCodeTime();
       if (_isAuthenticationCodeExpired) {
         _countdownTimer?.cancel();
+        _handleAcceptedRequestExpiration();
       }
     });
   }
@@ -302,30 +314,151 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     return '$minutes:$seconds';
   }
 
+  Future<void> _handleAcceptedRequestExpiration() async {
+    if (_isHandlingExpiration || _isLeavingAcceptedView) return;
+    _isHandlingExpiration = true;
+
+    final serviceId = _resolvedServiceDetail?.id;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (serviceId != null) {
+        await prefs.remove('accepted_request_info_$serviceId');
+      }
+
+      if (serviceId != null && token != null) {
+        await ApiService.put(
+          '/service/expireAcceptedService/$serviceId',
+          const {},
+          token: token,
+        );
+      }
+    } catch (_) {
+      // A interface ainda deve voltar ao estado inicial mesmo se a chamada falhar.
+    }
+
+    await _leaveAcceptedView(
+      const SnackBar(
+        content: Text('O tempo para iniciar o pedido expirou.'),
+        backgroundColor: AppColors.vermelho,
+      ),
+    );
+  }
+
   Future<void> _openStartRequestDialog() async {
     final pageContext = context;
+    final serviceId = _resolvedServiceDetail?.id;
 
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
         return _StartRequestDialog(
+          serviceId: serviceId,
           authenticationCode: _authenticationCode,
           authenticationCodeExpiresAt: _authenticationCodeExpiresAt,
-          onSuccess: () {
+          onSuccess: () async {
             ScaffoldMessenger.of(pageContext)
               ..hideCurrentSnackBar()
               ..showSnackBar(
                 const SnackBar(
                   content: Text(
-                    'Codigo validado. Pedido iniciado com sucesso.',
+                    'Codigo validado. Retornando para a pagina inicial.',
                   ),
                   backgroundColor: Colors.green,
                 ),
               );
+
+            await _leaveAcceptedView();
           },
         );
       },
+    );
+  }
+
+  void _startAcceptedRequestSync() {
+    _acceptedRequestSyncTimer?.cancel();
+
+    final serviceId = _resolvedServiceDetail?.id;
+    if (serviceId == null) {
+      return;
+    }
+
+    _acceptedRequestSyncTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _syncAcceptedRequestState();
+    });
+  }
+
+  Future<void> _syncAcceptedRequestState() async {
+    if (_isLeavingAcceptedView) return;
+
+    final serviceId = _resolvedServiceDetail?.id;
+    if (serviceId == null) {
+      return;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null) {
+        return;
+      }
+
+      final response = await ApiService.get('/service/get/$serviceId', token: token);
+      if (response.statusCode != 200) {
+        return;
+      }
+
+      final decoded = json.decode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        return;
+      }
+
+      final latestDetail = ServiceDetailModel.fromJson(decoded);
+      final latestAcceptedInfo = latestDetail.acceptedRequestInfo;
+      final hasActiveAcceptedRequest =
+          latestAcceptedInfo?.hasAcceptedUser == true &&
+          (latestAcceptedInfo?.authenticationCode?.trim().isNotEmpty ?? false) &&
+          (latestAcceptedInfo?.expiresAt?.trim().isNotEmpty ?? false);
+
+      if (!hasActiveAcceptedRequest) {
+        await _leaveAcceptedView(
+          const SnackBar(
+            content: Text('Pedido confirmado. Retornando para a pagina inicial.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _leaveAcceptedView([SnackBar? snackBar]) async {
+    if (_isLeavingAcceptedView) return;
+    _isLeavingAcceptedView = true;
+
+    _countdownTimer?.cancel();
+    _acceptedRequestSyncTimer?.cancel();
+
+    final serviceId = _resolvedServiceDetail?.id;
+    if (serviceId != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('accepted_request_info_$serviceId');
+    }
+
+    if (!mounted) return;
+
+    if (snackBar != null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(snackBar);
+    }
+
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.main,
+      (route) => false,
     );
   }
 
@@ -1169,11 +1302,13 @@ class _InfoCard extends StatelessWidget {
 }
 
 class _StartRequestDialog extends StatefulWidget {
+  final int? serviceId;
   final String authenticationCode;
   final DateTime? authenticationCodeExpiresAt;
-  final VoidCallback onSuccess;
+  final Future<void> Function() onSuccess;
 
   const _StartRequestDialog({
+    required this.serviceId,
     required this.authenticationCode,
     required this.authenticationCodeExpiresAt,
     required this.onSuccess,
@@ -1188,6 +1323,7 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
   Timer? _timer;
   Duration _remainingTime = Duration.zero;
   String? _validationMessage;
+  bool _isSubmitting = false;
 
   bool get _hasExpiration => widget.authenticationCodeExpiresAt != null;
   bool get _isExpired => _remainingTime.inSeconds <= 0;
@@ -1234,7 +1370,9 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
     });
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_isSubmitting) return;
+
     if (!_hasExpiration) {
       setState(() {
         _validationMessage =
@@ -1250,6 +1388,14 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
       return;
     }
 
+    final serviceId = widget.serviceId;
+    if (serviceId == null) {
+      setState(() {
+        _validationMessage = 'Servico nao encontrado.';
+      });
+      return;
+    }
+
     final typedCode = _codeController.text.trim();
     if (typedCode.length != 4) {
       setState(() {
@@ -1258,15 +1404,72 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
       return;
     }
 
-    if (typedCode != widget.authenticationCode) {
+    setState(() {
+      _isSubmitting = true;
+      _validationMessage = null;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null) {
+        throw Exception('Usuario nao autenticado.');
+      }
+
+      final response = await ApiService.putString(
+        '/service/startService/$serviceId',
+        typedCode,
+        token: token,
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw Exception(_extractApiErrorMessage(response.body));
+      }
+
+      if (!mounted) return;
+
+      Navigator.of(context).pop();
+      await widget.onSuccess();
+    } catch (error) {
+      if (!mounted) return;
+
       setState(() {
-        _validationMessage = 'Codigo invalido.';
+        _validationMessage = _buildStartRequestErrorMessage(error);
+        _isSubmitting = false;
       });
-      return;
+    }
+  }
+
+  String _extractApiErrorMessage(String rawBody) {
+    try {
+      final decoded = json.decode(rawBody);
+      if (decoded is Map<String, dynamic>) {
+        final message = decoded['message'];
+        if (message is String && message.trim().isNotEmpty) {
+          return message.trim();
+        }
+      }
+    } catch (_) {}
+
+    return rawBody;
+  }
+
+  String _buildStartRequestErrorMessage(Object error) {
+    final rawMessage = error.toString().toLowerCase();
+
+    if (rawMessage.contains('codigo de verificacao expirado')) {
+      return 'O tempo do codigo expirou.';
     }
 
-    Navigator.of(context).pop();
-    widget.onSuccess();
+    if (rawMessage.contains('codigo de verificacao incorreto')) {
+      return 'Codigo invalido.';
+    }
+
+    if (rawMessage.contains('codigo de verificacao indisponivel')) {
+      return 'Esse pedido nao esta mais aguardando confirmacao.';
+    }
+
+    return 'Nao foi possivel confirmar o codigo.';
   }
 
   @override
@@ -1346,12 +1549,12 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancelar'),
         ),
         ElevatedButton(
-          onPressed: _submit,
-          child: const Text('Confirmar'),
+          onPressed: _isSubmitting ? null : _submit,
+          child: Text(_isSubmitting ? 'Confirmando...' : 'Confirmar'),
         ),
       ],
     );
