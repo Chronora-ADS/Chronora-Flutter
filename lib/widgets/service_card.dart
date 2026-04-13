@@ -18,6 +18,8 @@ class ServiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final imageProvider = _buildImageProvider(service.serviceImage);
+
     return GestureDetector(
       onTap: () async {  // Torna a função async
         // Navega para a página de edição quando o card é clicado
@@ -43,7 +45,29 @@ class ServiceCard extends StatelessWidget {
             // Service Image com informações sobrepostas
             Stack(
               children: [
+<<<<<<< ours
                 _buildServiceImage(),
+=======
+                Container(
+                  height: 300,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(30),
+                    ),
+                    image: imageProvider != null
+                        ? DecorationImage(
+                            image: imageProvider!,
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: imageProvider == null
+                      ? const Icon(Icons.image, size: 50, color: Colors.grey)
+                      : null,
+                ),
+>>>>>>> theirs
 
                 // Informações sobrepostas no canto superior direito
                 Positioned(
@@ -197,6 +221,8 @@ class ServiceCard extends StatelessWidget {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
+<<<<<<< ours
+<<<<<<< ours
   Widget _buildServiceImage() {
     final imageValue = _normalizeImageValue(service.serviceImage);
 
@@ -303,5 +329,26 @@ class ServiceCard extends StatelessWidget {
 
   bool _isLocalhostUri(Uri uri) {
     return uri.host == 'localhost' || uri.host == '127.0.0.1';
+=======
+=======
+>>>>>>> theirs
+  ImageProvider? _buildImageProvider(String rawImage) {
+    final value = rawImage.trim();
+    if (value.isEmpty) return null;
+
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return NetworkImage(value);
+    }
+
+    try {
+      final base64Part = value.contains(',') ? value.split(',').last : value;
+      return MemoryImage(base64.decode(base64Part));
+    } catch (_) {
+      return null;
+    }
+<<<<<<< ours
+>>>>>>> theirs
+=======
+>>>>>>> theirs
   }
 }

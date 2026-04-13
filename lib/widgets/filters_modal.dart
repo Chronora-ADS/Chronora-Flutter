@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
+import '../core/constants/modality_options.dart';
 
 class FiltersModal extends StatefulWidget {
   final Function() onApplyFilters;
@@ -23,6 +24,7 @@ class _FiltersModalState extends State<FiltersModal> {
   late double tempoValue;
   late String avaliacaoValue;
   late String ordenacaoValue;
+  String? modalidadeSelecionada;
   final TextEditingController _categoriaController = TextEditingController();
 
   @override
@@ -97,32 +99,26 @@ class _FiltersModalState extends State<FiltersModal> {
                   // Tipo de serviço
                   _buildFilterSection(
                     'Tipo de serviço',
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () {},
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(
-                                  color: AppColors.amareloUmPoucoEscuro),
-                              backgroundColor:
-                                  AppColors.amareloClaro.withOpacity(0.1),
-                            ),
-                            child: const Text('À distância'),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: ModalityOptions.labels.map((modality) {
+                        final selected = modalidadeSelecionada == modality;
+                        return ChoiceChip(
+                          label: Text(modality),
+                          selected: selected,
+                          selectedColor: AppColors.amareloClaro.withOpacity(0.4),
+                          side: const BorderSide(
+                            color: AppColors.amareloUmPoucoEscuro,
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () {},
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(
-                                  color: AppColors.amareloUmPoucoEscuro),
-                            ),
-                            child: const Text('Presencial'),
-                          ),
-                        ),
-                      ],
+                          onSelected: (isSelected) {
+                            setState(() {
+                              modalidadeSelecionada =
+                                  isSelected ? modality : null;
+                            });
+                          },
+                        );
+                      }).toList(),
                     ),
                   ),
 

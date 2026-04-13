@@ -3,12 +3,21 @@ import 'dart:convert';
 import 'package:chronora/core/constants/app_routes.dart';
 import 'package:chronora/pages/auth/account_creation_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../widgets/auth_text_field.dart';
 import '../../widgets/backgrounds/background_auth_widget.dart';
+
+class _SubmitLoginIntent extends Intent {
+  const _SubmitLoginIntent();
+}
+
+class _SubmitLoginIntent extends Intent {
+  const _SubmitLoginIntent();
+}
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -89,40 +98,36 @@ class _LoginPageState extends State<LoginPage> {
     final screenSize = MediaQuery.of(context).size;
     final isMobile = screenSize.width < 600;
 
-    return BackgroundAuthWidget(
-      child: Center(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(isMobile ? 16 : 24),
-          child: Container(
-            width: _getContainerWidth(screenSize.width),
-            constraints: BoxConstraints(
-              maxWidth: 400,
-              minHeight: _getContainerHeight(screenSize.height),
-            ),
-            margin: EdgeInsets.all(isMobile ? 16 : 24),
-            padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? 24 : 32,
-              vertical: isMobile ? 16 : 24,
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.branco,
-              borderRadius: BorderRadius.circular(40),
-            ),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    'Bem vindo de volta!',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.preto,
-                    ),
-                    textAlign: TextAlign.center,
+    return Shortcuts(
+      shortcuts: const <ShortcutActivator, Intent>{
+        SingleActivator(LogicalKeyboardKey.keyQ, control: true):
+            _SubmitLoginIntent(),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          _SubmitLoginIntent: CallbackAction<_SubmitLoginIntent>(
+            onInvoke: (intent) {
+              if (!_isLoading) {
+                _login();
+              }
+              return null;
+            },
+          ),
+        },
+        child: Focus(
+          autofocus: true,
+          child: BackgroundAuthWidget(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(isMobile ? 16 : 24),
+                child: Container(
+                  width: _getContainerWidth(screenSize.width),
+                  constraints: BoxConstraints(
+                    maxWidth: 400,
+                    minHeight: _getContainerHeight(screenSize.height),
                   ),
+<<<<<<< ours
+<<<<<<< ours
                   const SizedBox(height: 30),
                   AuthTextField(
                     hintText: 'E-mail',
@@ -159,16 +164,235 @@ class _LoginPageState extends State<LoginPage> {
                                 strokeWidth: 2,
                                 valueColor:
                                     AlwaysStoppedAnimation<Color>(Colors.white),
+=======
+                  margin: EdgeInsets.all(isMobile ? 16 : 24),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 24 : 32,
+                    vertical: isMobile ? 16 : 24,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.branco,
+                    borderRadius: BorderRadius.circular(40),
+                  ),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Bem vindo de volta!',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.preto,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 30),
+
+                        AuthTextField(
+                          hintText: 'E-mail',
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          onFieldSubmitted: (_) {
+                            FocusScope.of(context).nextFocus();
+                          },
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        AuthTextField(
+                          hintText: 'Senha',
+                          controller: _passwordController,
+                          obscureText: true,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) {
+                            if (!_isLoading) {
+                              _login();
+                            }
+                          },
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // CORREÇÃO: Checkbox e "Esqueceu a senha" sempre na mesma linha
+                        _buildRememberForgotSection(isMobile),
+
+                        const SizedBox(height: 20),
+
+                        // Botão de Login
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _login,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.amareloUmPoucoEscuro,
+                              padding: EdgeInsets.symmetric(
+                                vertical: isMobile ? 12 : 16,
                               ),
-                            )
-                          : Text(
-                              'Entrar',
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white),
+                                    ),
+                                  )
+                                : Text(
+                                    'Entrar',
+                                    style: TextStyle(
+                                      fontSize: isMobile ? 22 : 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.branco,
+                                    ),
+                                  ),
+                          ),
+                        ),
+=======
+                  margin: EdgeInsets.all(isMobile ? 16 : 24),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 24 : 32,
+                    vertical: isMobile ? 16 : 24,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.branco,
+                    borderRadius: BorderRadius.circular(40),
+                  ),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Bem vindo de volta!',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.preto,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 30),
+
+                        AuthTextField(
+                          hintText: 'E-mail',
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          onFieldSubmitted: (_) {
+                            FocusScope.of(context).nextFocus();
+                          },
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        AuthTextField(
+                          hintText: 'Senha',
+                          controller: _passwordController,
+                          obscureText: true,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) {
+                            if (!_isLoading) {
+                              _login();
+                            }
+                          },
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // CORREÇÃO: Checkbox e "Esqueceu a senha" sempre na mesma linha
+                        _buildRememberForgotSection(isMobile),
+
+                        const SizedBox(height: 20),
+
+                        // Botão de Login
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _login,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.amareloUmPoucoEscuro,
+                              padding: EdgeInsets.symmetric(
+                                vertical: isMobile ? 12 : 16,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white),
+                                    ),
+                                  )
+                                : Text(
+                                    'Entrar',
+                                    style: TextStyle(
+                                      fontSize: isMobile ? 22 : 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.branco,
+                                    ),
+                                  ),
+                          ),
+                        ),
+>>>>>>> theirs
+
+                        const SizedBox(height: 16),
+
+                        // Botão de Criar Conta
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: _isLoading
+                                ? null
+                                : () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const AccountCreationPage(),
+                                      ),
+                                    );
+                                  },
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(
+                                color: AppColors.amareloUmPoucoEscuro,
+                                width: 3,
+                              ),
+                              padding: EdgeInsets.symmetric(
+                                vertical: isMobile ? 12 : 16,
+<<<<<<< ours
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                            child: Text(
+                              'Criar Conta',
                               style: TextStyle(
                                 fontSize: isMobile ? 22 : 24,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.branco,
+                                color: AppColors.amareloUmPoucoEscuro,
                               ),
                             ),
+<<<<<<< ours
+<<<<<<< ours
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -193,22 +417,17 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         padding: EdgeInsets.symmetric(
                           vertical: isMobile ? 12 : 16,
+=======
+                          ),
+>>>>>>> theirs
+=======
+                          ),
+>>>>>>> theirs
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      child: Text(
-                        'Criar Conta',
-                        style: TextStyle(
-                          fontSize: isMobile ? 22 : 24,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.amareloUmPoucoEscuro,
-                        ),
-                      ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -251,7 +470,15 @@ class _LoginPageState extends State<LoginPage> {
         Flexible(
           child: TextButton(
             onPressed: () {
+<<<<<<< ours
+<<<<<<< ours
               // Navegar para esqueci a senha.
+=======
+              Navigator.pushNamed(context, AppRoutes.forgotPassword);
+>>>>>>> theirs
+=======
+              Navigator.pushNamed(context, AppRoutes.forgotPassword);
+>>>>>>> theirs
             },
             style: TextButton.styleFrom(
               padding: EdgeInsets.zero,

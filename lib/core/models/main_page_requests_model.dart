@@ -45,19 +45,48 @@ class Service {
     }
 
     return Service(
-      id: json['id'],
+      id: _toInt(json['id']),
       title: json['title'] ?? 'Título não disponível',
       description: json['description'] ?? 'Descrição não disponível',
+<<<<<<< ours
+<<<<<<< ours
       serviceImage:
           (json['serviceImageUrl'] ?? json['serviceImage'] ?? '').toString(),
       timeChronos: json['timeChronos'] ?? 0,
+=======
+      serviceImage: (json['serviceImage'] ?? json['serviceImageUrl'] ?? '').toString(),
+      timeChronos: _toInt(json['timeChronos']),
+>>>>>>> theirs
+=======
+      serviceImage: (json['serviceImage'] ?? json['serviceImageUrl'] ?? '').toString(),
+      timeChronos: _toInt(json['timeChronos']),
+>>>>>>> theirs
       userCreator: userCreator,
-      categoryEntities: (json['categoryEntities'] as List? ?? [])
-          .map((e) => CategoryEntity.fromJson(e ?? {}))
-          .toList(),
+      categoryEntities: _parseCategories(json['categoryEntities'] ?? json['categories']),
       deadline: deadline,
       modality: json['modality'] ?? '',
     );
+  }
+
+  static List<CategoryEntity> _parseCategories(dynamic categories) {
+    if (categories is! List) return [];
+
+    return categories.map((item) {
+      if (item is Map<String, dynamic>) {
+        return CategoryEntity.fromJson(item);
+      }
+      if (item is String) {
+        return CategoryEntity(name: item);
+      }
+      return CategoryEntity(name: '');
+    }).toList();
+  }
+
+  static int _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 }
 

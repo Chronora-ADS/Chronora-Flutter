@@ -6,7 +6,7 @@ import '../models/main_page_requests_model.dart';
 import 'api_service.dart';
 
 class ServiceCatalogService {
-  Future<ServiceListResult> fetchServices() async {
+  Future<ServiceListResult> fetchServices({int? page, int? size}) async {
     final String? token = await _getToken();
 
     if (token == null) {
@@ -15,7 +15,13 @@ class ServiceCatalogService {
       );
     }
 
-    final response = await ApiService.get('/service/get/all', token: token);
+    final query = <String>[];
+    if (page != null) query.add('page=$page');
+    if (size != null) query.add('size=$size');
+    final endpoint =
+        query.isEmpty ? '/service/get/all' : '/service/get/all?${query.join('&')}';
+
+    final response = await ApiService.get(endpoint, token: token);
 
     if (response.statusCode != 200) {
       throw ServiceCatalogException(

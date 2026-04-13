@@ -11,6 +11,7 @@ import '../../../widgets/header.dart';
 import '../../../widgets/side_menu.dart';
 import '../../../widgets/wallet_modal.dart';
 import '../../../core/api/api_service.dart';
+import '../../../core/constants/modality_options.dart';
 import '../../../core/models/create_request_model.dart';
 
 class RequestCreationPage extends StatefulWidget {
@@ -353,7 +354,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         timeChronos: timeChronos,
         deadline: formattedDeadline,
         categories: _categoriesTags,
-        modality: _selectedModality!,
+        modality: ModalityOptions.toBackendValue(_selectedModality!),
         serviceImage: base64Image,
       );
 
@@ -955,7 +956,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           ),
           errorStyle: const TextStyle(fontSize: 12, height: 0.1),
         ),
-        items: ['Presencial', 'Remoto', 'Híbrido']
+        items: ModalityOptions.labels
             .map((modality) => DropdownMenuItem(
                   value: modality,
                   child: Text(modality),

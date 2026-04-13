@@ -4,8 +4,16 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+<<<<<<< ours
+<<<<<<< ours
 
 import '../../core/api/api_service.dart';
+=======
+=======
+>>>>>>> theirs
+import '../../widgets/backgrounds/background_auth_widget.dart';
+import '../../widgets/auth_text_field.dart';
+>>>>>>> theirs
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
 import '../../widgets/auth_text_field.dart';
@@ -145,8 +153,16 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
     });
 
     try {
+<<<<<<< ours
+<<<<<<< ours
       final base64Data = await _convertToBase64(_pickedFile!);
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
       final phoneDigits = _phoneController.text.replaceAll(RegExp(r'\D'), '');
+
+      String base64Data = await _convertToBase64(_pickedFile!);
 
       final payload = {
         'name': _nameController.text.trim(),
@@ -163,6 +179,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
       final response = await ApiService.post('/auth/register', payload);
       if (!mounted) return;
 
+<<<<<<< ours
       if (response.statusCode == 200 || response.statusCode == 201) {
         _showSnackBar('Cadastro realizado com sucesso!');
         Navigator.pushReplacementNamed(context, AppRoutes.login);
@@ -170,6 +187,25 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
         _showSnackBar(
           'Erro no cadastro: '
           '${ApiService.extractErrorMessage(response.body, fallback: 'Nao foi possivel concluir o cadastro.')}',
+=======
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cadastro realizado com sucesso!')),
+        );
+        Navigator.pushReplacementNamed(context, AppRoutes.login);
+      } else {
+        final error = response.body;
+        String message = 'Erro no cadastro: ${response.statusCode} - $error';
+        if (response.statusCode == 409) {
+          message = 'Telefone ou e-mail já cadastrado.';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+<<<<<<< ours
+>>>>>>> theirs
+=======
+>>>>>>> theirs
         );
       }
     } catch (e) {
@@ -220,6 +256,10 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                     hintText: 'Nome completo',
                     controller: _nameController,
                     validator: _validateName,
+                    textInputAction: TextInputAction.next,
+                    onFieldSubmitted: (_) {
+                      FocusScope.of(context).nextFocus();
+                    },
                   ),
                   const SizedBox(height: 16),
                   AuthTextField(
@@ -227,6 +267,10 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     validator: _validateEmail,
+                    textInputAction: TextInputAction.next,
+                    onFieldSubmitted: (_) {
+                      FocusScope.of(context).nextFocus();
+                    },
                   ),
                   const SizedBox(height: 16),
                   AuthTextField(
@@ -234,6 +278,10 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
                     validator: _validatePhone,
+                    textInputAction: TextInputAction.next,
+                    onFieldSubmitted: (_) {
+                      FocusScope.of(context).nextFocus();
+                    },
                   ),
                   const SizedBox(height: 16),
                   AuthTextField(
@@ -241,6 +289,10 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                     controller: _passwordController,
                     obscureText: true,
                     validator: _validatePassword,
+                    textInputAction: TextInputAction.next,
+                    onFieldSubmitted: (_) {
+                      FocusScope.of(context).nextFocus();
+                    },
                   ),
                   const SizedBox(height: 16),
                   AuthTextField(
@@ -248,6 +300,12 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                     controller: _confirmPasswordController,
                     obscureText: true,
                     validator: _validateConfirmPassword,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) {
+                      if (!_isLoading) {
+                        _submitForm();
+                      }
+                    },
                   ),
                   const SizedBox(height: 20),
                   SizedBox(

@@ -9,6 +9,7 @@ import 'dart:typed_data';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:chronora/core/api/api_service.dart';
+import 'package:chronora/core/constants/modality_options.dart';
 import 'package:chronora/core/models/service_detail_model.dart';
 import 'package:chronora/core/models/main_page_requests_model.dart';
 
@@ -125,17 +126,8 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
   // Método para normalizar a modalidade
   String _normalizeModality(String modality) {
-    switch (modality.toUpperCase()) {
-      case 'PRESENCIAL':
-        return 'Presencial';
-      case 'REMOTO':
-        return 'Remoto';
-      case 'HÍBRIDO':
-      case 'HIBRIDO':
-        return 'Híbrido';
-      default:
-        return 'Presencial'; // Valor padrão
-    }
+    return ModalityOptions.fromBackendValue(modality);
+<<<<<<< ours
   }
 
   String _extractImageFileName(String imageValue) {
@@ -154,6 +146,8 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     }
 
     return 'imagem_servico.jpg';
+=======
+>>>>>>> theirs
   }
 
   // Método para buscar os dados completos do serviço por ID
@@ -545,10 +539,23 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         'title': _titleController.text.trim(),
         'description': _descriptionController.text.trim(),
         'timeChronos': timeChronos,
-        'modality': _selectedModality!,
+        'modality': ModalityOptions.toBackendValue(_selectedModality!),
         'deadline': formattedDeadline,
+<<<<<<< ours
+<<<<<<< ours
         'categoryEntities':
             _categoriesTags.map((category) => {'name': category}).toList(),
+=======
+=======
+>>>>>>> theirs
+        // Alguns backends esperam "categories" (List<String>), outros "categoryEntities"
+        // (lista de objetos). Enviamos ambos para manter compatibilidade.
+        'categories': _categoriesTags,
+        'categoryEntities': _categoriesTags.map((name) => {'name': name}).toList(),
+<<<<<<< ours
+>>>>>>> theirs
+=======
+>>>>>>> theirs
         if (base64Image != null) 'serviceImage': base64Image,
       };
 
@@ -1022,7 +1029,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           ),
           errorStyle: const TextStyle(fontSize: 12, height: 0.1),
         ),
-        items: ['Presencial', 'Remoto', 'Híbrido']
+        items: ModalityOptions.labels
             .map((modality) => DropdownMenuItem(
                   value: modality,
                   child: Text(modality),

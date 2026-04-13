@@ -1,4 +1,5 @@
 import 'package:chronora/pages/auth/account_creation_page.dart';
+import 'package:chronora/pages/auth/forgot_password_page.dart';
 import 'package:chronora/pages/auth/login_page.dart';
 import 'package:chronora/pages/main_page.dart';
 import 'package:chronora/pages/buy_chronos/buy_chronos_page.dart';
@@ -15,6 +16,7 @@ class AppRoutes {
   static const String requestEditing = '/request-editing';
   static const String buyChronos = '/buy-chronos';
   static const String sellChronos = '/sell-chronos';
+  static const String forgotPassword = '/forgot-password';
 
   static Map<String, WidgetBuilder> get routes {
     return {
@@ -23,6 +25,7 @@ class AppRoutes {
       main: (context) => const MainPage(),
       buyChronos: (context) => const BuyChronosPage(),
       sellChronos: (context) => const SellChronosPage(),
+      forgotPassword: (context) => const ForgotPasswordPage(),
       requestCreation: (context) => const RequestCreationPage(),
       requestEditing: (context) => const RequestEditingPage(),
     };

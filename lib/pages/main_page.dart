@@ -1,7 +1,11 @@
+import 'dart:convert';
+
 import 'package:chronora/core/models/main_page_requests_model.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/constants/app_colors.dart';
+import '../core/api/api_service.dart';
 import 'package:chronora/core/api/service_catalog_service.dart';
 import '../widgets/backgrounds/background_default_widget.dart';
 import '../widgets/header.dart';
@@ -23,11 +27,18 @@ class _MainPageState extends State<MainPage> {
       ServiceCatalogService();
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
+  String _userName = 'Usuário';
+  double _userRating = 0.0;
+  String? _userPhotoUrl;
 
   List<Service> services = [];
   bool isLoading = true;
   String errorMessage = '';
   bool _isFetching = false;
+  bool _isLoadingMore = false;
+  static const int _pageSize = 10;
+  int _nextPage = 0;
+  bool _hasMorePages = true;
 
   int? _page;
   int? _size;
@@ -41,31 +52,88 @@ class _MainPageState extends State<MainPage> {
   @override
   void initState() {
     super.initState();
+    _fetchCurrentUser();
     _fetchServices();
   }
 
-  Future<void> _fetchServices({bool showLoading = false}) async {
+  Future<void> _fetchCurrentUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null) return;
+
+      final response = await ApiService.get('/user/get', token: token);
+      if (response.statusCode != 200) return;
+
+      final data = json.decode(response.body);
+      if (data is! Map<String, dynamic> || !mounted) return;
+
+      setState(() {
+        _userName = (data['name'] ?? 'Usuário').toString();
+        final ratingRaw = data['rating'] ?? data['userRating'] ?? data['avaliacao'];
+        if (ratingRaw is num) {
+          _userRating = ratingRaw.toDouble();
+        } else if (ratingRaw is String) {
+          _userRating = double.tryParse(ratingRaw) ?? 0.0;
+        }
+
+        final photo = data['profileImageUrl'] ?? data['profileImage'] ?? data['photoUrl'];
+        _userPhotoUrl = photo?.toString();
+      });
+    } catch (_) {
+      // Mantém fallback visual sem quebrar o fluxo principal da página.
+    }
+  }
+
+  Future<void> _fetchServices({bool showLoading = false, bool reset = false}) async {
     if (_isFetching) return;
     _isFetching = true;
+
+    if (reset) {
+      _nextPage = 0;
+      _hasMorePages = true;
+      services = [];
+    }
 
     if ((showLoading || services.isEmpty) && mounted) {
       setState(() {
         isLoading = true;
         errorMessage = '';
       });
+    } else if (mounted) {
+      setState(() {
+        _isLoadingMore = true;
+        errorMessage = '';
+      });
     }
 
     try {
-      final result = await _serviceCatalogService.fetchServices();
+      final result = await _serviceCatalogService.fetchServices(
+        page: _nextPage,
+        size: _pageSize,
+      );
 
       if (mounted) {
+        final updatedServices = reset || _nextPage == 0
+            ? result.services
+            : [...services, ...result.services];
+
+        final totalPages = result.totalPages;
+        final currentPage = result.page ?? _nextPage;
+        final hasMore = totalPages != null
+            ? currentPage + 1 < totalPages
+            : result.services.length >= _pageSize;
+
         setState(() {
-          services = result.services;
+          services = updatedServices;
           _page = result.page;
           _size = result.size;
           _totalElements = result.totalElements;
           _totalPages = result.totalPages;
+          _nextPage = currentPage + 1;
+          _hasMorePages = hasMore;
           isLoading = false;
+          _isLoadingMore = false;
           errorMessage = '';
         });
       }
@@ -73,6 +141,7 @@ class _MainPageState extends State<MainPage> {
       if (mounted) {
         setState(() {
           isLoading = false;
+          _isLoadingMore = false;
           _page = null;
           _size = null;
           _totalElements = null;
@@ -84,6 +153,7 @@ class _MainPageState extends State<MainPage> {
       if (mounted) {
         setState(() {
           isLoading = false;
+          _isLoadingMore = false;
           _page = null;
           _size = null;
           _totalElements = null;
@@ -102,7 +172,7 @@ class _MainPageState extends State<MainPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => FiltersModal(
-        onApplyFilters: _fetchServices,
+        onApplyFilters: () => _fetchServices(reset: true),
         initialTempoValue: tempoValue,
         initialAvaliacaoValue: avaliacaoValue,
         initialOrdenacaoValue: ordenacaoValue,
@@ -284,6 +354,8 @@ class _MainPageState extends State<MainPage> {
                         const SizedBox(height: 24),
 
                         _buildServicesList(),
+                        const SizedBox(height: 12),
+                        _buildLoadMoreButton(),
                       ],
                     ),
                   ),
@@ -295,7 +367,7 @@ class _MainPageState extends State<MainPage> {
           // Menu lateral
           if (_isDrawerOpen)
             Positioned(
-              top: kToolbarHeight,
+              top: 0,
               left: 0,
               right: 0,
               bottom: 0,
@@ -305,8 +377,15 @@ class _MainPageState extends State<MainPage> {
                   children: [
                     SizedBox(
                       width: screenWidth * 0.6,
-                      child: SideMenu(
-                        onWalletPressed: _openWallet, // Usa a nova função
+                      child: SafeArea(
+                        top: true,
+                        bottom: false,
+                        child: SideMenu(
+                          onWalletPressed: _openWallet, // Usa a nova função
+                          userName: _userName,
+                          userRating: _userRating,
+                          userPhotoUrl: _userPhotoUrl,
+                        ),
                       ),
                     ),
                     Expanded(
@@ -420,6 +499,34 @@ class _MainPageState extends State<MainPage> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildLoadMoreButton() {
+    if (isLoading || errorMessage.isNotEmpty || services.isEmpty || !_hasMorePages) {
+      return const SizedBox.shrink();
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _isLoadingMore ? null : () => _fetchServices(),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.branco,
+          foregroundColor: AppColors.preto,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+        child: _isLoadingMore
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text(
+                'Carregar mais',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+      ),
     );
   }
 

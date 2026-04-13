@@ -6,8 +6,17 @@ import '../core/api/api_service.dart';
 
 class SideMenu extends StatelessWidget {
   final VoidCallback onWalletPressed;
+  final String userName;
+  final double userRating;
+  final String? userPhotoUrl;
 
-  const SideMenu({super.key, required this.onWalletPressed});
+  const SideMenu({
+    super.key,
+    required this.onWalletPressed,
+    this.userName = 'Usuário',
+    this.userRating = 0.0,
+    this.userPhotoUrl,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -19,6 +28,7 @@ class SideMenu extends StatelessWidget {
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
+                _buildUserHeader(),
                 _buildMenuSection(
                   title: '',
                   children: [
@@ -134,6 +144,70 @@ class SideMenu extends StatelessWidget {
     );
   }
 
+  Widget _buildUserHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 26,
+            backgroundColor: Colors.white24,
+            backgroundImage: (userPhotoUrl != null && userPhotoUrl!.isNotEmpty)
+                ? NetworkImage(userPhotoUrl!)
+                : null,
+            child: (userPhotoUrl == null || userPhotoUrl!.isEmpty)
+                ? const Icon(Icons.person, size: 30, color: Colors.white)
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  userName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.branco,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.star, size: 18, color: AppColors.branco),
+                    const SizedBox(width: 4),
+                    Text(
+                      userRating.toStringAsFixed(1),
+                      style: const TextStyle(
+                        color: AppColors.branco,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Flexible(
+                      child: Text(
+                        'Sua avaliação',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppColors.branco,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMenuSection({
     required String title,
     required List<Widget> children,
@@ -184,6 +258,8 @@ class SideMenu extends StatelessWidget {
 
   Future<void> _logout(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
+<<<<<<< ours
+<<<<<<< ours
     final token = prefs.getString('auth_token');
 
     if (token != null) {
@@ -203,5 +279,11 @@ class SideMenu extends StatelessWidget {
       AppRoutes.login,
       (route) => false,
     );
+=======
+=======
+>>>>>>> theirs
+    await prefs.remove('auth_token');
+    Navigator.pushReplacementNamed(context, AppRoutes.login);
+>>>>>>> theirs
   }
 }

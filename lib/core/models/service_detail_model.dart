@@ -27,16 +27,30 @@ class ServiceDetailModel {
 
   factory ServiceDetailModel.fromJson(Map<String, dynamic> json) {
     return ServiceDetailModel(
-      id: json['id'] as int?,
+      id: _toNullableInt(json['id']),
       title: json['title'] ?? '',
       description: json['description'] ?? '',
-      timeChronos: json['timeChronos'] ?? 0,
+      timeChronos: _toInt(json['timeChronos']),
       deadline: json['deadline'] ?? '',
+<<<<<<< ours
+<<<<<<< ours
       categoryEntities: _parseCategories(
         json['categoryEntities'] ?? json['categories'],
       ),
       modality: json['modality'] ?? '',
       serviceImage: json['serviceImageUrl'] ?? json['serviceImage'],
+=======
+      categoryEntities:
+          _parseCategories(json['categoryEntities'] ?? json['categories']),
+      modality: json['modality'] ?? '',
+      serviceImage: (json['serviceImage'] ?? json['serviceImageUrl'])?.toString(),
+>>>>>>> theirs
+=======
+      categoryEntities:
+          _parseCategories(json['categoryEntities'] ?? json['categories']),
+      modality: json['modality'] ?? '',
+      serviceImage: (json['serviceImage'] ?? json['serviceImageUrl'])?.toString(),
+>>>>>>> theirs
       userCreator: UserCreator.fromJson(json['userCreator'] ?? {}),
     );
   }
@@ -49,6 +63,21 @@ class ServiceDetailModel {
     }
   
     return [];
+  }
+
+  static int _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  static int? _toNullableInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 
   Map<String, dynamic> toJson() {
