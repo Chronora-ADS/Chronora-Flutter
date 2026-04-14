@@ -22,15 +22,13 @@ class Service {
   });
 
   factory Service.fromJson(Map<String, dynamic> json) {
-    // Verifica se userCreator existe e é um Map
     final userCreatorJson = json['userCreator'];
     UserCreator userCreator;
 
     if (userCreatorJson != null && userCreatorJson is Map<String, dynamic>) {
       userCreator = UserCreator.fromJson(userCreatorJson);
     } else {
-      // Cria um UserCreator padrão se estiver nulo ou inválido
-      userCreator = UserCreator(name: 'Usuário Desconhecido');
+      userCreator = UserCreator(name: 'Usuario Desconhecido');
     }
 
     DateTime deadline;
@@ -38,31 +36,23 @@ class Service {
       if (json['deadline'] != null) {
         deadline = DateTime.parse(json['deadline']);
       } else {
-        deadline = DateTime.now().add(const Duration(days: 30)); // Fallback
+        deadline = DateTime.now().add(const Duration(days: 30));
       }
-    } catch (e) {
-      deadline = DateTime.now().add(const Duration(days: 30)); // Fallback
+    } catch (_) {
+      deadline = DateTime.now().add(const Duration(days: 30));
     }
 
     return Service(
       id: _toInt(json['id']),
-      title: json['title'] ?? 'Título não disponível',
-      description: json['description'] ?? 'Descrição não disponível',
-<<<<<<< ours
-<<<<<<< ours
+      title: json['title'] ?? 'Titulo nao disponivel',
+      description: json['description'] ?? 'Descricao nao disponivel',
       serviceImage:
-          (json['serviceImageUrl'] ?? json['serviceImage'] ?? '').toString(),
-      timeChronos: json['timeChronos'] ?? 0,
-=======
-      serviceImage: (json['serviceImage'] ?? json['serviceImageUrl'] ?? '').toString(),
+          (json['serviceImage'] ?? json['serviceImageUrl'] ?? '').toString(),
       timeChronos: _toInt(json['timeChronos']),
->>>>>>> theirs
-=======
-      serviceImage: (json['serviceImage'] ?? json['serviceImageUrl'] ?? '').toString(),
-      timeChronos: _toInt(json['timeChronos']),
->>>>>>> theirs
       userCreator: userCreator,
-      categoryEntities: _parseCategories(json['categoryEntities'] ?? json['categories']),
+      categoryEntities: _parseCategories(
+        json['categoryEntities'] ?? json['categories'],
+      ),
       deadline: deadline,
       modality: json['modality'] ?? '',
     );

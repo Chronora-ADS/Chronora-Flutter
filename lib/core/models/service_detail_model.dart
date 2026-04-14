@@ -1,4 +1,3 @@
-// core/models/service_detail_model.dart
 import 'category_entity.dart';
 import 'user_creator.dart';
 
@@ -32,37 +31,19 @@ class ServiceDetailModel {
       description: json['description'] ?? '',
       timeChronos: _toInt(json['timeChronos']),
       deadline: json['deadline'] ?? '',
-<<<<<<< ours
-<<<<<<< ours
       categoryEntities: _parseCategories(
         json['categoryEntities'] ?? json['categories'],
       ),
       modality: json['modality'] ?? '',
-      serviceImage: json['serviceImageUrl'] ?? json['serviceImage'],
-=======
-      categoryEntities:
-          _parseCategories(json['categoryEntities'] ?? json['categories']),
-      modality: json['modality'] ?? '',
-      serviceImage: (json['serviceImage'] ?? json['serviceImageUrl'])?.toString(),
->>>>>>> theirs
-=======
-      categoryEntities:
-          _parseCategories(json['categoryEntities'] ?? json['categories']),
-      modality: json['modality'] ?? '',
-      serviceImage: (json['serviceImage'] ?? json['serviceImageUrl'])?.toString(),
->>>>>>> theirs
+      serviceImage:
+          (json['serviceImage'] ?? json['serviceImageUrl'])?.toString(),
       userCreator: UserCreator.fromJson(json['userCreator'] ?? {}),
     );
   }
 
   static List<CategoryEntity> _parseCategories(dynamic categories) {
-    if (categories == null) return [];
-    
-    if (categories is List) {
-      return categories.map((item) => CategoryEntity.fromJson(item)).toList();
-    }
-  
-    return [];
+    if (categories is! List) return [];
+    return categories.map((item) => CategoryEntity.fromJson(item)).toList();
   }
 
   static int _toInt(dynamic value) {

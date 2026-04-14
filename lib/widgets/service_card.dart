@@ -1,35 +1,33 @@
+import 'dart:convert';
+
 import 'package:chronora/core/constants/app_colors.dart';
 import 'package:chronora/core/models/main_page_requests_model.dart';
 import 'package:flutter/material.dart';
-import 'dart:convert';
+
 import '../core/api/api_service.dart';
 
 class ServiceCard extends StatelessWidget {
   final Service service;
   final VoidCallback? onEdit;
-  final ValueChanged<bool>? onCardEdited; // Nova propriedade para capturar edição
+  final ValueChanged<bool>? onCardEdited;
 
   const ServiceCard({
     super.key,
     required this.service,
     this.onEdit,
-    this.onCardEdited, // Adiciona este parâmetro
+    this.onCardEdited,
   });
 
   @override
   Widget build(BuildContext context) {
-    final imageProvider = _buildImageProvider(service.serviceImage);
-
     return GestureDetector(
-      onTap: () async {  // Torna a função async
-        // Navega para a página de edição quando o card é clicado
+      onTap: () async {
         final result = await Navigator.pushNamed(
           context,
           '/request-editing',
           arguments: service,
         );
-        
-        // Se a edição foi bem-sucedida (retornou true), notifica
+
         if (result == true && onCardEdited != null) {
           onCardEdited!(true);
         }
@@ -42,44 +40,20 @@ class ServiceCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Service Image com informações sobrepostas
             Stack(
               children: [
-<<<<<<< ours
                 _buildServiceImage(),
-=======
-                Container(
-                  height: 300,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(30),
-                    ),
-                    image: imageProvider != null
-                        ? DecorationImage(
-                            image: imageProvider!,
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                  ),
-                  child: imageProvider == null
-                      ? const Icon(Icons.image, size: 50, color: Colors.grey)
-                      : null,
-                ),
->>>>>>> theirs
-
-                // Informações sobrepostas no canto superior direito
                 Positioned(
                   top: 16,
                   right: 16,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      // Prazo
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.amareloUmPoucoEscuro,
                           borderRadius: BorderRadius.circular(8),
@@ -93,13 +67,12 @@ class ServiceCard extends StatelessWidget {
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 8),
-
-                      // Modalidade
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.amareloUmPoucoEscuro,
                           borderRadius: BorderRadius.circular(8),
@@ -118,14 +91,11 @@ class ServiceCard extends StatelessWidget {
                 ),
               ],
             ),
-
-            // Service Info
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Título e botão de edição
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -140,7 +110,6 @@ class ServiceCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      // Botão de edição (opcional)
                       if (onEdit != null)
                         IconButton(
                           onPressed: onEdit,
@@ -149,18 +118,12 @@ class ServiceCard extends StatelessWidget {
                         ),
                     ],
                   ),
-
                   const SizedBox(height: 8),
-
-                  // Postado por
                   Text(
                     'Postado por ${service.userCreator.name}',
                     style: const TextStyle(fontSize: 14),
                   ),
-
                   const SizedBox(height: 8),
-
-                  // Chronos
                   Row(
                     children: [
                       Image.asset('assets/img/Coin.png', width: 16),
@@ -173,18 +136,17 @@ class ServiceCard extends StatelessWidget {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 8),
-
-                  // Categories
-                  if (service.categoryEntities.isNotEmpty) ...[
+                  if (service.categoryEntities.isNotEmpty)
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: service.categoryEntities.map((category) {
                         return Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.amareloClaro,
                             borderRadius: BorderRadius.circular(5),
@@ -192,7 +154,8 @@ class ServiceCard extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Image.asset('assets/img/Paintbrush.png', width: 16),
+                              Image.asset('assets/img/Paintbrush.png',
+                                  width: 16),
                               const SizedBox(width: 4),
                               Text(
                                 category.name,
@@ -206,7 +169,6 @@ class ServiceCard extends StatelessWidget {
                         );
                       }).toList(),
                     ),
-                  ],
                 ],
               ),
             ),
@@ -216,13 +178,10 @@ class ServiceCard extends StatelessWidget {
     );
   }
 
-  // Função para formatar a data
   String _formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
-<<<<<<< ours
-<<<<<<< ours
   Widget _buildServiceImage() {
     final imageValue = _normalizeImageValue(service.serviceImage);
 
@@ -245,12 +204,17 @@ class ServiceCard extends StatelessWidget {
           height: 300,
           width: double.infinity,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => _buildImagePlaceholder(),
+          errorBuilder: (context, error, stackTrace) =>
+              _buildImagePlaceholder(),
         ),
       );
     }
 
-    return _buildBase64Image(imageValue);
+    if (_isLikelyBase64(imageValue)) {
+      return _buildBase64Image(imageValue);
+    }
+
+    return _buildImagePlaceholder();
   }
 
   Widget _buildImagePlaceholder() {
@@ -276,6 +240,15 @@ class ServiceCard extends StatelessWidget {
     return value.startsWith('data:image/');
   }
 
+  bool _isLikelyBase64(String value) {
+    final normalized = value.replaceAll('\n', '').trim();
+    if (normalized.length < 80 || normalized.contains(' ')) {
+      return false;
+    }
+
+    return RegExp(r'^[A-Za-z0-9+/=]+$').hasMatch(normalized);
+  }
+
   Widget _buildBase64Image(String value) {
     try {
       return ClipRRect(
@@ -288,7 +261,8 @@ class ServiceCard extends StatelessWidget {
           height: 300,
           width: double.infinity,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => _buildImagePlaceholder(),
+          errorBuilder: (context, error, stackTrace) =>
+              _buildImagePlaceholder(),
         ),
       );
     } catch (_) {
@@ -302,7 +276,7 @@ class ServiceCard extends StatelessWidget {
       return '';
     }
 
-    if (_isDataUriImage(trimmed)) {
+    if (_isDataUriImage(trimmed) || _isLikelyBase64(trimmed)) {
       return trimmed;
     }
 
@@ -317,11 +291,13 @@ class ServiceCard extends StatelessWidget {
 
     if (_isLocalhostUri(imageUri)) {
       final apiBaseUri = Uri.parse(ApiService.baseUrl);
-      return imageUri.replace(
-        scheme: apiBaseUri.scheme,
-        host: apiBaseUri.host,
-        port: apiBaseUri.hasPort ? apiBaseUri.port : null,
-      ).toString();
+      return imageUri
+          .replace(
+            scheme: apiBaseUri.scheme,
+            host: apiBaseUri.host,
+            port: apiBaseUri.hasPort ? apiBaseUri.port : null,
+          )
+          .toString();
     }
 
     return trimmed;
@@ -329,26 +305,5 @@ class ServiceCard extends StatelessWidget {
 
   bool _isLocalhostUri(Uri uri) {
     return uri.host == 'localhost' || uri.host == '127.0.0.1';
-=======
-=======
->>>>>>> theirs
-  ImageProvider? _buildImageProvider(String rawImage) {
-    final value = rawImage.trim();
-    if (value.isEmpty) return null;
-
-    if (value.startsWith('http://') || value.startsWith('https://')) {
-      return NetworkImage(value);
-    }
-
-    try {
-      final base64Part = value.contains(',') ? value.split(',').last : value;
-      return MemoryImage(base64.decode(base64Part));
-    } catch (_) {
-      return null;
-    }
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
   }
 }

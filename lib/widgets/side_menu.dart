@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../core/constants/app_routes.dart';
-import '../core/constants/app_colors.dart';
+
 import '../core/api/api_service.dart';
+import '../core/constants/app_colors.dart';
+import '../core/constants/app_routes.dart';
 
 class SideMenu extends StatelessWidget {
   final VoidCallback onWalletPressed;
@@ -13,7 +14,7 @@ class SideMenu extends StatelessWidget {
   const SideMenu({
     super.key,
     required this.onWalletPressed,
-    this.userName = 'Usuário',
+    this.userName = 'Usuario',
     this.userRating = 0.0,
     this.userPhotoUrl,
   });
@@ -34,7 +35,7 @@ class SideMenu extends StatelessWidget {
                   children: [
                     _buildMenuItem(
                       icon: 'assets/img/HomeWhite.png',
-                      title: 'Página Inicial',
+                      title: 'Pagina Inicial',
                       onTap: () {
                         Navigator.pushReplacementNamed(context, AppRoutes.main);
                       },
@@ -56,11 +57,11 @@ class SideMenu extends StatelessWidget {
                     _buildMenuItem(
                       icon: 'assets/img/CoinWhite.png',
                       title: 'Carteira',
-                      onTap: onWalletPressed, // Agora usa diretamente a função
+                      onTap: onWalletPressed,
                     ),
                     _buildMenuItem(
                       icon: 'assets/img/NotificationsWhite.png',
-                      title: 'Notificações',
+                      title: 'Notificacoes',
                       onTap: () {
                         Navigator.pushNamed(context, '/notifications');
                       },
@@ -89,14 +90,16 @@ class SideMenu extends StatelessWidget {
                   ),
                   _buildMenuItem(
                     icon: 'assets/img/SettingsWhite.png',
-                    title: 'Configurações',
+                    title: 'Configuracoes',
                     onTap: () {
                       Navigator.pushNamed(context, '/settings');
                     },
                   ),
                   Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     child: Container(
                       decoration: BoxDecoration(
                         color: AppColors.branco,
@@ -110,7 +113,9 @@ class SideMenu extends StatelessWidget {
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 8),
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -190,7 +195,7 @@ class SideMenu extends StatelessWidget {
                     const SizedBox(width: 6),
                     const Flexible(
                       child: Text(
-                        'Sua avaliação',
+                        'Sua avaliacao',
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: AppColors.branco,
@@ -258,8 +263,6 @@ class SideMenu extends StatelessWidget {
 
   Future<void> _logout(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
-<<<<<<< ours
-<<<<<<< ours
     final token = prefs.getString('auth_token');
 
     if (token != null) {
@@ -279,11 +282,5 @@ class SideMenu extends StatelessWidget {
       AppRoutes.login,
       (route) => false,
     );
-=======
-=======
->>>>>>> theirs
-    await prefs.remove('auth_token');
-    Navigator.pushReplacementNamed(context, AppRoutes.login);
->>>>>>> theirs
   }
 }

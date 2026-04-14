@@ -4,16 +4,8 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-<<<<<<< ours
-<<<<<<< ours
 
 import '../../core/api/api_service.dart';
-=======
-=======
->>>>>>> theirs
-import '../../widgets/backgrounds/background_auth_widget.dart';
-import '../../widgets/auth_text_field.dart';
->>>>>>> theirs
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
 import '../../widgets/auth_text_field.dart';
@@ -62,11 +54,13 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
   Future<String> _convertToBase64(PlatformFile file) async {
     if (kIsWeb) {
       final bytes = file.bytes;
-      if (bytes == null) throw Exception('Arquivo vazio');
+      if (bytes == null) {
+        throw Exception('Arquivo vazio');
+      }
       return base64Encode(bytes);
     }
 
-    final selectedFile = File(_pickedFile!.path!);
+    final selectedFile = File(file.path!);
     final fileBytes = await selectedFile.readAsBytes();
     return base64Encode(fileBytes);
   }
@@ -153,16 +147,8 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
     });
 
     try {
-<<<<<<< ours
-<<<<<<< ours
-      final base64Data = await _convertToBase64(_pickedFile!);
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
       final phoneDigits = _phoneController.text.replaceAll(RegExp(r'\D'), '');
-
-      String base64Data = await _convertToBase64(_pickedFile!);
+      final base64Data = await _convertToBase64(_pickedFile!);
 
       final payload = {
         'name': _nameController.text.trim(),
@@ -179,42 +165,27 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
       final response = await ApiService.post('/auth/register', payload);
       if (!mounted) return;
 
-<<<<<<< ours
       if (response.statusCode == 200 || response.statusCode == 201) {
         _showSnackBar('Cadastro realizado com sucesso!');
         Navigator.pushReplacementNamed(context, AppRoutes.login);
       } else {
-        _showSnackBar(
-          'Erro no cadastro: '
-          '${ApiService.extractErrorMessage(response.body, fallback: 'Nao foi possivel concluir o cadastro.')}',
-=======
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cadastro realizado com sucesso!')),
+        var message = ApiService.extractErrorMessage(
+          response.body,
+          fallback: 'Nao foi possivel concluir o cadastro.',
         );
-        Navigator.pushReplacementNamed(context, AppRoutes.login);
-      } else {
-        final error = response.body;
-        String message = 'Erro no cadastro: ${response.statusCode} - $error';
         if (response.statusCode == 409) {
-          message = 'Telefone ou e-mail já cadastrado.';
+          message = 'Telefone ou e-mail ja cadastrado.';
         }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
-        );
+        _showSnackBar('Erro no cadastro: $message');
       }
     } catch (e) {
       _showSnackBar('Erro: $e');
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
