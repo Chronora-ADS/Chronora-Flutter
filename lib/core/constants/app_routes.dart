@@ -6,6 +6,7 @@ import 'package:chronora/pages/buy_chronos/buy_chronos_page.dart';
 import 'package:chronora/pages/notification/notification_page.dart';
 import 'package:chronora/pages/sell_chronos/sell_chronos_page.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_creation.dart';
+import 'package:chronora/pages/requests/request_accepted_view.dart';
 import 'package:chronora/pages/requests/request_view.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_edit.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +18,7 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String requestCreation = '/request-creation';
   static const String requestView = '/request-view';
+  static const String requestAcceptedView = '/request-accepted-view';
   static const String requestEditing = '/request-editing';
   static const String myRequests = '/my-orders';
   static const String buyChronos = '/buy-chronos';
@@ -79,6 +81,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (context) => const RequestCreationPage());
       case notification:
         return MaterialPageRoute(builder: (context) => const NotificationPage());
+      case requestAcceptedView:
+        return MaterialPageRoute(builder: (context) => const RequestAcceptedView());
       default:
         // Rota padrão: volta para a main
         return MaterialPageRoute(builder: (context) => const MainPage());
