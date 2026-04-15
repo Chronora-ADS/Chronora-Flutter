@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/user_model.dart';
@@ -24,7 +24,8 @@ class _PerfilEditState extends State<PerfilEdit> {
   final ProfileController _controller = ProfileController();
   final ImagePicker _imagePicker = ImagePicker();
   bool _isLoading = false;
-  File? _documentFile;
+  XFile? _documentFile;
+  Uint8List? _documentBytes;
   String _documentFileName = '';
 
   late User _user;
@@ -70,8 +71,10 @@ class _PerfilEditState extends State<PerfilEdit> {
       );
 
       if (file != null) {
+        final bytes = await file.readAsBytes();
         setState(() {
-          _documentFile = File(file.path);
+          _documentFile = file;
+          _documentBytes = bytes;
           _documentFileName = file.name;
         });
       }
@@ -238,8 +241,8 @@ class _PerfilEditState extends State<PerfilEdit> {
                             ? Stack(
                                 children: [
                                   Center(
-                                    child: Image.file(
-                                      _documentFile!,
+                                    child: Image.memory(
+                                      _documentBytes!,
                                       fit: BoxFit.cover,
                                       width: double.infinity,
                                       height: double.infinity,
@@ -252,6 +255,7 @@ class _PerfilEditState extends State<PerfilEdit> {
                                       onTap: () {
                                         setState(() {
                                           _documentFile = null;
+                                          _documentBytes = null;
                                           _documentFileName = '';
                                         });
                                       },

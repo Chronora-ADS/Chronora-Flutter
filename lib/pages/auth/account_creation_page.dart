@@ -1,7 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/backgrounds/background_auth_widget.dart';
@@ -34,6 +32,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+        withData: true,
       );
 
       if (result != null) {
@@ -50,17 +49,9 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
   }
 
   Future<String> _convertToBase64(PlatformFile file) async {
-    if (kIsWeb) {
-      final bytes = file.bytes;
-      if (bytes == null) throw Exception('Arquivo vazio');
-      String base64String = base64Encode(bytes);
-      return base64String;
-    } else {
-      final file = File(_pickedFile!.path!);
-      List<int> fileBytes = await file.readAsBytes();
-      String base64String = base64Encode(fileBytes);
-      return base64String;
-    }
+    final bytes = file.bytes;
+    if (bytes == null) throw Exception('Arquivo vazio');
+    return base64Encode(bytes);
   }
 
   String? _validateName(String? value) {

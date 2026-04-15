@@ -1,131 +1,98 @@
-// services/api_service.dart
 import 'dart:convert';
-import 'package:http/http.dart' as http; //
+
+import 'package:chronora/core/constants/app_config.dart';
+import 'package:http/http.dart' as http;
 
 class ApiService {
-  // static const String baseUrl = 'https://chronora-java.onrender.com';
-  static const String baseUrl = 'http://localhost:8085';
+  static const String baseUrl = AppConfig.apiBaseUrl;
+
+  static Uri _uri(String endpoint) {
+    final normalizedEndpoint =
+        endpoint.startsWith('/') ? endpoint : '/$endpoint';
+    return Uri.parse('$baseUrl$normalizedEndpoint');
+  }
+
+  static Map<String, String> _headers({String? token}) {
+    return {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+  }
 
   static Future<http.Response> post(
-    String endpoint, 
-    Map<String, dynamic> data,
-    {String? token}
-  ) async {
+    String endpoint,
+    Map<String, dynamic> data, {
+    String? token,
+  }) async {
     try {
-      final headers = {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        if (token != null) 'Authorization': 'Bearer $token',
-      };
-
-      final response = await http.post(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: headers,
+      return await http.post(
+        _uri(endpoint),
+        headers: _headers(token: token),
         body: jsonEncode(data),
       );
-      return response;
     } catch (e) {
-      throw Exception('Erro de conexão: $e');
+      throw Exception('Erro de conexao: $e');
     }
   }
 
   static Future<http.Response> get(
-    String endpoint, 
-    {String? token}
-  ) async {
+    String endpoint, {
+    String? token,
+  }) async {
     try {
-      final headers = {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        if (token != null) 'Authorization': 'Bearer $token',
-      };
-
-      final response = await http.get(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: headers,
+      return await http.get(
+        _uri(endpoint),
+        headers: _headers(token: token),
       );
-      return response;
     } catch (e) {
-      throw Exception('Erro de conexão: $e');
+      throw Exception('Erro de conexao: $e');
     }
   }
 
   static Future<http.Response> put(
-    String endpoint, 
-    Map<String, dynamic> data,
-    {String? token}
-  ) async {
+    String endpoint,
+    Map<String, dynamic> data, {
+    String? token,
+  }) async {
     try {
-      final headers = {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        if (token != null) 'Authorization': 'Bearer $token',
-      };
-
-      final response = await http.put(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: headers,
+      return await http.put(
+        _uri(endpoint),
+        headers: _headers(token: token),
         body: jsonEncode(data),
       );
-      return response;
     } catch (e) {
-      throw Exception('Erro de conexão: $e');
+      throw Exception('Erro de conexao: $e');
     }
   }
 
   static Future<http.Response> delete(
-    String endpoint, 
-    {String? token}
+    String endpoint, {
+    String? token,
+  }) async {
+    try {
+      return await http.delete(
+        _uri(endpoint),
+        headers: _headers(token: token),
+      );
+    } catch (e) {
+      throw Exception('Erro de conexao: $e');
+    }
+  }
+
+  static Future<http.Response> putWithHeaders(
+    String endpoint,
+    Map<String, String> headers,
   ) async {
     try {
-      final headers = {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        if (token != null) 'Authorization': 'Bearer $token',
-      };
-
-      final response = await http.delete(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: headers,
+      return await http.put(
+        _uri(endpoint),
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
       );
-      return response;
     } catch (e) {
-      throw Exception('Erro de conexão: $e');
-    }
-  }
-  static Future<http.Response> putWithHeaders(String endpoint, Map<String, String> headers) async {
-    try {
-      final finalHeaders = {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        ...headers, // Mescla os headers fornecidos
-      };
-
-      final response = await http.put(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: finalHeaders,
-      );
-      return response;
-    } catch (e) {
-      throw Exception('Erro de conexão: $e');
-    }
-  }
-
-  static Future<http.Response> delete(String endpoint, {String? token}) async {
-    try {
-      final headers = {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        if (token != null) 'Authorization': 'Bearer $token',
-      };
-
-      final response = await http.get(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: headers,
-      );
-      return response;
-    } catch (e) {
-      throw Exception('Erro de conexão: $e');
+      throw Exception('Erro de conexao: $e');
     }
   }
 }
