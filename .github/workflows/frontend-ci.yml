@@ -24,14 +24,32 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Habilitar Flutter Web
+        run: flutter config --enable-web
+
       - name: Instalar dependencias
         run: flutter pub get
 
       - name: Analisar projeto
         run: flutter analyze
 
+      - name: Verificar se existem testes
+        id: tests
+        shell: bash
+        run: |
+          if find test -name '*_test.dart' -print -quit | grep -q .; then
+            echo "has_tests=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_tests=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Rodar testes
+        if: steps.tests.outputs.has_tests == 'true'
         run: flutter test
+
+      - name: Pular testes ausentes
+        if: steps.tests.outputs.has_tests != 'true'
+        run: echo "Nenhum arquivo *_test.dart encontrado. Pulando testes."
 
       - name: Gerar build web
         run: flutter build web --release --dart-define=API_BASE_URL=https://example.com
