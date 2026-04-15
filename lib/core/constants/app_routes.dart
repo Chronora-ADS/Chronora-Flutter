@@ -1,7 +1,6 @@
 import 'package:chronora/pages/auth/account_creation_page.dart';
 import 'package:chronora/pages/auth/login_page.dart';
 import 'package:chronora/pages/main_page.dart';
-import 'package:chronora/pages/profile_page.dart';
 import 'package:chronora/pages/buy_chronos/buy_chronos_page.dart';
 import 'package:chronora/pages/notification/notification_page.dart';
 import 'package:chronora/pages/sell_chronos/sell_chronos_page.dart';

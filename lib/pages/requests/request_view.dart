@@ -5,7 +5,6 @@ import '../../core/constants/app_colors.dart';
 import '../../core/models/main_page_requests_model.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/services/api_service.dart';
-import '../../widgets/backgrounds/background_default_widget.dart';
 import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
@@ -546,7 +545,7 @@ class _RequestViewState extends State<RequestView> {
         ],
 
         // Informações do criador em container separado
-        if (_serviceDetail!.userCreator != null) ...[
+        ...[
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
@@ -567,7 +566,7 @@ class _RequestViewState extends State<RequestView> {
                     CircleAvatar(
                       backgroundColor: AppColors.amareloClaro,
                       child: Text(
-                        _serviceDetail!.userCreator!.name[0].toUpperCase(),
+                        _serviceDetail!.userCreator.name[0].toUpperCase(),
                         style: const TextStyle(color: AppColors.branco),
                       ),
                     ),
@@ -577,7 +576,7 @@ class _RequestViewState extends State<RequestView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _serviceDetail!.userCreator!.name,
+                            _serviceDetail!.userCreator.name,
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 4),
