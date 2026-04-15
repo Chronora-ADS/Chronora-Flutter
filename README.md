@@ -18,8 +18,20 @@ O deploy de desenvolvimento esta preparado para a branch `master` com Docker.
 
 ## Build local
 
-Para build local com outra API:
+Para rodar local apontando para o backend local, use um arquivo `.env.local` na raiz com base em `.env.local.example`:
+
+```text
+API_BASE_URL=http://localhost:8085
+```
+
+### Rodar localmente
 
 ```powershell
-flutter build web --release --dart-define=API_BASE_URL=https://sua-api.onrender.com
+.\scripts\run-local.ps1
+```
+
+### Build web local
+
+```powershell
+.\scripts\run-local.ps1 -Mode build
 ```
