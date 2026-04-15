@@ -2,7 +2,6 @@ import 'package:chronora/widgets/header.dart';
 import 'package:chronora/widgets/side_menu.dart';
 import 'package:chronora/widgets/wallet_modal.dart';
 import 'package:flutter/material.dart';
-import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:universal_html/html.dart' as html;
@@ -15,10 +14,12 @@ import 'package:chronora/core/models/main_page_requests_model.dart';
 
 class RequestEditingPage extends StatefulWidget {
   final Service? service;
+  final int? serviceId; // Novo parâmetro para receber o ID pela URL
 
   const RequestEditingPage({
     super.key,
     this.service,
+    this.serviceId,
   });
 
   @override
@@ -37,7 +38,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
   late List<String> _categoriesTags;
   
-  dynamic _selectedImage;
+  XFile? _selectedImage;
   String? _imageFileName;
   Uint8List? _imageBytes;
 
@@ -48,18 +49,43 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   String? _errorMessage;
   int? _serviceId;
 
+  @override
+  void initState() {
+    super.initState();
+    _categoriesTags = [];
+    _extractAndProcessService();
+  }
+
+  // Método para extrair o serviço de diferentes fontes
+  void _extractAndProcessService() {
+    // Prioridade: serviceId (da URL) > widget.service > argumentos da rota
+    if (widget.serviceId != null) {
+      _serviceId = widget.serviceId;
+      _fetchServiceData();
+    } else if (widget.service != null) {
+      _populateFormFromService(widget.service!);
+    } else {
+      // Tenta pegar dos argumentos da rota (fallback)
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final arguments = ModalRoute.of(context)?.settings.arguments;
+        
+        if (arguments is Service) {
+          _populateFormFromService(arguments);
+        } else if (arguments is Map && arguments['service'] is Service) {
+          _populateFormFromService(arguments['service'] as Service);
+        } else {
+          setState(() {
+            _errorMessage = 'Nenhum serviço encontrado para edição.';
+          });
+        }
+      });
+    }
+  }
+
   // Método para popular o formulário com dados do serviço
   void _populateFormFromService(Service service) {
-    print('=== POPULANDO FORMULÁRIO A PARTIR DE SERVICE ===');
-    print('Service ID: ${service.id}');
-    print('Título: ${service.title}');
-    print('Título: ${service.description}');
-    print('Chronos: ${service.timeChronos}');
-    print('Categorias: ${service.categoryEntities.map((c) => c.name).toList()}');
-    
     // Garante que o serviceId seja setado
     _serviceId = service.id;
-    print('ServiceId definido: $_serviceId');
       
     // Preenche os campos básicos
     _titleController.text = service.title;
@@ -72,10 +98,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         final imageBytes = base64.decode(service.serviceImageUrl);
         setState(() {
           _imageBytes = imageBytes;
-          _selectedImage = _imageBytes;
+          _selectedImage = null;
           _imageFileName = 'imagem_servico.jpg';
         });
-        print('Imagem carregada com sucesso');
       } catch (e) {
         print('Erro ao decodificar imagem: $e');
       }
@@ -87,34 +112,16 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         .where((name) => name.isNotEmpty)
         .toList();
     
-    print('Categorias extraídas: $categoryNames');
-    
     setState(() {
       _categoriesTags = categoryNames;
     });
     
-    print('=== FIM DA POPULAÇÃO ===');
-    
-    // NOTA: Para description, deadline e modality,
-    // você precisará buscar via API (método _fetchServiceData)
-    // Se não tiver essas informações, busque via API
-    _serviceId = service.id;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchServiceData();
-    });
+    // Busca dados completos via API
+    _fetchServiceData();
   }
 
   // Método para popular o formulário com ServiceDetailModel
   void _populateFormFromServiceDetail(ServiceDetailModel serviceDetail) {
-    print('=== POPULANDO FORMULÁRIO ===');
-    print('Título: ${serviceDetail.title}');
-    print('Descrição: ${serviceDetail.description}');
-    print('Chronos: ${serviceDetail.timeChronos}');
-    print('Deadline: ${serviceDetail.deadline}');
-    print('Modalidade: ${serviceDetail.modality}');
-    print('Categorias: ${serviceDetail.categoryEntities.map((c) => c.name).toList()}');
-    print('ServiceImage presente: ${serviceDetail.serviceImage != null && serviceDetail.serviceImage!.isNotEmpty}');
-    
     // Preenche os campos do formulário
     _titleController.text = serviceDetail.title;
     _descriptionController.text = serviceDetail.description;
@@ -144,11 +151,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     _selectedModality = normalizedModality;
     
     // Carrega imagem se existir
-    if (serviceDetail.serviceImage != null && serviceDetail.serviceImage!.isNotEmpty) {
+    if (serviceDetail.serviceImageUrl != null && serviceDetail.serviceImageUrl!.isNotEmpty) {
       try {
         setState(() {
-          _imageBytes = base64.decode(serviceDetail.serviceImage!);
-          _selectedImage = _imageBytes;
+          _imageBytes = base64.decode(serviceDetail.serviceImageUrl!);
+          _selectedImage = null;
           _imageFileName = 'imagem_servico.jpg';
         });
       } catch (e) {
@@ -222,60 +229,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     }
   }
 
-
-  @override
-  void initState() {
-    super.initState();
-    _categoriesTags = [];
-    
-    print('=== INIT STATE EDIT PAGE ===');
-    print('Service recebido via widget: ${widget.service != null}');
-    
-    // Adicione este método para extrair o serviço de diferentes formas
-    _extractAndProcessService();
-  }
-
-  // Método para extrair o serviço de diferentes fontes
-  void _extractAndProcessService() {
-    Service? serviceToProcess;
-    
-    // 1. Primeiro verifica se veio pelo widget
-    if (widget.service != null) {
-      serviceToProcess = widget.service;
-      print('Service extraído do widget');
-    }
-    
-    // 2. Se não veio pelo widget, verifica se foi passado como argumento da rota
-    if (serviceToProcess == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final arguments = ModalRoute.of(context)?.settings.arguments;
-        
-        if (arguments is Service) {
-          serviceToProcess = arguments;
-          print('Service extraído dos argumentos da rota (direto)');
-        } else if (arguments is Map && arguments['service'] is Service) {
-          serviceToProcess = arguments['service'] as Service;
-          print('Service extraído dos argumentos da rota (Map)');
-        }
-        
-        // Se encontrou algum serviço, processa
-        if (serviceToProcess != null) {
-          print('Populando formulário a partir do service...');
-          _populateFormFromService(serviceToProcess!);
-        } else {
-          print('Nenhum serviço encontrado!');
-          setState(() {
-            _errorMessage = 'Nenhum serviço encontrado para edição.';
-          });
-        }
-      });
-    } else {
-      // Se já tinha no widget, processa imediatamente
-      print('Populando formulário a partir do service...');
-      _populateFormFromService(serviceToProcess);
-    }
-  }
-
   Future<void> _pickImageMobile() async {
     final ImagePicker picker = ImagePicker();
     try {
@@ -287,8 +240,10 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       );
 
       if (image != null) {
+        final bytes = await image.readAsBytes();
         setState(() {
-          _selectedImage = File(image.path);
+          _selectedImage = image;
+          _imageBytes = bytes;
           _imageFileName = image.name;
         });
       }
@@ -318,7 +273,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           setState(() {
             _imageBytes = reader.result as Uint8List?;
             _imageFileName = file.name;
-            _selectedImage = _imageBytes;
+            _selectedImage = null;
           });
         });
 
@@ -363,7 +318,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     }
   }
 
-
   String _getDisplayFileName(String fileName, double maxWidth) {
     const double maxPercentage = 0.45;
     final textPainter = TextPainter(
@@ -407,15 +361,10 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     try {
       if (kIsWeb) {
         if (_imageBytes != null) {
-          String base64String = base64Encode(_imageBytes!);
-          return base64String;
+          return base64Encode(_imageBytes!);
         }
-      } else {
-        if (_selectedImage != null && _selectedImage is File) {
-          List<int> fileBytes = await _selectedImage.readAsBytes();
-          String base64String = base64Encode(fileBytes);
-          return base64String;
-        }
+      } else if (_selectedImage != null) {
+        return base64Encode(await _selectedImage!.readAsBytes());
       }
       return null;
     } catch (e) {
@@ -577,13 +526,10 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         if (base64Image != null) 'serviceImage': base64Image,
       };
 
-      print('Enviando payload para edição de pedido...');
-      print('Payload: $editModel');
-
       final response = await ApiService.put(
-        '/service/put', // Note: endpoint diferente para edição
+        '/service/put',
+        editModel,
         token: token,
-        editModel
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -594,7 +540,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           ),
         );
 
-                // Limpar formulário após sucesso
         _formKey.currentState!.reset();
         setState(() {
           _categoriesTags.clear();
@@ -604,7 +549,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           _imageBytes = null;
         });
 
-        // Retorna true indicando sucesso
         Navigator.pop(context, true);
         
       } else {
@@ -754,6 +698,32 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     return null;
   }
 
+  String? _dateValidator(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Data é obrigatória';
+    }
+    
+    final parts = value.split('/');
+    if (parts.length != 3) {
+      return 'Use o formato DD/MM/YYYY';
+    }
+    
+    try {
+      final day = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final year = int.parse(parts[2]);
+      
+      final date = DateTime(year, month, day);
+      if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
+        return 'Data não pode ser no passado';
+      }
+    } catch (e) {
+      return 'Data inválida';
+    }
+    
+    return null;
+  }
+
   Widget _buildFormField(String placeholder, TextEditingController controller,
       {String? Function(String?)? validator}) {
     return Container(
@@ -828,33 +798,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         ),
       ),
     );
-  }
-
-
-  String? _dateValidator(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Data é obrigatória';
-    }
-    
-    final parts = value.split('/');
-    if (parts.length != 3) {
-      return 'Use o formato DD/MM/YYYY';
-    }
-    
-    try {
-      final day = int.parse(parts[0]);
-      final month = int.parse(parts[1]);
-      final year = int.parse(parts[2]);
-      
-      final date = DateTime(year, month, day);
-      if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
-        return 'Data não pode ser no passado';
-      }
-    } catch (e) {
-      return 'Data inválida';
-    }
-    
-    return null;
   }
 
   Widget _buildDateField(String placeholder) {
@@ -1016,7 +959,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     );
   }
 
-
   Widget _buildModalityDropdown() {
     return Container(
       height: 46,
@@ -1032,7 +974,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         ],
       ),
       child: DropdownButtonFormField<String>(
-        initialValue: _selectedModality,
+        value: _selectedModality,
         validator: (value) => value == null ? 'Selecione uma modalidade' : null,
         decoration: InputDecoration(
           hintText: 'Modalidade',
@@ -1245,7 +1187,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
   @override
   Widget build(BuildContext context) {
-    // No build, use:
     if (!_isReadyToShowForm && !_isFetchingData && _errorMessage == null) {
       return const Scaffold(
         backgroundColor: Color(0xFF0B0C0C),
@@ -1270,7 +1211,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       );
     }
 
-    // Se houve erro ao carregar dados
     if (_errorMessage != null) {
       return Scaffold(
         backgroundColor: const Color(0xFF0B0C0C),
@@ -1304,95 +1244,89 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
                     'Voltar',
                     style: TextStyle(color: Colors.white),
                   ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF0B0C0C),
+      body: Stack(
+        children: [
+          _buildBackgroundImages(),
+          Column(
+            children: [
+              Header(
+                onMenuPressed: _toggleDrawer,
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    children: [
+                      _buildSearchBar(),
+                      const SizedBox(height: 60),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: _buildForm(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  return Scaffold(
-    backgroundColor: const Color(0xFF0B0C0C),
-    body: Stack(
-      children: [
-        _buildBackgroundImages(),
-
-        // Main content
-        Column(
-          children: [
-            Header(
-              onMenuPressed: _toggleDrawer,
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
+          if (_isDrawerOpen)
+            Positioned(
+              top: kToolbarHeight * 1.5,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: Row(
                   children: [
-                    _buildSearchBar(),
-                    const SizedBox(height: 60),
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.6,
+                      child: SideMenu(
+                        onWalletPressed: _openWallet,
+                      ),
+                    ),
                     Expanded(
-                      child: SingleChildScrollView(
-                        child: _buildForm(),
+                      child: GestureDetector(
+                        onTap: _toggleDrawer,
+                        child: Container(
+                          color: Colors.transparent,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-          ],
-        ),
-
-        // Menu lateral
-        if (_isDrawerOpen)
-          Positioned(
-            top: kToolbarHeight * 1.5,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              color: Colors.black.withOpacity(0.5),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.6,
-                    child: SideMenu(
-                      onWalletPressed: _openWallet,
+          if (_isWalletOpen)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: WalletModal(
+                      onClose: _closeWallet,
                     ),
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: _toggleDrawer,
-                      child: Container(
-                        color: Colors.transparent,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-        // Modal da Carteira
-        if (_isWalletOpen)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              color: Colors.black.withOpacity(0.5),
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: WalletModal(
-                    onClose: _closeWallet,
                   ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:universal_html/html.dart' as html;
@@ -32,7 +31,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   
   late List<String> _categoriesTags;
   
-  dynamic _selectedImage;
+  XFile? _selectedImage;
   String? _imageFileName;
   Uint8List? _imageBytes;
 
@@ -91,8 +90,10 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       );
 
       if (image != null) {
+        final bytes = await image.readAsBytes();
         setState(() {
-          _selectedImage = File(image.path);
+          _selectedImage = image;
+          _imageBytes = bytes;
           _imageFileName = image.name;
         });
       }
@@ -121,7 +122,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           setState(() {
             _imageBytes = reader.result as Uint8List?;
             _imageFileName = file.name;
-            _selectedImage = _imageBytes;
+            _selectedImage = null;
           });
         });
         
@@ -168,15 +169,10 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     try {
       if (kIsWeb) {
         if (_imageBytes != null) {
-          String base64String = base64Encode(_imageBytes!);
-          return base64String;
+          return base64Encode(_imageBytes!);
         }
-      } else {
-        if (_selectedImage != null && _selectedImage is File) {
-          List<int> fileBytes = await _selectedImage.readAsBytes();
-          String base64String = base64Encode(fileBytes);
-          return base64String;
-        }
+      } else if (_selectedImage != null) {
+        return base64Encode(await _selectedImage!.readAsBytes());
       }
       return null;
     } catch (e) {
@@ -344,9 +340,9 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       print('Payload: ${requestModel.toJson()}');
 
       final response = await ApiService.post(
-        '/service/post', 
+        '/service/post',
+        requestModel.toJson(),
         token: token,
-        requestModel.toJson()
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
