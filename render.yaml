@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: chronora-flutter-dev
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: master
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    autoDeployTrigger: commit
