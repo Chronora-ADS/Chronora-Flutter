@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/api/api_service.dart';
+import '../../core/services/auth_session_service.dart';
 import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
@@ -44,8 +44,7 @@ class SellChronosController extends ChangeNotifier {
   }
   
   Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
+    return AuthSessionService.getValidAccessToken();
   }
 
   /// Carrega o saldo atual do usuário do backend

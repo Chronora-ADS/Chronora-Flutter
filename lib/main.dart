@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/api/api_service.dart';
 import 'core/constants/app_routes.dart';
+import 'core/services/auth_session_service.dart';
 import 'core/services/client_log_service.dart';
 import 'pages/auth/login_page.dart';
 import 'pages/main_page.dart';
@@ -41,6 +41,7 @@ class ChronoraFlutter extends StatelessWidget {
       ),
       home: const _AuthGate(),
       routes: AppRoutes.routes,
+      onGenerateRoute: AppRoutes.onGenerateRoute,
       debugShowCheckedModeBanner: false,
     );
   }
@@ -63,12 +64,14 @@ class _AuthGateState extends State<_AuthGate> {
   }
 
   Future<bool> _resolveSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token');
+    final token = await AuthSessionService.getValidAccessToken();
     if (token == null || token.isEmpty) return false;
 
     try {
       final response = await ApiService.get('/user/get', token: token);
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        await AuthSessionService.clearSession();
+      }
       return response.statusCode == 200;
     } catch (_) {
       return false;

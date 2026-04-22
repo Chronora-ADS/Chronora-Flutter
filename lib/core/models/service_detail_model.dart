@@ -43,7 +43,16 @@ class ServiceDetailModel {
 
   static List<CategoryEntity> _parseCategories(dynamic categories) {
     if (categories is! List) return [];
-    return categories.map((item) => CategoryEntity.fromJson(item)).toList();
+
+    return categories.map((item) {
+      if (item is Map<String, dynamic>) {
+        return CategoryEntity.fromJson(item);
+      }
+      if (item is String) {
+        return CategoryEntity(name: item);
+      }
+      return CategoryEntity(name: '');
+    }).toList();
   }
 
   static int _toInt(dynamic value) {

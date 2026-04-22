@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:chronora/core/constants/app_colors.dart';
+import 'package:chronora/core/constants/app_routes.dart';
 import 'package:chronora/core/models/main_page_requests_model.dart';
 import 'package:flutter/material.dart';
 
@@ -8,12 +9,14 @@ import '../core/api/api_service.dart';
 
 class ServiceCard extends StatelessWidget {
   final Service service;
+  final VoidCallback? onView;
   final VoidCallback? onEdit;
   final ValueChanged<bool>? onCardEdited;
 
   const ServiceCard({
     super.key,
     required this.service,
+    this.onView,
     this.onEdit,
     this.onCardEdited,
   });
@@ -22,10 +25,14 @@ class ServiceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () async {
+        if (onView != null) {
+          onView!();
+          return;
+        }
+
         final result = await Navigator.pushNamed(
           context,
-          '/request-editing',
-          arguments: service,
+          AppRoutes.requestViewWithId(service.id),
         );
 
         if (result == true && onCardEdited != null) {

@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/api/api_service.dart';
+import '../../core/services/auth_session_service.dart';
 
 class Header extends StatefulWidget implements PreferredSizeWidget {
   final VoidCallback? onMenuPressed;
@@ -81,8 +81,7 @@ class _HeaderState extends State<Header> {
   }
 
   Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
+    return AuthSessionService.getValidAccessToken();
   }
 
   @override

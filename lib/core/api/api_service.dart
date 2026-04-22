@@ -3,16 +3,24 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../constants/app_config.dart';
+
 class ApiService {
   static const String _defaultLocalBaseUrl = 'http://localhost:8085';
   static const String _androidEmulatorBaseUrl = 'http://10.0.2.2:8085';
-  static const String _configuredBaseUrl =
-      String.fromEnvironment('API_BASE_URL', defaultValue: '');
+  static const String _configuredBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: '',
+  );
 
   static String get baseUrl {
     final configuredBaseUrl = _configuredBaseUrl.trim();
     if (configuredBaseUrl.isNotEmpty) {
       return configuredBaseUrl;
+    }
+
+    if (kIsWeb || kReleaseMode) {
+      return AppConfig.apiBaseUrl;
     }
 
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
@@ -107,6 +115,19 @@ class ApiService {
         _buildUri(endpoint),
         headers: headers,
         body: jsonEncode(data),
+      );
+    } catch (e) {
+      throw Exception('Erro de conexao: $e');
+    }
+  }
+
+  static Future<http.Response> delete(String endpoint, {String? token}) async {
+    try {
+      final headers = _buildHeaders(token: token);
+
+      return await http.delete(
+        _buildUri(endpoint),
+        headers: headers,
       );
     } catch (e) {
       throw Exception('Erro de conexao: $e');

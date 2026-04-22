@@ -3,10 +3,10 @@ import 'dart:convert';
 import 'package:chronora/core/constants/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/services/auth_session_service.dart';
 import '../../widgets/auth_text_field.dart';
 import '../../widgets/backgrounds/background_auth_widget.dart';
 
@@ -26,15 +26,6 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
-
-  Future<void> _saveToken(String token) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('auth_token', token);
-    } catch (_) {
-      // Ignora falha ao salvar token para nao bloquear o login.
-    }
-  }
 
   void _showSnackBar(String message) {
     if (!mounted) return;
@@ -61,13 +52,11 @@ class _LoginPageState extends State<LoginPage> {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
-        final token = responseData['access_token'] ?? responseData['token'];
-
-        if (token == null) {
-          throw Exception('Token nao encontrado na resposta');
+        if (responseData is! Map<String, dynamic>) {
+          throw Exception('Resposta de login invalida');
         }
 
-        await _saveToken(token);
+        await AuthSessionService.saveSessionFromResponse(responseData);
         if (!mounted) return;
 
         _showSnackBar('Login realizado com sucesso!');

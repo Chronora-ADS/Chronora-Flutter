@@ -7,18 +7,20 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:typed_data';
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:chronora/core/api/api_service.dart';
 import 'package:chronora/core/constants/modality_options.dart';
 import 'package:chronora/core/models/service_detail_model.dart';
 import 'package:chronora/core/models/main_page_requests_model.dart';
+import 'package:chronora/core/services/auth_session_service.dart';
 
 class RequestEditingPage extends StatefulWidget {
   final Service? service;
+  final int? serviceId;
 
   const RequestEditingPage({
     super.key,
     this.service,
+    this.serviceId,
   });
 
   @override
@@ -153,8 +155,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
+      final token = await AuthSessionService.getValidAccessToken();
 
       if (token == null) {
         throw Exception('Usuário não autenticado');
@@ -206,6 +207,14 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
   // Método para extrair o serviço de diferentes fontes
   void _extractAndProcessService() {
+    if (widget.serviceId != null) {
+      _serviceId = widget.serviceId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _fetchServiceData();
+      });
+      return;
+    }
+
     Service? serviceToProcess;
 
     // 1. Primeiro verifica se veio pelo widget
@@ -220,13 +229,19 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
         if (arguments is Service) {
           serviceToProcess = arguments;
+        } else if (arguments is int) {
+          _serviceId = arguments;
         } else if (arguments is Map && arguments['service'] is Service) {
           serviceToProcess = arguments['service'] as Service;
+        } else if (arguments is Map && arguments['serviceId'] is int) {
+          _serviceId = arguments['serviceId'] as int;
         }
 
         // Se encontrou algum serviço, processa
         if (serviceToProcess != null) {
           _populateFormFromService(serviceToProcess!);
+        } else if (_serviceId != null) {
+          _fetchServiceData();
         } else {
           setState(() {
             _errorMessage = 'Nenhum serviço encontrado para edição.';
@@ -403,8 +418,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
+      final token = await AuthSessionService.getValidAccessToken();
 
       if (token == null) {
         ScaffoldMessenger.of(context).showSnackBar(

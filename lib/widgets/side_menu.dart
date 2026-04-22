@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/api/api_service.dart';
 import '../core/constants/app_colors.dart';
 import '../core/constants/app_routes.dart';
+import '../core/services/auth_session_service.dart';
 
 class SideMenu extends StatelessWidget {
   final VoidCallback onWalletPressed;
@@ -44,14 +44,17 @@ class SideMenu extends StatelessWidget {
                       icon: 'assets/img/PlusWhite.png',
                       title: 'Crie um pedido',
                       onTap: () {
-                        Navigator.pushNamed(context, '/request-creation');
+                        Navigator.pushNamed(
+                          context,
+                          AppRoutes.requestCreation,
+                        );
                       },
                     ),
                     _buildMenuItem(
                       icon: 'assets/img/SuitcaseWhite.png',
                       title: 'Meus pedidos',
                       onTap: () {
-                        Navigator.pushNamed(context, '/my-orders');
+                        Navigator.pushNamed(context, AppRoutes.myOrders);
                       },
                     ),
                     _buildMenuItem(
@@ -63,7 +66,7 @@ class SideMenu extends StatelessWidget {
                       icon: 'assets/img/NotificationsWhite.png',
                       title: 'Notificacoes',
                       onTap: () {
-                        Navigator.pushNamed(context, '/notifications');
+                        Navigator.pushNamed(context, AppRoutes.notifications);
                       },
                     ),
                   ],
@@ -85,14 +88,14 @@ class SideMenu extends StatelessWidget {
                     icon: 'assets/img/UserIconWhite.png',
                     title: 'Perfil',
                     onTap: () {
-                      Navigator.pushNamed(context, '/profile');
+                      Navigator.pushNamed(context, AppRoutes.profile);
                     },
                   ),
                   _buildMenuItem(
                     icon: 'assets/img/SettingsWhite.png',
                     title: 'Configuracoes',
                     onTap: () {
-                      Navigator.pushNamed(context, '/settings');
+                      Navigator.pushNamed(context, AppRoutes.settings);
                     },
                   ),
                   Padding(
@@ -262,8 +265,7 @@ class SideMenu extends StatelessWidget {
   }
 
   Future<void> _logout(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token');
+    final token = await AuthSessionService.getValidAccessToken();
 
     if (token != null) {
       try {
@@ -273,7 +275,7 @@ class SideMenu extends StatelessWidget {
       }
     }
 
-    await prefs.remove('auth_token');
+    await AuthSessionService.clearSession();
 
     if (!context.mounted) return;
 

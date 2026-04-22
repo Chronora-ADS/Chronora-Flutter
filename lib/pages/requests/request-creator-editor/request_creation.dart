@@ -4,7 +4,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:typed_data';
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 
 // Importe os widgets da main_page
 import '../../../widgets/header.dart';
@@ -13,6 +12,7 @@ import '../../../widgets/wallet_modal.dart';
 import '../../../core/api/api_service.dart';
 import '../../../core/constants/modality_options.dart';
 import '../../../core/models/create_request_model.dart';
+import '../../../core/services/auth_session_service.dart';
 
 class RequestCreationPage extends StatefulWidget {
   const RequestCreationPage({super.key});
@@ -213,8 +213,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
 
     try {
       // Recuperar o token salvo
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
+      final token = await AuthSessionService.getValidAccessToken();
       
       if (token == null) {
         ScaffoldMessenger.of(context).showSnackBar(

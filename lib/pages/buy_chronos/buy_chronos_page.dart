@@ -1,9 +1,7 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/api/api_service.dart';
+import '../../core/services/chronos_wallet_service.dart';
 import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
@@ -31,6 +29,7 @@ class BuyChronosController extends ChangeNotifier {
   String errorMessage = '';
   bool isLoading = false;
   bool isLoadingBalance = true; // Novo estado para carregamento do saldo
+  final ChronosWalletService _walletService = ChronosWalletService();
   String selectedPaymentMethod = 'Cartão de Crédito';
 
   // Controllers
@@ -47,38 +46,14 @@ class BuyChronosController extends ChangeNotifier {
     super.dispose();
   }
 
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
-  }
-
   /// Carrega o saldo atual do usuário do backend
   Future<void> _loadCurrentBalance() async {
     try {
-      final String? token = await _getToken();
-
-      if (token == null) {
-        _updateState(() {
-          isLoadingBalance = false;
-          currentBalance = 0;
-        });
-        return;
-      }
-
-      final response = await ApiService.get('/user/get', token: token);
-
-      if (response.statusCode == 200) {
-        final userData = _parseResponse(response.body);
-        _updateState(() {
-          currentBalance = userData['timeChronos'] ?? 0;
-          isLoadingBalance = false;
-        });
-      } else {
-        _updateState(() {
-          isLoadingBalance = false;
-          currentBalance = 0;
-        });
-      }
+      final balance = await _walletService.fetchCurrentBalance();
+      _updateState(() {
+        currentBalance = balance;
+        isLoadingBalance = false;
+      });
     } catch (error) {
       _updateState(() {
         isLoadingBalance = false;
@@ -89,44 +64,7 @@ class BuyChronosController extends ChangeNotifier {
 
   /// Faz a requisição PUT para comprar Chronos
   Future<void> _purchaseChronosBackend(int amount) async {
-    final String? token = await _getToken();
-    
-    if (token == null) {
-      throw Exception('Token de autenticação não encontrado');
-    }
-
-    try {
-      // Faz a requisição PUT com o header "Chronos" contendo a quantidade
-      final response = await ApiService.putWithHeaders(
-        '/user/put/buy-chronos',
-        {
-          'Chronos': amount.toString(),
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (response.statusCode != 200) {
-        final errorData = json.decode(response.body);
-        final errorMessage = errorData['message'] ?? 'Erro ao processar compra';
-        throw Exception(errorMessage);
-      }
-    } catch (error) {
-      rethrow;
-    }
-  }
-
-  Map<String, dynamic> _parseResponse(String responseBody) {
-    try {
-      final jsonData = json.decode(responseBody);
-      if (jsonData is Map<String, dynamic>) {
-        final chronos = jsonData['timeChronos'] ?? 0;
-        return {'timeChronos': chronos};
-      }
-      return {'timeChronos': 0};
-    } catch (e) {
-      return {'timeChronos': 0};
-    }
+    await _walletService.buyChronos(amount);
   }
 
   void _updateState(void Function() callback) {

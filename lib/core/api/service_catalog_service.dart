@@ -1,8 +1,7 @@
 ﻿import 'dart:convert';
 
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../models/main_page_requests_model.dart';
+import '../services/auth_session_service.dart';
 import 'api_service.dart';
 
 class ServiceCatalogService {
@@ -34,8 +33,7 @@ class ServiceCatalogService {
   }
 
   Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
+    return AuthSessionService.getValidAccessToken();
   }
 
   ServiceListResult _parseServicesResponse(String body) {

@@ -2,11 +2,12 @@ import 'dart:convert';
 
 import 'package:chronora/core/models/main_page_requests_model.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/constants/app_colors.dart';
 import '../core/api/api_service.dart';
 import 'package:chronora/core/api/service_catalog_service.dart';
+import '../core/constants/app_routes.dart';
+import '../core/services/auth_session_service.dart';
 import '../widgets/backgrounds/background_default_widget.dart';
 import '../widgets/header.dart';
 import '../widgets/service_card.dart';
@@ -40,11 +41,6 @@ class _MainPageState extends State<MainPage> {
   int _nextPage = 0;
   bool _hasMorePages = true;
 
-  int? _page;
-  int? _size;
-  int? _totalElements;
-  int? _totalPages;
-
   double tempoValue = 5.0;
   String avaliacaoValue = "0";
   String ordenacaoValue = "0";
@@ -58,8 +54,7 @@ class _MainPageState extends State<MainPage> {
 
   Future<void> _fetchCurrentUser() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
+      final token = await AuthSessionService.getValidAccessToken();
       if (token == null) return;
 
       final response = await ApiService.get('/user/get', token: token);
@@ -126,10 +121,6 @@ class _MainPageState extends State<MainPage> {
 
         setState(() {
           services = updatedServices;
-          _page = result.page;
-          _size = result.size;
-          _totalElements = result.totalElements;
-          _totalPages = result.totalPages;
           _nextPage = currentPage + 1;
           _hasMorePages = hasMore;
           isLoading = false;
@@ -142,10 +133,6 @@ class _MainPageState extends State<MainPage> {
         setState(() {
           isLoading = false;
           _isLoadingMore = false;
-          _page = null;
-          _size = null;
-          _totalElements = null;
-          _totalPages = null;
           errorMessage = error.message;
         });
       }
@@ -154,10 +141,6 @@ class _MainPageState extends State<MainPage> {
         setState(() {
           isLoading = false;
           _isLoadingMore = false;
-          _page = null;
-          _size = null;
-          _totalElements = null;
-          _totalPages = null;
           errorMessage = "Falha ao carregar os serviços: $error";
         });
       }
@@ -262,8 +245,8 @@ class _MainPageState extends State<MainPage> {
                             ElevatedButton(
                               onPressed: () async {
                                 final result = await Navigator.pushNamed(
-                                  context, 
-                                  '/request-creation'
+                                  context,
+                                  AppRoutes.requestCreation
                                 );
                                 
                                 // Se retornou true, atualiza os serviços
@@ -477,12 +460,11 @@ class _MainPageState extends State<MainPage> {
           margin: const EdgeInsets.only(bottom: 16),
           child: ServiceCard(
             service: services[index],
-            onEdit: () async {
+            onView: () async {
               // Navega para a página de edição com o serviço
               final result = await Navigator.pushNamed(
                 context,
-                '/request-editing',
-                arguments: services[index],
+                AppRoutes.requestViewWithId(services[index].id),
               );
               
               // Se retornou true, atualiza os serviços
