@@ -26,7 +26,12 @@ class Service {
     UserCreator userCreator;
 
     if (userCreatorJson != null && userCreatorJson is Map<String, dynamic>) {
-      userCreator = UserCreator.fromJson(userCreatorJson);
+      final userCreatorData = Map<String, dynamic>.from(userCreatorJson);
+      userCreatorData.putIfAbsent(
+        'rating',
+        () => json['rating'] ?? json['userRating'] ?? json['avaliacao'],
+      );
+      userCreator = UserCreator.fromJson(userCreatorData);
     } else {
       userCreator = UserCreator(name: 'Usuario Desconhecido');
     }
@@ -82,13 +87,26 @@ class Service {
 
 class UserCreator {
   final String name;
+  final double? rating;
 
-  UserCreator({required this.name});
+  UserCreator({required this.name, this.rating});
 
   factory UserCreator.fromJson(Map<String, dynamic> json) {
     return UserCreator(
       name: json['name'] ?? '',
+      rating: _toDouble(
+        json['rating'] ?? json['userRating'] ?? json['avaliacao'],
+      ),
     );
+  }
+
+  static double? _toDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      return double.tryParse(value.replaceAll(',', '.'));
+    }
+    return null;
   }
 }
 

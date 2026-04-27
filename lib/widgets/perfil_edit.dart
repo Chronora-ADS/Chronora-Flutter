@@ -59,7 +59,7 @@ class _PerfilEditState extends State<PerfilEdit> {
       nameController.text = _user.name;
       emailController.text = _user.email;
       phoneController.text = _user.phoneNumber;
-      descricaoController.text = _user.descricao ?? '';
+      descricaoController.text = _user.description ?? '';
     }
   }
 

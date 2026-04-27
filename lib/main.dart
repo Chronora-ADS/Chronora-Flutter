@@ -10,11 +10,10 @@ import 'pages/auth/login_page.dart';
 import 'pages/main_page.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  ClientLogService.initializeGlobalHandlers();
-
   await runZonedGuarded(
     () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      ClientLogService.initializeGlobalHandlers();
       runApp(const ChronoraFlutter());
     },
     (error, stackTrace) async {

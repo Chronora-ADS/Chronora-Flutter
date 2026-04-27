@@ -1,19 +1,51 @@
 import 'package:flutter/material.dart';
+
 import '../core/constants/app_colors.dart';
 import '../core/constants/modality_options.dart';
 
+class ServiceFilters {
+  static const double maxTempoValue = 100.0;
+  static const String allRatings = 'all';
+  static const String sortMostRecent = '0';
+  static const String sortOldest = '1';
+  static const String sortBestRated = '2';
+  static const String sortHighestTime = '3';
+  static const String sortLowestTime = '4';
+
+  final String deadlineText;
+  final double tempoValue;
+  final String avaliacaoValue;
+  final String ordenacaoValue;
+  final String? modalidadeSelecionada;
+  final String categoriaText;
+
+  const ServiceFilters({
+    this.deadlineText = '',
+    this.tempoValue = maxTempoValue,
+    this.avaliacaoValue = allRatings,
+    this.ordenacaoValue = sortMostRecent,
+    this.modalidadeSelecionada,
+    this.categoriaText = '',
+  });
+
+  bool get hasActiveFilters =>
+      deadlineText.trim().isNotEmpty ||
+      tempoValue < maxTempoValue ||
+      avaliacaoValue != allRatings ||
+      (modalidadeSelecionada?.trim().isNotEmpty ?? false) ||
+      categoriaText.trim().isNotEmpty;
+
+  bool get hasCustomSort => ordenacaoValue != sortMostRecent;
+}
+
 class FiltersModal extends StatefulWidget {
-  final Function() onApplyFilters;
-  final double initialTempoValue;
-  final String initialAvaliacaoValue;
-  final String initialOrdenacaoValue;
+  final ValueChanged<ServiceFilters> onApplyFilters;
+  final ServiceFilters initialFilters;
 
   const FiltersModal({
     super.key,
     required this.onApplyFilters,
-    this.initialTempoValue = 5.0,
-    this.initialAvaliacaoValue = "0",
-    this.initialOrdenacaoValue = "0",
+    this.initialFilters = const ServiceFilters(),
   });
 
   @override
@@ -25,14 +57,22 @@ class _FiltersModalState extends State<FiltersModal> {
   late String avaliacaoValue;
   late String ordenacaoValue;
   String? modalidadeSelecionada;
-  final TextEditingController _categoriaController = TextEditingController();
+  late final TextEditingController _deadlineController;
+  late final TextEditingController _categoriaController;
 
   @override
   void initState() {
     super.initState();
-    tempoValue = widget.initialTempoValue;
-    avaliacaoValue = widget.initialAvaliacaoValue;
-    ordenacaoValue = widget.initialOrdenacaoValue;
+    tempoValue = widget.initialFilters.tempoValue;
+    avaliacaoValue = widget.initialFilters.avaliacaoValue;
+    ordenacaoValue = widget.initialFilters.ordenacaoValue;
+    modalidadeSelecionada = widget.initialFilters.modalidadeSelecionada;
+    _deadlineController = TextEditingController(
+      text: widget.initialFilters.deadlineText,
+    );
+    _categoriaController = TextEditingController(
+      text: widget.initialFilters.categoriaText,
+    );
   }
 
   @override
@@ -68,13 +108,11 @@ class _FiltersModalState extends State<FiltersModal> {
             ],
           ),
           const SizedBox(height: 20),
-
           Expanded(
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Prazo
                   _buildFilterSection(
                     'Prazo',
                     Container(
@@ -85,20 +123,18 @@ class _FiltersModalState extends State<FiltersModal> {
                             Border.all(color: AppColors.amareloUmPoucoEscuro),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const TextField(
-                        decoration: InputDecoration(
-                          hintText: '30/10/2025',
+                      child: TextField(
+                        controller: _deadlineController,
+                        decoration: const InputDecoration(
+                          hintText: 'dd/mm/aaaa',
                           border: InputBorder.none,
                         ),
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Tipo de serviço
                   _buildFilterSection(
-                    'Tipo de serviço',
+                    'Tipo de servico',
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -107,7 +143,8 @@ class _FiltersModalState extends State<FiltersModal> {
                         return ChoiceChip(
                           label: Text(modality),
                           selected: selected,
-                          selectedColor: AppColors.amareloClaro.withOpacity(0.4),
+                          selectedColor:
+                              AppColors.amareloClaro.withValues(alpha: 0.4),
                           side: const BorderSide(
                             color: AppColors.amareloUmPoucoEscuro,
                           ),
@@ -121,29 +158,40 @@ class _FiltersModalState extends State<FiltersModal> {
                       }).toList(),
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Avaliação
                   _buildFilterSection(
-                    'Avaliação de usuário',
+                    'Avaliacao de usuario',
                     DropdownButtonFormField<String>(
                       initialValue: avaliacaoValue,
                       items: const [
                         DropdownMenuItem(
-                            value: "0", child: Text("0 - 1 estrelas")),
+                          value: ServiceFilters.allRatings,
+                          child: Text('Todas as avaliacoes'),
+                        ),
                         DropdownMenuItem(
-                            value: "1", child: Text("1 - 2 estrelas")),
+                          value: '0',
+                          child: Text('0 - 1 estrelas'),
+                        ),
                         DropdownMenuItem(
-                            value: "2", child: Text("2 - 3 estrelas")),
+                          value: '1',
+                          child: Text('1 - 2 estrelas'),
+                        ),
                         DropdownMenuItem(
-                            value: "3", child: Text("3 - 4 estrelas")),
+                          value: '2',
+                          child: Text('2 - 3 estrelas'),
+                        ),
                         DropdownMenuItem(
-                            value: "4", child: Text("4 - 5 estrelas")),
+                          value: '3',
+                          child: Text('3 - 4 estrelas'),
+                        ),
+                        DropdownMenuItem(
+                          value: '4',
+                          child: Text('4 - 5 estrelas'),
+                        ),
                       ],
                       onChanged: (value) {
                         setState(() {
-                          avaliacaoValue = value!;
+                          avaliacaoValue = value ?? ServiceFilters.allRatings;
                         });
                       },
                       decoration: InputDecoration(
@@ -152,15 +200,13 @@ class _FiltersModalState extends State<FiltersModal> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: const BorderSide(
-                              color: AppColors.amareloUmPoucoEscuro),
+                            color: AppColors.amareloUmPoucoEscuro,
+                          ),
                         ),
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Tempo
                   _buildFilterSection(
                     'Tempo',
                     Column(
@@ -168,7 +214,7 @@ class _FiltersModalState extends State<FiltersModal> {
                         Slider(
                           value: tempoValue,
                           min: 5,
-                          max: 100,
+                          max: ServiceFilters.maxTempoValue,
                           divisions: 19,
                           onChanged: (value) {
                             setState(() {
@@ -178,18 +224,15 @@ class _FiltersModalState extends State<FiltersModal> {
                           activeColor: AppColors.amareloClaro,
                         ),
                         Text(
-                          tempoValue == 5
-                              ? "0-5 horas"
-                              : "${tempoValue.toInt() - 5}-${tempoValue.toInt()} horas",
+                          tempoValue >= ServiceFilters.maxTempoValue
+                              ? 'Todos os tempos'
+                              : 'Ate ${tempoValue.toInt()} horas',
                           style: const TextStyle(fontSize: 14),
                         ),
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Categorias
                   _buildFilterSection(
                     'Categorias',
                     TextField(
@@ -201,34 +244,43 @@ class _FiltersModalState extends State<FiltersModal> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: const BorderSide(
-                              color: AppColors.amareloUmPoucoEscuro),
+                            color: AppColors.amareloUmPoucoEscuro,
+                          ),
                         ),
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Ordenação
                   _buildFilterSection(
-                    'Ordenação',
+                    'Ordenacao',
                     DropdownButtonFormField<String>(
                       initialValue: ordenacaoValue,
                       items: const [
                         DropdownMenuItem(
-                            value: "0", child: Text("Mais recentes")),
+                          value: ServiceFilters.sortMostRecent,
+                          child: Text('Mais recentes'),
+                        ),
                         DropdownMenuItem(
-                            value: "1", child: Text("Mais antigos")),
+                          value: ServiceFilters.sortOldest,
+                          child: Text('Mais antigos'),
+                        ),
                         DropdownMenuItem(
-                            value: "2", child: Text("Melhores avaliados")),
+                          value: ServiceFilters.sortBestRated,
+                          child: Text('Melhores avaliados'),
+                        ),
                         DropdownMenuItem(
-                            value: "3", child: Text("Maior tempo")),
+                          value: ServiceFilters.sortHighestTime,
+                          child: Text('Maior tempo'),
+                        ),
                         DropdownMenuItem(
-                            value: "4", child: Text("Menor tempo")),
+                          value: ServiceFilters.sortLowestTime,
+                          child: Text('Menor tempo'),
+                        ),
                       ],
                       onChanged: (value) {
                         setState(() {
-                          ordenacaoValue = value!;
+                          ordenacaoValue =
+                              value ?? ServiceFilters.sortMostRecent;
                         });
                       },
                       decoration: InputDecoration(
@@ -237,7 +289,8 @@ class _FiltersModalState extends State<FiltersModal> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: const BorderSide(
-                              color: AppColors.amareloUmPoucoEscuro),
+                            color: AppColors.amareloUmPoucoEscuro,
+                          ),
                         ),
                       ),
                     ),
@@ -246,33 +299,75 @@ class _FiltersModalState extends State<FiltersModal> {
               ),
             ),
           ),
-
           const SizedBox(height: 20),
-
-          // Botão aplicar filtros
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                widget.onApplyFilters();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.amareloUmPoucoEscuro,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    setState(() {
+                      tempoValue = ServiceFilters.maxTempoValue;
+                      avaliacaoValue = ServiceFilters.allRatings;
+                      ordenacaoValue = ServiceFilters.sortMostRecent;
+                      modalidadeSelecionada = null;
+                      _deadlineController.clear();
+                      _categoriaController.clear();
+                    });
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    side: const BorderSide(
+                      color: AppColors.amareloUmPoucoEscuro,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Limpar',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.preto,
+                    ),
+                  ),
                 ),
               ),
-              child: const Text(
-                'Aplicar Filtros',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.branco,
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    FocusScope.of(context).unfocus();
+                    widget.onApplyFilters(
+                      ServiceFilters(
+                        deadlineText: _deadlineController.text.trim(),
+                        tempoValue: tempoValue,
+                        avaliacaoValue: avaliacaoValue,
+                        ordenacaoValue: ordenacaoValue,
+                        modalidadeSelecionada: modalidadeSelecionada,
+                        categoriaText: _categoriaController.text.trim(),
+                      ),
+                    );
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.amareloUmPoucoEscuro,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Aplicar Filtros',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.branco,
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -299,6 +394,7 @@ class _FiltersModalState extends State<FiltersModal> {
 
   @override
   void dispose() {
+    _deadlineController.dispose();
     _categoriaController.dispose();
     super.dispose();
   }

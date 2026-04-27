@@ -428,15 +428,6 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<BuyChronosController>(context, listen: false)
-          .initializeInitialValues();
-    });
-  }
-
   void _toggleDrawer() {
     setState(() {
       _isDrawerOpen = !_isDrawerOpen;
@@ -862,7 +853,11 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
       appBar: Header(onMenuPressed: _toggleDrawer),
       backgroundColor: const Color(0xFF0B0C0C),
       body: ChangeNotifierProvider(
-        create: (_) => BuyChronosController(),
+        create: (_) {
+          final controller = BuyChronosController();
+          controller.initializeInitialValues();
+          return controller;
+        },
         child: Stack(
           children: [
             // Background images

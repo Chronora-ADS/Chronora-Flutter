@@ -3,15 +3,15 @@ import 'dart:convert';
 import 'package:chronora/core/models/main_page_requests_model.dart';
 import 'package:flutter/material.dart';
 
-import '../core/constants/app_colors.dart';
 import '../core/api/api_service.dart';
-import 'package:chronora/core/api/service_catalog_service.dart';
+import '../core/api/service_catalog_service.dart';
+import '../core/constants/app_colors.dart';
 import '../core/constants/app_routes.dart';
 import '../core/services/auth_session_service.dart';
 import '../widgets/backgrounds/background_default_widget.dart';
+import '../widgets/filters_modal.dart';
 import '../widgets/header.dart';
 import '../widgets/service_card.dart';
-import '../widgets/filters_modal.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/wallet_modal.dart';
 
@@ -26,31 +26,40 @@ class _MainPageState extends State<MainPage> {
   final TextEditingController _searchController = TextEditingController();
   final ServiceCatalogService _serviceCatalogService =
       ServiceCatalogService();
+
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
-  String _userName = 'Usuário';
+  String _userName = 'Usuario';
   double _userRating = 0.0;
   String? _userPhotoUrl;
 
   List<Service> services = [];
+  List<Service> _visibleServices = [];
   bool isLoading = true;
   String errorMessage = '';
   bool _isFetching = false;
+  bool _isFetchingAllForFilters = false;
   bool _isLoadingMore = false;
   static const int _pageSize = 10;
   int _nextPage = 0;
   bool _hasMorePages = true;
 
-  double tempoValue = 5.0;
-  String avaliacaoValue = "0";
-  String ordenacaoValue = "0";
+  ServiceFilters _activeFilters = const ServiceFilters();
 
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(_handleSearchChanged);
     _fetchCurrentUser();
-    _fetchServices();
+    _reloadServices();
   }
+
+  bool get _hasSearchQuery => _searchController.text.trim().isNotEmpty;
+
+  bool get _isFilterMode =>
+      _hasSearchQuery ||
+      _activeFilters.hasActiveFilters ||
+      _activeFilters.hasCustomSort;
 
   Future<void> _fetchCurrentUser() async {
     try {
@@ -64,23 +73,33 @@ class _MainPageState extends State<MainPage> {
       if (data is! Map<String, dynamic> || !mounted) return;
 
       setState(() {
-        _userName = (data['name'] ?? 'Usuário').toString();
-        final ratingRaw = data['rating'] ?? data['userRating'] ?? data['avaliacao'];
+        _userName = (data['name'] ?? 'Usuario').toString();
+        final ratingRaw =
+            data['rating'] ?? data['userRating'] ?? data['avaliacao'];
         if (ratingRaw is num) {
           _userRating = ratingRaw.toDouble();
         } else if (ratingRaw is String) {
           _userRating = double.tryParse(ratingRaw) ?? 0.0;
         }
 
-        final photo = data['profileImageUrl'] ?? data['profileImage'] ?? data['photoUrl'];
+        final photo =
+            data['profileImageUrl'] ?? data['profileImage'] ?? data['photoUrl'];
         _userPhotoUrl = photo?.toString();
       });
     } catch (_) {
-      // Mantém fallback visual sem quebrar o fluxo principal da página.
+      // Mantem fallback visual sem quebrar a pagina principal.
     }
   }
 
-  Future<void> _fetchServices({bool showLoading = false, bool reset = false}) async {
+  Future<void> _reloadServices() async {
+    await _fetchServices(showLoading: true, reset: true);
+    _scheduleFetchRemainingServicesForFilters();
+  }
+
+  Future<void> _fetchServices({
+    bool showLoading = false,
+    bool reset = false,
+  }) async {
     if (_isFetching) return;
     _isFetching = true;
 
@@ -88,16 +107,17 @@ class _MainPageState extends State<MainPage> {
       _nextPage = 0;
       _hasMorePages = true;
       services = [];
+      _visibleServices = [];
     }
 
-    if ((showLoading || services.isEmpty) && mounted) {
+    if (mounted) {
       setState(() {
-        isLoading = true;
-        errorMessage = '';
-      });
-    } else if (mounted) {
-      setState(() {
-        _isLoadingMore = true;
+        if (showLoading || services.isEmpty) {
+          isLoading = true;
+          _isLoadingMore = false;
+        } else {
+          _isLoadingMore = true;
+        }
         errorMessage = '';
       });
     }
@@ -108,19 +128,20 @@ class _MainPageState extends State<MainPage> {
         size: _pageSize,
       );
 
+      final updatedServices = reset || _nextPage == 0
+          ? result.services
+          : _mergeServices(services, result.services);
+
+      final totalPages = result.totalPages;
+      final currentPage = result.page ?? _nextPage;
+      final hasMore = totalPages != null
+          ? currentPage + 1 < totalPages
+          : result.services.length >= _pageSize;
+
       if (mounted) {
-        final updatedServices = reset || _nextPage == 0
-            ? result.services
-            : [...services, ...result.services];
-
-        final totalPages = result.totalPages;
-        final currentPage = result.page ?? _nextPage;
-        final hasMore = totalPages != null
-            ? currentPage + 1 < totalPages
-            : result.services.length >= _pageSize;
-
         setState(() {
           services = updatedServices;
+          _visibleServices = _applyFiltersToList(updatedServices);
           _nextPage = currentPage + 1;
           _hasMorePages = hasMore;
           isLoading = false;
@@ -141,12 +162,307 @@ class _MainPageState extends State<MainPage> {
         setState(() {
           isLoading = false;
           _isLoadingMore = false;
-          errorMessage = "Falha ao carregar os serviços: $error";
+          errorMessage = 'Falha ao carregar os servicos: $error';
         });
       }
     } finally {
       _isFetching = false;
+      _scheduleFetchRemainingServicesForFilters();
     }
+  }
+
+  Future<void> _fetchRemainingServicesForFilters() async {
+    if (_isFetching ||
+        _isFetchingAllForFilters ||
+        !_isFilterMode ||
+        !_hasMorePages) {
+      return;
+    }
+
+    _isFetchingAllForFilters = true;
+
+    if (mounted) {
+      setState(() {
+        if (services.isEmpty) {
+          isLoading = true;
+        } else {
+          _isLoadingMore = true;
+        }
+        errorMessage = '';
+      });
+    }
+
+    var loadedServices = List<Service>.from(services);
+    var nextPage = _nextPage;
+    var hasMorePages = _hasMorePages;
+
+    try {
+      while (hasMorePages) {
+        final result = await _serviceCatalogService.fetchServices(
+          page: nextPage,
+          size: _pageSize,
+        );
+
+        loadedServices = _mergeServices(loadedServices, result.services);
+
+        final totalPages = result.totalPages;
+        final currentPage = result.page ?? nextPage;
+        nextPage = currentPage + 1;
+        hasMorePages = totalPages != null
+            ? currentPage + 1 < totalPages
+            : result.services.length >= _pageSize;
+      }
+
+      if (mounted) {
+        setState(() {
+          services = loadedServices;
+          _visibleServices = _applyFiltersToList(loadedServices);
+          _nextPage = nextPage;
+          _hasMorePages = hasMorePages;
+          isLoading = false;
+          _isLoadingMore = false;
+          errorMessage = '';
+        });
+      }
+    } on ServiceCatalogException catch (error) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          _isLoadingMore = false;
+          errorMessage = error.message;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          _isLoadingMore = false;
+          errorMessage =
+              'Falha ao carregar os servicos restantes para os filtros: $error';
+        });
+      }
+    } finally {
+      _isFetchingAllForFilters = false;
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          _isLoadingMore = false;
+        });
+      }
+    }
+  }
+
+  void _scheduleFetchRemainingServicesForFilters() {
+    if (!_isFilterMode ||
+        !_hasMorePages ||
+        _isFetching ||
+        _isFetchingAllForFilters) {
+      return;
+    }
+
+    Future.microtask(() {
+      if (mounted) {
+        _fetchRemainingServicesForFilters();
+      }
+    });
+  }
+
+  void _handleSearchChanged() {
+    if (!mounted) return;
+
+    setState(() {
+      _visibleServices = _applyFiltersToList(services);
+    });
+
+    _scheduleFetchRemainingServicesForFilters();
+  }
+
+  void _handleFiltersApplied(ServiceFilters filters) {
+    setState(() {
+      _activeFilters = filters;
+      _visibleServices = _applyFiltersToList(services);
+    });
+
+    _scheduleFetchRemainingServicesForFilters();
+  }
+
+  List<Service> _applyFiltersToList(List<Service> source) {
+    final normalizedQuery = _normalizeText(_searchController.text);
+    final normalizedCategory = _normalizeText(_activeFilters.categoriaText);
+    final normalizedModality =
+        _normalizeModality(_activeFilters.modalidadeSelecionada ?? '');
+    final selectedDeadline = _parseDate(_activeFilters.deadlineText);
+    final maxTime = _activeFilters.tempoValue >= ServiceFilters.maxTempoValue
+        ? null
+        : _activeFilters.tempoValue.toInt();
+    final ratingFloor = _activeFilters.avaliacaoValue == ServiceFilters.allRatings
+        ? null
+        : double.tryParse(_activeFilters.avaliacaoValue);
+    final hasRatingData =
+        source.any((service) => service.userCreator.rating != null);
+
+    final filtered = source.where((service) {
+      if (normalizedQuery.isNotEmpty &&
+          !_matchesSearch(service, normalizedQuery)) {
+        return false;
+      }
+
+      if (selectedDeadline != null &&
+          _dateOnly(service.deadline).isAfter(selectedDeadline)) {
+        return false;
+      }
+
+      if (normalizedCategory.isNotEmpty &&
+          !service.categoryEntities.any(
+            (category) =>
+                _normalizeText(category.name).contains(normalizedCategory),
+          )) {
+        return false;
+      }
+
+      if (normalizedModality.isNotEmpty &&
+          _normalizeModality(service.modality) != normalizedModality) {
+        return false;
+      }
+
+      if (maxTime != null && service.timeChronos > maxTime) {
+        return false;
+      }
+
+      if (ratingFloor != null && hasRatingData) {
+        final rating = service.userCreator.rating;
+        if (rating == null || rating < ratingFloor || rating >= ratingFloor + 1) {
+          return false;
+        }
+      }
+
+      return true;
+    }).toList();
+
+    filtered.sort(_compareServices);
+    return filtered;
+  }
+
+  int _compareServices(Service a, Service b) {
+    switch (_activeFilters.ordenacaoValue) {
+      case ServiceFilters.sortOldest:
+        return a.id.compareTo(b.id);
+      case ServiceFilters.sortBestRated:
+        final ratingComparison =
+            _compareNullableDoubleDesc(a.userCreator.rating, b.userCreator.rating);
+        if (ratingComparison != 0) return ratingComparison;
+        return b.id.compareTo(a.id);
+      case ServiceFilters.sortHighestTime:
+        final timeComparison = b.timeChronos.compareTo(a.timeChronos);
+        if (timeComparison != 0) return timeComparison;
+        return b.id.compareTo(a.id);
+      case ServiceFilters.sortLowestTime:
+        final timeComparison = a.timeChronos.compareTo(b.timeChronos);
+        if (timeComparison != 0) return timeComparison;
+        return b.id.compareTo(a.id);
+      case ServiceFilters.sortMostRecent:
+      default:
+        return b.id.compareTo(a.id);
+    }
+  }
+
+  int _compareNullableDoubleDesc(double? left, double? right) {
+    if (left == null && right == null) return 0;
+    if (left == null) return 1;
+    if (right == null) return -1;
+    return right.compareTo(left);
+  }
+
+  bool _matchesSearch(Service service, String query) {
+    final searchableContent = [
+      service.title,
+      service.description,
+      service.userCreator.name,
+      service.modality,
+      ...service.categoryEntities.map((category) => category.name),
+    ].map(_normalizeText).join(' ');
+
+    return searchableContent.contains(query);
+  }
+
+  List<Service> _mergeServices(List<Service> current, List<Service> incoming) {
+    final mergedById = <int, Service>{};
+
+    for (final service in current) {
+      mergedById[service.id] = service;
+    }
+
+    for (final service in incoming) {
+      mergedById[service.id] = service;
+    }
+
+    return mergedById.values.toList();
+  }
+
+  String _normalizeText(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('à', 'a')
+        .replaceAll('ã', 'a')
+        .replaceAll('â', 'a')
+        .replaceAll('ä', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('è', 'e')
+        .replaceAll('ê', 'e')
+        .replaceAll('ë', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ì', 'i')
+        .replaceAll('î', 'i')
+        .replaceAll('ï', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ò', 'o')
+        .replaceAll('õ', 'o')
+        .replaceAll('ô', 'o')
+        .replaceAll('ö', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ù', 'u')
+        .replaceAll('û', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ç', 'c')
+        .trim();
+  }
+
+  String _normalizeModality(String value) {
+    final normalized = _normalizeText(value);
+
+    if (normalized.contains('presencial')) return 'presencial';
+    if (normalized.contains('remoto')) return 'remoto';
+    if (normalized.contains('hibrido')) return 'hibrido';
+
+    return normalized;
+  }
+
+  DateTime? _parseDate(String value) {
+    final text = value.trim();
+    if (text.isEmpty) return null;
+
+    final parts = text.split('/');
+    if (parts.length != 3) return null;
+
+    final day = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final year = int.tryParse(parts[2]);
+
+    if (day == null || month == null || year == null) return null;
+
+    final parsedDate = DateTime(year, month, day);
+    if (parsedDate.day != day ||
+        parsedDate.month != month ||
+        parsedDate.year != year) {
+      return null;
+    }
+
+    return _dateOnly(parsedDate);
+  }
+
+  DateTime _dateOnly(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
   }
 
   void _showFiltersModal() {
@@ -155,10 +471,8 @@ class _MainPageState extends State<MainPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => FiltersModal(
-        onApplyFilters: () => _fetchServices(reset: true),
-        initialTempoValue: tempoValue,
-        initialAvaliacaoValue: avaliacaoValue,
-        initialOrdenacaoValue: ordenacaoValue,
+        onApplyFilters: _handleFiltersApplied,
+        initialFilters: _activeFilters,
       ),
     );
   }
@@ -171,8 +485,8 @@ class _MainPageState extends State<MainPage> {
 
   void _openWallet() {
     setState(() {
-      _isDrawerOpen = false; // Fecha o side menu
-      _isWalletOpen = true; // Abre a carteira
+      _isDrawerOpen = false;
+      _isWalletOpen = true;
     });
   }
 
@@ -190,7 +504,6 @@ class _MainPageState extends State<MainPage> {
       backgroundColor: const Color(0xFF0B0C0C),
       body: Stack(
         children: [
-          // Conteúdo principal
           Column(
             children: [
               Header(
@@ -207,15 +520,15 @@ class _MainPageState extends State<MainPage> {
                     ),
                     child: Column(
                       children: [
-                        // Search Bar
                         Container(
                           margin: const EdgeInsets.only(bottom: 16),
                           child: TextField(
                             controller: _searchController,
                             decoration: InputDecoration(
-                              hintText: 'Pintura de parede, aula de inglês...',
+                              hintText: 'Pintura de parede, aula de ingles...',
                               hintStyle: const TextStyle(
-                                  color: AppColors.textoPlaceholder),
+                                color: AppColors.textoPlaceholder,
+                              ),
                               filled: true,
                               fillColor: AppColors.branco,
                               border: OutlineInputBorder(
@@ -223,18 +536,20 @@ class _MainPageState extends State<MainPage> {
                                 borderSide: BorderSide.none,
                               ),
                               contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              prefixIcon: const Icon(Icons.search,
-                                  color: AppColors.textoPlaceholder),
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              prefixIcon: const Icon(
+                                Icons.search,
+                                color: AppColors.textoPlaceholder,
+                              ),
                             ),
                           ),
                         ),
-
-                        // Make Request Section
                         Column(
                           children: [
                             const Text(
-                              'As horas acumuladas no seu banco representam oportunidades reais de ação.',
+                              'As horas acumuladas no seu banco representam oportunidades reais de acao.',
                               style: TextStyle(
                                 color: AppColors.branco,
                                 fontSize: 16,
@@ -246,19 +561,20 @@ class _MainPageState extends State<MainPage> {
                               onPressed: () async {
                                 final result = await Navigator.pushNamed(
                                   context,
-                                  AppRoutes.requestCreation
+                                  AppRoutes.requestCreation,
                                 );
-                                
-                                // Se retornou true, atualiza os serviços
+
                                 if (result == true) {
-                                  await _fetchServices();
+                                  await _reloadServices();
                                 }
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.branco,
                                 foregroundColor: AppColors.preto,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 12),
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -281,7 +597,7 @@ class _MainPageState extends State<MainPage> {
                             ),
                             const SizedBox(height: 8),
                             const Text(
-                              'ou realize o de alguém',
+                              'ou realize o de alguem',
                               style: TextStyle(
                                 color: AppColors.branco,
                                 fontSize: 14,
@@ -289,27 +605,25 @@ class _MainPageState extends State<MainPage> {
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 24),
                         Align(
-                            alignment: Alignment.center,
-                            child: Container(
-                                width: screenWidth * 0.8,
-                                height: 3,
-                                color: AppColors.branco,
-                            ),
+                          alignment: Alignment.center,
+                          child: Container(
+                            width: screenWidth * 0.8,
+                            height: 3,
+                            color: AppColors.branco,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Align(
-                            alignment: Alignment.center,
-                            child: Container(
-                                width: screenWidth * 0.5,
-                                height: 3,
-                                color: AppColors.branco,
-                            ),
+                          alignment: Alignment.center,
+                          child: Container(
+                            width: screenWidth * 0.5,
+                            height: 3,
+                            color: AppColors.branco,
+                          ),
                         ),
                         const SizedBox(height: 24),
-
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
@@ -318,7 +632,9 @@ class _MainPageState extends State<MainPage> {
                               backgroundColor: AppColors.branco,
                               foregroundColor: AppColors.preto,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 16),
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -333,9 +649,7 @@ class _MainPageState extends State<MainPage> {
                             ),
                           ),
                         ),
-
                         const SizedBox(height: 24),
-
                         _buildServicesList(),
                         const SizedBox(height: 12),
                         _buildLoadMoreButton(),
@@ -346,8 +660,6 @@ class _MainPageState extends State<MainPage> {
               ),
             ],
           ),
-
-          // Menu lateral
           if (_isDrawerOpen)
             Positioned(
               top: 0,
@@ -355,7 +667,7 @@ class _MainPageState extends State<MainPage> {
               right: 0,
               bottom: 0,
               child: Container(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: Row(
                   children: [
                     SizedBox(
@@ -364,7 +676,7 @@ class _MainPageState extends State<MainPage> {
                         top: true,
                         bottom: false,
                         child: SideMenu(
-                          onWalletPressed: _openWallet, // Usa a nova função
+                          onWalletPressed: _openWallet,
                           userName: _userName,
                           userRating: _userRating,
                           userPhotoUrl: _userPhotoUrl,
@@ -383,8 +695,6 @@ class _MainPageState extends State<MainPage> {
                 ),
               ),
             ),
-
-          // Modal da Carteira
           if (_isWalletOpen)
             Positioned(
               top: 0,
@@ -392,12 +702,12 @@ class _MainPageState extends State<MainPage> {
               right: 0,
               bottom: 0,
               child: Container(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
                     child: WalletModal(
-                      onClose: _closeWallet, // Usa a nova função
+                      onClose: _closeWallet,
                     ),
                   ),
                 ),
@@ -436,16 +746,19 @@ class _MainPageState extends State<MainPage> {
       );
     }
 
-    if (services.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 40),
+    if (_visibleServices.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
         child: Center(
           child: Text(
-            'Nenhum serviço encontrado.',
-            style: TextStyle(
+            _isFilterMode
+                ? 'Nenhum servico corresponde a busca ou aos filtros.'
+                : 'Nenhum servico encontrado.',
+            style: const TextStyle(
               color: AppColors.branco,
               fontSize: 16,
             ),
+            textAlign: TextAlign.center,
           ),
         ),
       );
@@ -454,28 +767,26 @@ class _MainPageState extends State<MainPage> {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: services.length,
+      itemCount: _visibleServices.length,
       itemBuilder: (context, index) {
+        final service = _visibleServices[index];
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           child: ServiceCard(
-            service: services[index],
+            service: service,
             onView: () async {
-              // Navega para a página de edição com o serviço
               final result = await Navigator.pushNamed(
                 context,
-                AppRoutes.requestViewWithId(services[index].id),
+                AppRoutes.requestViewWithId(service.id),
               );
-              
-              // Se retornou true, atualiza os serviços
+
               if (result == true) {
-                await _fetchServices();
+                await _reloadServices();
               }
             },
             onCardEdited: (edited) async {
-              // Quando o card é editado pelo clique direto
               if (edited) {
-                await _fetchServices();
+                await _reloadServices();
               }
             },
           ),
@@ -485,7 +796,11 @@ class _MainPageState extends State<MainPage> {
   }
 
   Widget _buildLoadMoreButton() {
-    if (isLoading || errorMessage.isNotEmpty || services.isEmpty || !_hasMorePages) {
+    if (isLoading ||
+        errorMessage.isNotEmpty ||
+        services.isEmpty ||
+        !_hasMorePages ||
+        _isFilterMode) {
       return const SizedBox.shrink();
     }
 
@@ -514,7 +829,9 @@ class _MainPageState extends State<MainPage> {
 
   @override
   void dispose() {
-    _searchController.dispose();
+    _searchController
+      ..removeListener(_handleSearchChanged)
+      ..dispose();
     super.dispose();
   }
 }
