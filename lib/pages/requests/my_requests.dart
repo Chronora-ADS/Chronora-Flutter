@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:chronora/core/constants/app_colors.dart';
 import 'package:chronora/core/models/main_page_requests_model.dart';
@@ -96,6 +96,14 @@ class MeusPedidosPage extends StatefulWidget {
 }
 
 class _MeusPedidosPageState extends State<MeusPedidosPage> {
+  static const List<String> _serviceStatuses = [
+    'CRIADO',
+    'ACEITO',
+    'EM_ANDAMENTO',
+    'CONCLUIDO',
+    'CANCELADO',
+  ];
+
   final TextEditingController _searchController = TextEditingController();
 
   bool _isDrawerOpen = false;
@@ -138,21 +146,11 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         return;
       }
 
-      final responses = await Future.wait([
-        ApiService.get('/user/get', token: token),
-        ApiService.get('/service/get/all', token: token),
-      ]);
-
-      final userResponse = responses[0];
-      final servicesResponse = responses[1];
-
-      if (userResponse.statusCode != 200) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Não foi possível carregar os dados do usuário.';
-        });
-        return;
-      }
+      final decodedUser = _extractUserFromToken(token);
+      final servicesResponse = await ApiService.get(
+        '/service/get/all',
+        token: token,
+      );
 
       if (servicesResponse.statusCode != 200) {
         setState(() {
@@ -164,7 +162,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       }
 
       setState(() {
-        _currentUser = _extractCurrentUser(userResponse.body);
+        _currentUser = decodedUser;
         _services = _parseServicesResponse(servicesResponse.body);
         _isLoading = false;
       });
@@ -189,6 +187,63 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     } catch (_) {}
 
     return const UserIdentity(id: null, name: '', email: '');
+  }
+
+  UserIdentity _extractUserFromToken(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length < 2) {
+        return const UserIdentity(id: null, name: '', email: '');
+      }
+
+      final normalizedPayload = base64Url.normalize(parts[1]);
+      final payload = utf8.decode(base64Url.decode(normalizedPayload));
+      final data = json.decode(payload);
+
+      if (data is! Map<String, dynamic>) {
+        return const UserIdentity(id: null, name: '', email: '');
+      }
+
+      return UserIdentity(
+        id: _extractIdFromTokenClaims(data),
+        name: _extractStringFromMap(data, const [
+          'name',
+          'unique_name',
+          'preferred_username',
+          'user_name',
+        ]),
+        email: _extractStringFromMap(data, const [
+          'email',
+          'sub',
+          'upn',
+          'preferred_username',
+        ]),
+      );
+    } catch (_) {
+      return const UserIdentity(id: null, name: '', email: '');
+    }
+  }
+
+  int? _extractIdFromTokenClaims(Map<String, dynamic> data) {
+    for (final key in const ['id', 'userId', 'user_id']) {
+      final value = _toInt(data[key]);
+      if (value != null) {
+        return value;
+      }
+    }
+
+    return null;
+  }
+
+  String _extractStringFromMap(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      final value = data[key]?.toString().trim() ?? '';
+      if (value.isNotEmpty) {
+        return value;
+      }
+    }
+
+    return '';
   }
 
   List<ServiceEnvelope> _parseServicesResponse(String responseBody) {
@@ -234,28 +289,51 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     return values;
   }
 
-  List<ServiceEnvelope> get _createdRequests =>
-      _applyFilters(_services.where(_isCreatedByCurrentUser).toList());
+  Map<String, List<ServiceEnvelope>> get _requestsByStatus {
+    final grouped = <String, List<ServiceEnvelope>>{
+      for (final status in _serviceStatuses) status: <ServiceEnvelope>[],
+    };
+    final merged = <int, ServiceEnvelope>{};
 
-  List<ServiceEnvelope> get _acceptedRequests =>
-      _applyFilters(_services.where(_isAcceptedByCurrentUser).toList());
+    for (final envelope in _services) {
+      final belongsToCurrentUser =
+          _isCreatedByCurrentUser(envelope) || _isAcceptedByCurrentUser(envelope);
 
-  bool _isCreatedByCurrentUser(ServiceEnvelope envelope) {
-    final creator = envelope.raw['userCreator'];
-    if (creator is! Map<String, dynamic>) {
-      return false;
+      if (!belongsToCurrentUser || !_matchesFilters(envelope)) {
+        continue;
+      }
+
+      merged[envelope.service.id] = envelope;
     }
 
+    final ordered = merged.values.toList()..sort(_compareServices);
+
+    for (final envelope in ordered) {
+      final status = _normalizeStatus(envelope.service.status);
+      grouped.putIfAbsent(status, () => <ServiceEnvelope>[]).add(envelope);
+    }
+
+    return grouped;
+  }
+
+  bool _isCreatedByCurrentUser(ServiceEnvelope envelope) {
+    final creator = envelope.service.userCreator;
+
     return _matchesCurrentUser(
-      id: _toInt(creator['id']),
-      name: (creator['name'] ?? '').toString(),
-      email: (creator['email'] ?? '').toString(),
+      id: creator.id,
+      name: creator.name,
+      email: creator.email ?? '',
     );
   }
 
   bool _isAcceptedByCurrentUser(ServiceEnvelope envelope) {
-    if (_isCreatedByCurrentUser(envelope)) {
-      return false;
+    final accepted = envelope.service.userAccepted;
+    if (accepted != null) {
+      return _matchesCurrentUser(
+        id: accepted.id,
+        name: accepted.name,
+        email: accepted.email ?? '',
+      );
     }
 
     return _containsCurrentUserInAcceptedField(envelope.raw);
@@ -354,43 +432,38 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     return false;
   }
 
-  List<ServiceEnvelope> _applyFilters(List<ServiceEnvelope> input) {
-    final filtered = input.where((envelope) {
-      final service = envelope.service;
-      final query = _normalizeText(_searchQuery);
+  bool _matchesFilters(ServiceEnvelope envelope) {
+    final service = envelope.service;
+    final query = _normalizeText(_searchQuery);
 
-      final matchesSearch = query.isEmpty ||
-          _normalizeText(service.title).contains(query) ||
-          _normalizeText(service.userCreator.name).contains(query) ||
-          service.categoryEntities.any(
-            (category) => _normalizeText(category.name).contains(query),
-          );
+    final matchesSearch = query.isEmpty ||
+        _normalizeText(service.title).contains(query) ||
+        _normalizeText(service.userCreator.name).contains(query) ||
+        service.categoryEntities.any(
+          (category) => _normalizeText(category.name).contains(query),
+        );
 
-      final matchesRating = _extractUserRating(envelope.raw) >= _filters.minRating;
-      final matchesChronos =
-          (_filters.minChronos == null ||
-              service.timeChronos >= _filters.minChronos!) &&
-          (_filters.maxChronos == null ||
-              service.timeChronos <= _filters.maxChronos!);
-      final matchesCategory = _filters.category == null ||
-          service.categoryEntities.any(
-            (category) =>
-                _normalizeText(category.name) ==
-                _normalizeText(_filters.category!),
-          );
-      final matchesModality = _filters.modality == null ||
-          _normalizeText(service.modality) ==
-              _normalizeText(_filters.modality!);
+    final matchesRating = _extractUserRating(envelope.raw) >= _filters.minRating;
+    final matchesChronos =
+        (_filters.minChronos == null ||
+            service.timeChronos >= _filters.minChronos!) &&
+        (_filters.maxChronos == null ||
+            service.timeChronos <= _filters.maxChronos!);
+    final matchesCategory = _filters.category == null ||
+        service.categoryEntities.any(
+          (category) =>
+              _normalizeText(category.name) ==
+              _normalizeText(_filters.category!),
+        );
+    final matchesModality = _filters.modality == null ||
+        _normalizeText(service.modality) ==
+            _normalizeText(_filters.modality!);
 
-      return matchesSearch &&
-          matchesRating &&
-          matchesChronos &&
-          matchesCategory &&
-          matchesModality;
-    }).toList();
-
-    filtered.sort(_compareServices);
-    return filtered;
+    return matchesSearch &&
+        matchesRating &&
+        matchesChronos &&
+        matchesCategory &&
+        matchesModality;
   }
 
   int _compareServices(ServiceEnvelope a, ServiceEnvelope b) {
@@ -455,6 +528,15 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
   String _normalizeText(String value) => value.trim().toLowerCase();
 
+  String _normalizeStatus(String value) {
+    final normalized = value.trim().toUpperCase();
+    if (_serviceStatuses.contains(normalized)) {
+      return normalized;
+    }
+
+    return 'CRIADO';
+  }
+
   void _toggleDrawer() {
     setState(() {
       _isDrawerOpen = !_isDrawerOpen;
@@ -494,8 +576,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
   @override
   Widget build(BuildContext context) {
-    final acceptedRequests = _acceptedRequests;
-    final createdRequests = _createdRequests;
+    final requestsByStatus = _requestsByStatus;
 
     return Scaffold(
       backgroundColor: AppColors.preto,
@@ -526,10 +607,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
                           const SizedBox(height: 24),
                           _buildFiltersButton(),
                           const SizedBox(height: 24),
-                          _buildContent(
-                            acceptedRequests: acceptedRequests,
-                            createdRequests: createdRequests,
-                          ),
+                          _buildContent(requestsByStatus: requestsByStatus),
                         ],
                       ),
                     ),
@@ -664,8 +742,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
   }
 
   Widget _buildContent({
-    required List<ServiceEnvelope> acceptedRequests,
-    required List<ServiceEnvelope> createdRequests,
+    required Map<String, List<ServiceEnvelope>> requestsByStatus,
   }) {
     if (_isLoading) {
       return const Padding(
@@ -690,32 +767,38 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
     return Column(
       children: [
-        _buildSectionTitle('Pedidos Aceitos'),
-        const SizedBox(height: 12),
-        acceptedRequests.isEmpty
-            ? _buildFeedbackText(
-                _searchQuery.trim().isEmpty && !_filters.isActive
-                    ? 'Nenhum pedido aceito encontrado.'
-                    : 'Nenhum pedido aceito combina com os filtros.',
-              )
-            : _buildServiceList(services: acceptedRequests, canEdit: false),
-        _buildYellowSeparator(),
-        _buildSectionTitle('Pedidos Criados'),
-        const SizedBox(height: 12),
-        createdRequests.isEmpty
-            ? _buildFeedbackText(
-                _searchQuery.trim().isEmpty && !_filters.isActive
-                    ? 'Você ainda não criou nenhum pedido.'
-                    : 'Nenhum pedido criado combina com os filtros.',
-              )
-            : _buildServiceList(services: createdRequests, canEdit: true),
+        for (var index = 0; index < _serviceStatuses.length; index++) ...[
+          _buildSectionTitle(_statusSectionTitle(_serviceStatuses[index])),
+          const SizedBox(height: 12),
+          _buildStatusSection(
+            status: _serviceStatuses[index],
+            services:
+                requestsByStatus[_serviceStatuses[index]] ??
+                const <ServiceEnvelope>[],
+          ),
+          if (index < _serviceStatuses.length - 1) _buildYellowSeparator(),
+        ],
       ],
     );
   }
 
+  Widget _buildStatusSection({
+    required String status,
+    required List<ServiceEnvelope> services,
+  }) {
+    if (services.isEmpty) {
+      return _buildFeedbackText(
+        _searchQuery.trim().isEmpty && !_filters.isActive
+            ? _emptyStatusMessage(status)
+            : 'Nenhum pedido ${_statusDescription(status)} combina com os filtros.',
+      );
+    }
+
+    return _buildServiceList(services: services);
+  }
+
   Widget _buildServiceList({
     required List<ServiceEnvelope> services,
-    required bool canEdit,
   }) {
     return ListView.builder(
       shrinkWrap: true,
@@ -723,6 +806,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       itemCount: services.length,
       itemBuilder: (context, index) {
         final envelope = services[index];
+        final canEdit = _isCreatedByCurrentUser(envelope);
 
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
@@ -776,6 +860,57 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         color: AppColors.amareloUmPoucoEscuro,
       ),
     );
+  }
+
+  String _statusSectionTitle(String status) {
+    switch (status) {
+      case 'CRIADO':
+        return 'Pedidos Criados';
+      case 'ACEITO':
+        return 'Pedidos Aceitos';
+      case 'EM_ANDAMENTO':
+        return 'Pedidos em Andamento';
+      case 'CONCLUIDO':
+        return 'Pedidos Concluidos';
+      case 'CANCELADO':
+        return 'Pedidos Cancelados';
+      default:
+        return status;
+    }
+  }
+
+  String _statusDescription(String status) {
+    switch (status) {
+      case 'CRIADO':
+        return 'criado';
+      case 'ACEITO':
+        return 'aceito';
+      case 'EM_ANDAMENTO':
+        return 'em andamento';
+      case 'CONCLUIDO':
+        return 'concluido';
+      case 'CANCELADO':
+        return 'cancelado';
+      default:
+        return status.toLowerCase();
+    }
+  }
+
+  String _emptyStatusMessage(String status) {
+    switch (status) {
+      case 'CRIADO':
+        return 'Nenhum pedido criado encontrado.';
+      case 'ACEITO':
+        return 'Nenhum pedido aceito encontrado.';
+      case 'EM_ANDAMENTO':
+        return 'Nenhum pedido em andamento encontrado.';
+      case 'CONCLUIDO':
+        return 'Nenhum pedido concluido encontrado.';
+      case 'CANCELADO':
+        return 'Nenhum pedido cancelado encontrado.';
+      default:
+        return 'Nenhum pedido encontrado.';
+    }
   }
 
   Widget _buildFeedbackText(String message) {

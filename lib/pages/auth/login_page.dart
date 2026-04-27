@@ -1,19 +1,19 @@
 import 'dart:convert';
 
+import 'package:chronora/core/constants/app_colors.dart';
 import 'package:chronora/core/constants/app_routes.dart';
+import 'package:chronora/core/services/api_service.dart';
 import 'package:chronora/pages/auth/account_creation_page.dart';
+import 'package:chronora/widgets/auth_text_field.dart';
+import 'package:chronora/widgets/backgrounds/background_auth_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../widgets/backgrounds/background_auth_widget.dart';
-import '../../widgets/auth_text_field.dart';
-import '../../core/constants/app_colors.dart';
-import '../../core/services/api_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
-  _LoginPageState createState() => _LoginPageState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
@@ -49,17 +49,18 @@ class _LoginPageState extends State<LoginPage> {
       });
 
       if (response.statusCode == 200) {
-        // A API está retornando um JSON, precisamos extrair o token
         final responseData = json.decode(response.body);
-        final token = responseData['access_token']; // Extrair o token do JSON
+        final token = responseData['access_token'];
 
-        print('🔐 Token recebido: ${token != null ? "SIM" : "NÃO"}');
+        print('Token recebido: ${token != null ? "SIM" : "NAO"}');
 
         if (token == null) {
-          throw Exception('Token não encontrado na resposta');
+          throw Exception('Token nao encontrado na resposta');
         }
 
         await _saveToken(token);
+
+        if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login realizado com sucesso!')),
@@ -67,22 +68,109 @@ class _LoginPageState extends State<LoginPage> {
 
         Navigator.pushReplacementNamed(context, AppRoutes.main);
       } else {
-        final error = response.body;
-        print('Erro no login: $error');
+        final errorMessage = _buildLoginErrorMessage(
+          statusCode: response.statusCode,
+          responseBody: response.body,
+        );
+
+        print('Erro no login: ${response.body}');
+
+        if (!mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro no login: $error')),
+          SnackBar(content: Text(errorMessage)),
         );
       }
     } catch (e) {
-      print('Erro de conexão: $e');
+      print('Erro de conexao: $e');
+
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro de conexão: $e')),
+        SnackBar(content: Text(_buildConnectionErrorMessage(e))),
       );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
+  }
+
+  String _buildLoginErrorMessage({
+    required int statusCode,
+    required String responseBody,
+  }) {
+    final serverMessage = _extractServerMessage(responseBody);
+    final normalizedMessage = serverMessage.toLowerCase();
+
+    if (normalizedMessage.contains('unable to acquire jdbc connection') ||
+        normalizedMessage.contains('hikaripool')) {
+      return 'Servidor indisponivel: o backend nao conseguiu se conectar ao banco de dados.';
+    }
+
+    if (statusCode == 401 ||
+        statusCode == 403 ||
+        normalizedMessage.contains('bad credentials') ||
+        normalizedMessage.contains('credenciais')) {
+      return 'Email ou senha invalidos.';
+    }
+
+    if (statusCode >= 500) {
+      return 'Erro interno no servidor. Tente novamente em instantes.';
+    }
+
+    if (serverMessage.isNotEmpty) {
+      return 'Erro no login: $serverMessage';
+    }
+
+    return 'Nao foi possivel realizar o login.';
+  }
+
+  String _buildConnectionErrorMessage(Object error) {
+    final normalizedError = error.toString().toLowerCase();
+
+    if (normalizedError.contains('timeout')) {
+      return 'Tempo esgotado ao tentar conectar com o servidor.';
+    }
+
+    if (normalizedError.contains('failed host lookup') ||
+        normalizedError.contains('connection refused') ||
+        normalizedError.contains('socketexception')) {
+      return 'Nao foi possivel conectar com a API. Verifique se ela esta rodando em http://localhost:8085.';
+    }
+
+    return 'Erro de conexao com o servidor.';
+  }
+
+  String _extractServerMessage(String responseBody) {
+    final trimmedBody = responseBody.trim();
+    if (trimmedBody.isEmpty) {
+      return '';
+    }
+
+    try {
+      final decoded = json.decode(trimmedBody);
+      if (decoded is Map<String, dynamic>) {
+        final candidates = [
+          decoded['message'],
+          decoded['error'],
+          decoded['details'],
+        ];
+
+        for (final candidate in candidates) {
+          final text = candidate?.toString().trim() ?? '';
+          if (text.isNotEmpty) {
+            return text;
+          }
+        }
+      }
+    } catch (_) {
+      // Mantem o corpo bruto quando a resposta nao for JSON.
+    }
+
+    return trimmedBody;
   }
 
   @override
@@ -125,29 +213,20 @@ class _LoginPageState extends State<LoginPage> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 30),
-
                   AuthTextField(
                     hintText: 'E-mail',
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                   ),
-
                   const SizedBox(height: 16),
-
                   AuthTextField(
                     hintText: 'Senha',
                     controller: _passwordController,
                     obscureText: true,
                   ),
-
                   const SizedBox(height: 20),
-
-                  // CORREÇÃO: Checkbox e "Esqueceu a senha" sempre na mesma linha
                   _buildRememberForgotSection(isMobile),
-
                   const SizedBox(height: 20),
-
-                  // Botão de Login
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -167,7 +246,9 @@ class _LoginPageState extends State<LoginPage> {
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
                               ),
                             )
                           : Text(
@@ -180,10 +261,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
-                  // Botão de Criar Conta
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
@@ -193,7 +271,8 @@ class _LoginPageState extends State<LoginPage> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const AccountCreationPage(),
+                                  builder: (context) =>
+                                      const AccountCreationPage(),
                                 ),
                               );
                             },
@@ -228,12 +307,10 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // MÉTODO NOVO: Constroi a seção "Lembre-se de mim" e "Esqueceu a senha"
   Widget _buildRememberForgotSection(bool isMobile) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Checkbox "Lembre-se de mim"
         Flexible(
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -241,7 +318,7 @@ class _LoginPageState extends State<LoginPage> {
               Checkbox(
                 value: false,
                 onChanged: (value) {
-                  // Implementar lembrar de mim
+                  // Implementar lembrar de mim.
                 },
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity.compact,
@@ -260,14 +337,11 @@ class _LoginPageState extends State<LoginPage> {
             ],
           ),
         ),
-
         const SizedBox(width: 8),
-
-        // "Esqueceu a senha"
         Flexible(
           child: TextButton(
             onPressed: () {
-              // Navegar para esqueci a senha
+              // Navegar para esqueci a senha.
             },
             style: TextButton.styleFrom(
               padding: EdgeInsets.zero,
