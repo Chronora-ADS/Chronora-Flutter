@@ -7,6 +7,8 @@ class ServiceCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final ValueChanged<bool>? onCardEdited;
   final bool enableNavigation;
+  final String navigationRoute;
+  final Object? navigationArguments;
 
   const ServiceCard({
     super.key,
@@ -14,6 +16,8 @@ class ServiceCard extends StatelessWidget {
     this.onEdit,
     this.onCardEdited,
     this.enableNavigation = true,
+    this.navigationRoute = '/request-editing',
+    this.navigationArguments,
   });
 
   @override
@@ -23,8 +27,8 @@ class ServiceCard extends StatelessWidget {
           ? () async {
               final result = await Navigator.pushNamed(
                 context,
-                '/request-editing',
-                arguments: service,
+                navigationRoute,
+                arguments: navigationArguments ?? service,
               );
 
               if (result == true && onCardEdited != null) {

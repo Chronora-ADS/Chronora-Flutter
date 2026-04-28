@@ -15,10 +15,12 @@ import 'package:chronora/core/models/main_page_requests_model.dart';
 
 class RequestEditingPage extends StatefulWidget {
   final Service? service;
+  final bool readOnly;
 
   const RequestEditingPage({
     super.key,
     this.service,
+    this.readOnly = false,
   });
 
   @override
@@ -36,7 +38,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   String? _selectedModality;
 
   late List<String> _categoriesTags;
-  
+
   dynamic _selectedImage;
   String? _imageFileName;
   Uint8List? _imageBytes;
@@ -45,6 +47,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   bool _isWalletOpen = false;
   bool _isLoading = false;
   bool _isFetchingData = false;
+  bool _isReadOnly = false;
   String? _errorMessage;
   int? _serviceId;
 
@@ -55,17 +58,18 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     print('Título: ${service.title}');
     print('Título: ${service.description}');
     print('Chronos: ${service.timeChronos}');
-    print('Categorias: ${service.categoryEntities.map((c) => c.name).toList()}');
-    
+    print(
+        'Categorias: ${service.categoryEntities.map((c) => c.name).toList()}');
+
     // Garante que o serviceId seja setado
     _serviceId = service.id;
     print('ServiceId definido: $_serviceId');
-      
+
     // Preenche os campos básicos
     _titleController.text = service.title;
     _descriptionController.text = service.description;
     _chronosController.text = service.timeChronos.toString();
-    
+
     // Se tiver imagem, converte de base64
     if (service.serviceImageUrl.isNotEmpty) {
       try {
@@ -80,21 +84,21 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         print('Erro ao decodificar imagem: $e');
       }
     }
-    
+
     // Preenche categorias
     final categoryNames = service.categoryEntities
         .map((category) => category.name)
         .where((name) => name.isNotEmpty)
         .toList();
-    
+
     print('Categorias extraídas: $categoryNames');
-    
+
     setState(() {
       _categoriesTags = categoryNames;
     });
-    
+
     print('=== FIM DA POPULAÇÃO ===');
-    
+
     // NOTA: Para description, deadline e modality,
     // você precisará buscar via API (método _fetchServiceData)
     // Se não tiver essas informações, busque via API
@@ -112,14 +116,16 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     print('Chronos: ${serviceDetail.timeChronos}');
     print('Deadline: ${serviceDetail.deadline}');
     print('Modalidade: ${serviceDetail.modality}');
-    print('Categorias: ${serviceDetail.categoryEntities.map((c) => c.name).toList()}');
-    print('ServiceImage presente: ${serviceDetail.serviceImage != null && serviceDetail.serviceImage!.isNotEmpty}');
-    
+    print(
+        'Categorias: ${serviceDetail.categoryEntities.map((c) => c.name).toList()}');
+    print(
+        'ServiceImage presente: ${serviceDetail.serviceImage != null && serviceDetail.serviceImage!.isNotEmpty}');
+
     // Preenche os campos do formulário
     _titleController.text = serviceDetail.title;
     _descriptionController.text = serviceDetail.description;
     _chronosController.text = serviceDetail.timeChronos.toString();
-    
+
     // Formata a data
     final deadlineDate = serviceDetail.deadline;
     if (deadlineDate.isNotEmpty) {
@@ -130,7 +136,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         _deadlineController.text = deadlineDate;
       }
     }
-    
+
     // Preenche categorias - extraindo apenas os nomes
     setState(() {
       _categoriesTags = serviceDetail.categoryEntities
@@ -138,13 +144,14 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           .where((name) => name.isNotEmpty)
           .toList();
     });
-    
+
     // Normaliza a modalidade para corresponder aos valores do dropdown
     String normalizedModality = _normalizeModality(serviceDetail.modality);
     _selectedModality = normalizedModality;
-    
+
     // Carrega imagem se existir
-    if (serviceDetail.serviceImage != null && serviceDetail.serviceImage!.isNotEmpty) {
+    if (serviceDetail.serviceImage != null &&
+        serviceDetail.serviceImage!.isNotEmpty) {
       try {
         setState(() {
           _imageBytes = base64.decode(serviceDetail.serviceImage!);
@@ -184,7 +191,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
-      
+
       if (token == null) {
         throw Exception('Usuário não autenticado');
       }
@@ -197,7 +204,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         final serviceDetail = ServiceDetailModel.fromJson(responseData);
-        
+
         // Preenche o formulário com os dados do serviço
         _populateFormFromServiceDetail(serviceDetail);
       } else {
@@ -208,7 +215,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       setState(() {
         _errorMessage = 'Erro ao carregar dados do serviço: $e';
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Erro ao carregar dados: $e'),
@@ -222,15 +229,15 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     }
   }
 
-
   @override
   void initState() {
     super.initState();
     _categoriesTags = [];
-    
+    _isReadOnly = widget.readOnly;
+
     print('=== INIT STATE EDIT PAGE ===');
     print('Service recebido via widget: ${widget.service != null}');
-    
+
     // Adicione este método para extrair o serviço de diferentes formas
     _extractAndProcessService();
   }
@@ -238,18 +245,19 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   // Método para extrair o serviço de diferentes fontes
   void _extractAndProcessService() {
     Service? serviceToProcess;
-    
+
     // 1. Primeiro verifica se veio pelo widget
     if (widget.service != null) {
       serviceToProcess = widget.service;
       print('Service extraído do widget');
     }
-    
+
     // 2. Se não veio pelo widget, verifica se foi passado como argumento da rota
     if (serviceToProcess == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final arguments = ModalRoute.of(context)?.settings.arguments;
-        
+        _updateReadOnlyFromArguments(arguments);
+
         if (arguments is Service) {
           serviceToProcess = arguments;
           print('Service extraído dos argumentos da rota (direto)');
@@ -257,7 +265,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           serviceToProcess = arguments['service'] as Service;
           print('Service extraído dos argumentos da rota (Map)');
         }
-        
+
         // Se encontrou algum serviço, processa
         if (serviceToProcess != null) {
           print('Populando formulário a partir do service...');
@@ -273,6 +281,14 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       // Se já tinha no widget, processa imediatamente
       print('Populando formulário a partir do service...');
       _populateFormFromService(serviceToProcess);
+    }
+  }
+
+  void _updateReadOnlyFromArguments(dynamic arguments) {
+    if (arguments is Map && arguments['readOnly'] is bool) {
+      setState(() {
+        _isReadOnly = arguments['readOnly'] as bool;
+      });
     }
   }
 
@@ -362,7 +378,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       _pickImageMobile();
     }
   }
-
 
   String _getDisplayFileName(String fileName, double maxWidth) {
     const double maxPercentage = 0.45;
@@ -455,7 +470,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
-      
+
       if (token == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -463,7 +478,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
             backgroundColor: Colors.red,
           ),
         );
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
@@ -482,7 +499,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
             backgroundColor: Colors.red,
           ),
         );
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
@@ -494,7 +513,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
             backgroundColor: Colors.red,
           ),
         );
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
@@ -503,7 +524,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         final day = deadlineParts[0].padLeft(2, '0');
         final month = deadlineParts[1].padLeft(2, '0');
         final year = deadlineParts[2];
-        
+
         final date = DateTime.parse('$year-$month-$day');
         if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -512,10 +533,12 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
               backgroundColor: Colors.red,
             ),
           );
-          setState(() { _isLoading = false; });
+          setState(() {
+            _isLoading = false;
+          });
           return;
         }
-        
+
         formattedDeadline = '$year-$month-$day';
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -524,7 +547,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
             backgroundColor: Colors.red,
           ),
         );
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
@@ -537,7 +562,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
             backgroundColor: Colors.red,
           ),
         );
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
@@ -551,7 +578,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
               backgroundColor: Colors.red,
             ),
           );
-          setState(() { _isLoading = false; });
+          setState(() {
+            _isLoading = false;
+          });
           return;
         }
       } catch (e) {
@@ -561,7 +590,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
             backgroundColor: Colors.red,
           ),
         );
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
@@ -581,10 +612,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       print('Payload: $editModel');
 
       final response = await ApiService.put(
-        '/service/put', // Note: endpoint diferente para edição
-        token: token,
-        editModel
-      );
+          '/service/put', // Note: endpoint diferente para edição
+          token: token,
+          editModel);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -594,7 +624,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           ),
         );
 
-                // Limpar formulário após sucesso
+        // Limpar formulário após sucesso
         _formKey.currentState!.reset();
         setState(() {
           _categoriesTags.clear();
@@ -606,14 +636,14 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
         // Retorna true indicando sucesso
         Navigator.pop(context, true);
-        
       } else {
         final error = response.body;
         print('Erro do servidor: ${response.statusCode} - $error');
-        
+
         String errorMessage = 'Erro ao editar pedido';
         if (response.statusCode == 400) {
-          errorMessage = 'Dados inválidos. Verifique as informações preenchidas.';
+          errorMessage =
+              'Dados inválidos. Verifique as informações preenchidas.';
         } else if (response.statusCode == 401) {
           errorMessage = 'Não autorizado. Faça login novamente.';
         } else if (response.statusCode == 404) {
@@ -621,7 +651,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         } else if (response.statusCode == 500) {
           errorMessage = 'Erro interno do servidor. Tente novamente.';
         }
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('$errorMessage (${response.statusCode})'),
@@ -771,6 +801,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       ),
       child: TextFormField(
         controller: controller,
+        readOnly: _isReadOnly,
         validator: validator,
         decoration: InputDecoration(
           hintText: placeholder,
@@ -805,6 +836,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       ),
       child: TextFormField(
         controller: _descriptionController,
+        readOnly: _isReadOnly,
         validator: _requiredValidator,
         maxLines: null,
         minLines: 3,
@@ -830,22 +862,21 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     );
   }
 
-
   String? _dateValidator(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Data é obrigatória';
     }
-    
+
     final parts = value.split('/');
     if (parts.length != 3) {
       return 'Use o formato DD/MM/YYYY';
     }
-    
+
     try {
       final day = int.parse(parts[0]);
       final month = int.parse(parts[1]);
       final year = int.parse(parts[2]);
-      
+
       final date = DateTime(year, month, day);
       if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
         return 'Data não pode ser no passado';
@@ -853,7 +884,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     } catch (e) {
       return 'Data inválida';
     }
-    
+
     return null;
   }
 
@@ -899,22 +930,24 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           ),
           errorStyle: const TextStyle(fontSize: 12, height: 0.1),
         ),
-        onTap: () async {
-          final DateTime? picked = await showDatePicker(
-            context: context,
-            initialDate: DateTime.now(),
-            firstDate: DateTime.now(),
-            lastDate: DateTime(2100),
-          );
-          if (picked != null) {
-            setState(() {
-              _deadlineController.text = 
-                  "${picked.day.toString().padLeft(2, '0')}/"
-                  "${picked.month.toString().padLeft(2, '0')}/"
-                  "${picked.year}";
-            });
-          }
-        },
+        onTap: _isReadOnly
+            ? null
+            : () async {
+                final DateTime? picked = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime.now(),
+                  lastDate: DateTime(2100),
+                );
+                if (picked != null) {
+                  setState(() {
+                    _deadlineController.text =
+                        "${picked.day.toString().padLeft(2, '0')}/"
+                        "${picked.month.toString().padLeft(2, '0')}/"
+                        "${picked.year}";
+                  });
+                }
+              },
       ),
     );
   }
@@ -956,7 +989,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           ),
           const SizedBox(width: 6),
           GestureDetector(
-            onTap: () => _removeCategory(tagText),
+            onTap: _isReadOnly ? null : () => _removeCategory(tagText),
             child: const Icon(
               Icons.close,
               color: Colors.white,
@@ -987,6 +1020,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           ),
           child: TextFormField(
             controller: _categoriesController,
+            readOnly: _isReadOnly,
             decoration: InputDecoration(
               hintText: 'Categoria(s) - Pressione Enter para adicionar',
               hintStyle: TextStyle(
@@ -1000,10 +1034,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
               filled: true,
               fillColor: const Color(0xFFE9EAEC),
             ),
-            onFieldSubmitted: _addCategory,
+            onFieldSubmitted: _isReadOnly ? null : _addCategory,
           ),
         ),
-        
         if (_categoriesTags.isNotEmpty) ...[
           const SizedBox(height: 12),
           Wrap(
@@ -1015,7 +1048,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       ],
     );
   }
-
 
   Widget _buildModalityDropdown() {
     return Container(
@@ -1064,11 +1096,13 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
                   child: Text(modality),
                 ))
             .toList(),
-        onChanged: (value) {
-          setState(() {
-            _selectedModality = value;
-          });
-        },
+        onChanged: _isReadOnly
+            ? null
+            : (value) {
+                setState(() {
+                  _selectedModality = value;
+                });
+              },
       ),
     );
   }
@@ -1082,7 +1116,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
             : 'Imagem do pedido';
 
         return GestureDetector(
-          onTap: _pickImage,
+          onTap: _isReadOnly ? null : _pickImage,
           child: Container(
             height: 46,
             decoration: BoxDecoration(
@@ -1135,6 +1169,29 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   }
 
   Widget _buildActionButtons() {
+    if (_isReadOnly) {
+      return SizedBox(
+        width: double.infinity,
+        child: Container(
+          height: 46,
+          decoration: BoxDecoration(
+            color: const Color(0xFFC29503),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Voltar',
+              style: TextStyle(
+                color: Color(0xFFE9EAEC),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -1215,12 +1272,13 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
               ),
             ),
             const SizedBox(height: 25),
-
-            _buildFormField('Título', _titleController, validator: _requiredValidator),
+            _buildFormField('Título', _titleController,
+                validator: _requiredValidator),
             const SizedBox(height: 15),
             _buildDescriptionField(),
             const SizedBox(height: 15),
-            _buildFormField('Tempo em Chronos', _chronosController, validator: _chronosValidator),
+            _buildFormField('Tempo em Chronos', _chronosController,
+                validator: _chronosValidator),
             const SizedBox(height: 15),
             _buildDateField('Prazo'),
             const SizedBox(height: 15),
@@ -1236,11 +1294,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       ),
     );
   }
-  
+
   bool get _isReadyToShowForm {
-    return !_isFetchingData && 
-          _errorMessage == null && 
-          (_serviceId != null || widget.service != null);
+    return !_isFetchingData &&
+        _errorMessage == null &&
+        (_serviceId != null || widget.service != null);
   }
 
   @override
@@ -1304,95 +1362,95 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
                     'Voltar',
                     style: TextStyle(color: Colors.white),
                   ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF0B0C0C),
+      body: Stack(
+        children: [
+          _buildBackgroundImages(),
+
+          // Main content
+          Column(
+            children: [
+              Header(
+                onMenuPressed: _toggleDrawer,
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    children: [
+                      _buildSearchBar(),
+                      const SizedBox(height: 60),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: _buildForm(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
 
-  return Scaffold(
-    backgroundColor: const Color(0xFF0B0C0C),
-    body: Stack(
-      children: [
-        _buildBackgroundImages(),
-
-        // Main content
-        Column(
-          children: [
-            Header(
-              onMenuPressed: _toggleDrawer,
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
+          // Menu lateral
+          if (_isDrawerOpen)
+            Positioned(
+              top: kToolbarHeight * 1.5,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: Row(
                   children: [
-                    _buildSearchBar(),
-                    const SizedBox(height: 60),
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.6,
+                      child: SideMenu(
+                        onWalletPressed: _openWallet,
+                      ),
+                    ),
                     Expanded(
-                      child: SingleChildScrollView(
-                        child: _buildForm(),
+                      child: GestureDetector(
+                        onTap: _toggleDrawer,
+                        child: Container(
+                          color: Colors.transparent,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-          ],
-        ),
 
-        // Menu lateral
-        if (_isDrawerOpen)
-          Positioned(
-            top: kToolbarHeight * 1.5,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              color: Colors.black.withOpacity(0.5),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.6,
-                    child: SideMenu(
-                      onWalletPressed: _openWallet,
+          // Modal da Carteira
+          if (_isWalletOpen)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: WalletModal(
+                      onClose: _closeWallet,
                     ),
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: _toggleDrawer,
-                      child: Container(
-                        color: Colors.transparent,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-        // Modal da Carteira
-        if (_isWalletOpen)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              color: Colors.black.withOpacity(0.5),
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: WalletModal(
-                    onClose: _closeWallet,
                   ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );

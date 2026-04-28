@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'package:chronora/core/constants/app_colors.dart';
 import 'package:chronora/core/models/main_page_requests_model.dart';
@@ -115,6 +115,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
   UserIdentity _currentUser = const UserIdentity(id: null, name: '', email: '');
   RequestFilterState _filters = const RequestFilterState();
+  String? _selectedStatus;
   List<ServiceEnvelope> _services = [];
 
   @override
@@ -172,21 +173,6 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         _errorMessage = 'Falha ao carregar seus pedidos: $error';
       });
     }
-  }
-
-  UserIdentity _extractCurrentUser(String responseBody) {
-    try {
-      final data = json.decode(responseBody);
-      if (data is Map<String, dynamic>) {
-        return UserIdentity(
-          id: _toInt(data['id']),
-          name: (data['name'] ?? '').toString().trim(),
-          email: (data['email'] ?? '').toString().trim(),
-        );
-      }
-    } catch (_) {}
-
-    return const UserIdentity(id: null, name: '', email: '');
   }
 
   UserIdentity _extractUserFromToken(String token) {
@@ -296,8 +282,8 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     final merged = <int, ServiceEnvelope>{};
 
     for (final envelope in _services) {
-      final belongsToCurrentUser =
-          _isCreatedByCurrentUser(envelope) || _isAcceptedByCurrentUser(envelope);
+      final belongsToCurrentUser = _isCreatedByCurrentUser(envelope) ||
+          _isAcceptedByCurrentUser(envelope);
 
       if (!belongsToCurrentUser || !_matchesFilters(envelope)) {
         continue;
@@ -349,7 +335,8 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
           return true;
         }
 
-        if (!key.contains('creator') && _containsCurrentUserInAcceptedField(value)) {
+        if (!key.contains('creator') &&
+            _containsCurrentUserInAcceptedField(value)) {
           return true;
         }
       }
@@ -421,7 +408,8 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       return true;
     }
 
-    if (currentEmail.isNotEmpty && _normalizeText(email ?? '') == currentEmail) {
+    if (currentEmail.isNotEmpty &&
+        _normalizeText(email ?? '') == currentEmail) {
       return true;
     }
 
@@ -438,14 +426,16 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
     final matchesSearch = query.isEmpty ||
         _normalizeText(service.title).contains(query) ||
+        _normalizeText(service.description).contains(query) ||
         _normalizeText(service.userCreator.name).contains(query) ||
+        _normalizeText(service.userCreator.email ?? '').contains(query) ||
         service.categoryEntities.any(
           (category) => _normalizeText(category.name).contains(query),
         );
 
-    final matchesRating = _extractUserRating(envelope.raw) >= _filters.minRating;
-    final matchesChronos =
-        (_filters.minChronos == null ||
+    final matchesRating =
+        _extractUserRating(envelope.raw) >= _filters.minRating;
+    final matchesChronos = (_filters.minChronos == null ||
             service.timeChronos >= _filters.minChronos!) &&
         (_filters.maxChronos == null ||
             service.timeChronos <= _filters.maxChronos!);
@@ -456,8 +446,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
               _normalizeText(_filters.category!),
         );
     final matchesModality = _filters.modality == null ||
-        _normalizeText(service.modality) ==
-            _normalizeText(_filters.modality!);
+        _normalizeText(service.modality) == _normalizeText(_filters.modality!);
 
     return matchesSearch &&
         matchesRating &&
@@ -556,6 +545,12 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     });
   }
 
+  void _toggleStatusSelection(String status) {
+    setState(() {
+      _selectedStatus = _selectedStatus == status ? null : status;
+    });
+  }
+
   Future<void> _showFiltersModal() async {
     final newFilters = await showModalBottomSheet<RequestFilterState>(
       context: context,
@@ -623,7 +618,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
               right: 0,
               bottom: 0,
               child: Container(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: Row(
                   children: [
                     SizedBox(
@@ -647,7 +642,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
               right: 0,
               bottom: 0,
               child: Container(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
@@ -766,19 +761,158 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     }
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildStatusSelector(requestsByStatus: requestsByStatus),
+        if (_selectedStatus == null)
+          const Padding(
+            padding: EdgeInsets.only(top: 20),
+            child: Text(
+              'Selecione uma categoria para visualizar os pedidos.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.branco,
+                fontSize: 16,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildStatusSelector({
+    required Map<String, List<ServiceEnvelope>> requestsByStatus,
+  }) {
+    return Column(
       children: [
         for (var index = 0; index < _serviceStatuses.length; index++) ...[
-          _buildSectionTitle(_statusSectionTitle(_serviceStatuses[index])),
-          const SizedBox(height: 12),
-          _buildStatusSection(
+          _buildStatusSelectorItem(
             status: _serviceStatuses[index],
-            services:
-                requestsByStatus[_serviceStatuses[index]] ??
+            title: _statusSectionTitle(_serviceStatuses[index]),
+            services: requestsByStatus[_serviceStatuses[index]] ??
                 const <ServiceEnvelope>[],
           ),
-          if (index < _serviceStatuses.length - 1) _buildYellowSeparator(),
+          if (index < _serviceStatuses.length - 1) const SizedBox(height: 12),
         ],
       ],
+    );
+  }
+
+  Widget _buildStatusSelectorItem({
+    required String status,
+    required String title,
+    required List<ServiceEnvelope> services,
+  }) {
+    final isSelected = _selectedStatus == status;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? AppColors.branco.withValues(alpha: 0.10)
+            : AppColors.branco.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isSelected
+              ? AppColors.amareloClaro
+              : AppColors.branco.withValues(alpha: 0.16),
+          width: isSelected ? 2 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => _toggleStatusSelection(status),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 16,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              color: AppColors.branco,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            isSelected
+                                ? 'Toque para ocultar os pedidos'
+                                : 'Toque para visualizar os pedidos',
+                            style: TextStyle(
+                              color: AppColors.branco.withValues(alpha: 0.78),
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.amareloClaro
+                            : AppColors.amareloUmPoucoEscuro.withValues(
+                                alpha: 0.32,
+                              ),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        '${services.length}',
+                        style: TextStyle(
+                          color:
+                              isSelected ? AppColors.preto : AppColors.branco,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Icon(
+                      isSelected
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      color: isSelected
+                          ? AppColors.amareloClaro
+                          : AppColors.branco,
+                      size: 30,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (isSelected) ...[
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 18),
+              child: Divider(
+                height: 1,
+                thickness: 1,
+                color: AppColors.amareloUmPoucoEscuro,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+              child: _buildStatusSection(status: status, services: services),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -807,18 +941,23 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       itemBuilder: (context, index) {
         final envelope = services[index];
         final canEdit = _isCreatedByCurrentUser(envelope);
+        final navigationArguments = {
+          'service': envelope.service,
+          'readOnly': !canEdit,
+        };
 
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           child: ServiceCard(
             service: envelope.service,
-            enableNavigation: canEdit,
+            enableNavigation: true,
+            navigationArguments: navigationArguments,
             onEdit: canEdit
                 ? () async {
                     final result = await Navigator.pushNamed(
                       context,
                       '/request-editing',
-                      arguments: envelope.service,
+                      arguments: navigationArguments,
                     );
 
                     if (result == true) {
@@ -836,29 +975,6 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Center(
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: AppColors.branco,
-          fontSize: 22,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildYellowSeparator() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Container(
-        height: 3,
-        color: AppColors.amareloUmPoucoEscuro,
-      ),
     );
   }
 
@@ -1007,12 +1123,14 @@ class _RequestFiltersModalState extends State<_RequestFiltersModal> {
                 children: [
                   _buildSectionTitle('Avaliação do usuário'),
                   _buildDropdown<double>(
+                    fieldKey: 'min-rating',
                     value: _draftFilters.minRating,
                     items: const [
                       DropdownMenuItem(value: 0, child: Text('Todas')),
                       DropdownMenuItem(value: 3, child: Text('> 3 estrelas')),
                       DropdownMenuItem(value: 4, child: Text('> 4 estrelas')),
-                      DropdownMenuItem(value: 4.5, child: Text('> 4.5 estrelas')),
+                      DropdownMenuItem(
+                          value: 4.5, child: Text('> 4.5 estrelas')),
                     ],
                     onChanged: (value) {
                       setState(() {
@@ -1025,6 +1143,7 @@ class _RequestFiltersModalState extends State<_RequestFiltersModal> {
                   const SizedBox(height: 16),
                   _buildSectionTitle('Tempo'),
                   _buildDropdown<_ChronosRangeOption>(
+                    fieldKey: 'chronos-range',
                     value: _selectedChronosOption(),
                     items: _chronosOptions
                         .map(
@@ -1047,6 +1166,7 @@ class _RequestFiltersModalState extends State<_RequestFiltersModal> {
                   const SizedBox(height: 16),
                   _buildSectionTitle('Categorias'),
                   _buildDropdown<String?>(
+                    fieldKey: 'category',
                     value: _draftFilters.category,
                     items: [
                       const DropdownMenuItem<String?>(
@@ -1072,6 +1192,7 @@ class _RequestFiltersModalState extends State<_RequestFiltersModal> {
                   const SizedBox(height: 16),
                   _buildSectionTitle('Modalidade'),
                   _buildDropdown<String?>(
+                    fieldKey: 'modality',
                     value: _draftFilters.modality,
                     items: const [
                       DropdownMenuItem<String?>(
@@ -1107,6 +1228,7 @@ class _RequestFiltersModalState extends State<_RequestFiltersModal> {
                   const SizedBox(height: 16),
                   _buildSectionTitle('Ordenação'),
                   _buildDropdown<OrdenacaoTipo>(
+                    fieldKey: 'ordering',
                     value: _draftFilters.ordenacao,
                     items: const [
                       DropdownMenuItem(
@@ -1218,12 +1340,14 @@ class _RequestFiltersModalState extends State<_RequestFiltersModal> {
   }
 
   Widget _buildDropdown<T>({
+    required String fieldKey,
     required T value,
     required List<DropdownMenuItem<T>> items,
     required ValueChanged<T?> onChanged,
   }) {
     return DropdownButtonFormField<T>(
-      value: value,
+      key: ValueKey<String>('dropdown-$fieldKey-${value?.hashCode ?? 'null'}'),
+      initialValue: value,
       items: items,
       onChanged: onChanged,
       decoration: InputDecoration(
