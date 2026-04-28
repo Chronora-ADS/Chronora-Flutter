@@ -95,4 +95,21 @@ class ApiService {
       throw Exception('Erro de conexao: $e');
     }
   }
+
+  
+  static Future<http.Response> putString(
+    String endpoint,
+    Map<String, dynamic> data, {
+    String? token,
+  }) async {
+    try {
+      return await http.put(
+        _uri(endpoint),
+        headers: _headers(token: token),
+        body: jsonEncode(data),
+      );
+    } catch (e) {
+      throw Exception('Erro de conexao: $e');
+    }
+  }
 }

@@ -39,6 +39,8 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   bool _isWalletOpen = false;
   bool _isLoading = false;
 
+  bool get _hasSelectedImage => _imageBytes != null || _selectedImage != null;
+
   @override
   void initState() {
     super.initState();
@@ -119,8 +121,26 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         final reader = html.FileReader();
         
         reader.onLoadEnd.listen((e) {
+          final result = reader.result;
+          Uint8List? bytes;
+          if (result is Uint8List) {
+            bytes = result;
+          } else if (result is ByteBuffer) {
+            bytes = Uint8List.view(result);
+          }
+
+          if (bytes == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Erro ao selecionar imagem'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            return;
+          }
+
           setState(() {
-            _imageBytes = reader.result as Uint8List?;
+            _imageBytes = bytes;
             _imageFileName = file.name;
             _selectedImage = null;
           });
@@ -205,6 +225,16 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       return;
     }
 
+    if (!_hasSelectedImage) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecione uma imagem do pedido'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -225,10 +255,17 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         return;
       }
 
-      // Converter imagem para base64 se existir
-      String? base64Image;
-      if (_selectedImage != null) {
-        base64Image = await _convertImageToBase64();
+      // Converter imagem para base64
+      final base64Image = await _convertImageToBase64();
+      if (base64Image == null || base64Image.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Nao foi possivel processar a imagem do pedido'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() { _isLoading = false; });
+        return;
       }
 
       // VALIDAÇÃO E FORMATAÇÃO CORRETA DA DATA
@@ -304,10 +341,10 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       final int timeChronos;
       try {
         timeChronos = int.parse(chronosText);
-        if (timeChronos <= 0) {
+        if (timeChronos <= 0 || timeChronos > 100) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Tempo em Chronos deve ser maior que zero'),
+              content: Text('Tempo em Chronos deve estar entre 1 e 100'),
               backgroundColor: Colors.red,
             ),
           );
@@ -603,7 +640,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             const SizedBox(height: 15),
             _buildDescriptionField(),
             const SizedBox(height: 15),
-            _buildFormField('Tempo em Chronos', _chronosController, validator: _chronosValidator),
+            _buildFormField('Tempo em Chronos', _chronosController, validator: _chronosRangeValidator),
             const SizedBox(height: 15),
             _buildDateField('Prazo'),
             const SizedBox(height: 15),
@@ -635,6 +672,19 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     if (number == null || number <= 0) {
       return 'Digite um número válido maior que zero';
     }
+    return null;
+  }
+
+  String? _chronosRangeValidator(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Este campo eh obrigatorio';
+    }
+
+    final number = int.tryParse(value);
+    if (number == null || number <= 0 || number > 100) {
+      return 'Digite um numero entre 1 e 100';
+    }
+
     return null;
   }
 
