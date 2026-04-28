@@ -1283,7 +1283,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           ),
           if (_isDrawerOpen)
             Positioned(
-              top: kToolbarHeight * 1.5,
+              top: kToolbarHeight,
               left: 0,
               right: 0,
               bottom: 0,
