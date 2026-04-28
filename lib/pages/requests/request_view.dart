@@ -430,6 +430,7 @@ class _RequestViewState extends State<RequestView> {
     }
   }
 
+  // ignore: unused_element
   Future<void> _changeStatusToAccepted(int serviceId, String token) async {
     Object? lastError;
 
@@ -638,6 +639,7 @@ class _RequestViewState extends State<RequestView> {
     return acceptedUserId.toString() != _currentUserId.toString();
   }
 
+  // ignore: unused_element
   Future<bool> _hasAnotherAcceptedRequest({
     required int currentServiceId,
   }) async {
@@ -1063,6 +1065,7 @@ class _RequestViewState extends State<RequestView> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildInfoChip({required IconData icon, required String label}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

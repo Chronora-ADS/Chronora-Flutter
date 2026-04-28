@@ -664,6 +664,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     return null;
   }
 
+  // ignore: unused_element
   String? _chronosValidator(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Este campo é obrigatório';
