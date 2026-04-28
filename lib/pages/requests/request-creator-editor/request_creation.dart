@@ -22,6 +22,7 @@ class RequestCreationPage extends StatefulWidget {
 
 class _RequestCreationPageState extends State<RequestCreationPage> {
   static const int _descriptionMaxLength = 2500;
+  static const int _categoryMaxLength = 30;
 
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
@@ -62,12 +63,19 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   }
 
   void _addCategory(String category) {
-    if (category.trim().isNotEmpty) {
-      setState(() {
-        _categoriesTags.add(category.trim());
-        _categoriesController.clear();
-      });
+    final trimmedCategory = category.trim();
+    if (trimmedCategory.isEmpty) {
+      return;
     }
+
+    final categoryToAdd = trimmedCategory.length > _categoryMaxLength
+        ? trimmedCategory.substring(0, _categoryMaxLength)
+        : trimmedCategory;
+
+    setState(() {
+      _categoriesTags.add(categoryToAdd);
+      _categoriesController.clear();
+    });
   }
 
   void _removeCategory(String category) {
@@ -917,6 +925,9 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           ),
           child: TextFormField(
             controller: _categoriesController,
+            inputFormatters: [
+              LengthLimitingTextInputFormatter(_categoryMaxLength),
+            ],
             decoration: InputDecoration(
               hintText: 'Categoria(s) - Pressione Enter para adicionar',
               hintStyle: TextStyle(
@@ -946,34 +957,44 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   }
 
   Widget _buildTag(String tagText) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFC29503),
-        borderRadius: BorderRadius.circular(20),
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width - 32,
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildPaintbrushIcon(),
-          const SizedBox(width: 6),
-          Text(
-            tagText,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFFC29503),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildPaintbrushIcon(),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                tagText,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: 6),
-          GestureDetector(
-            onTap: () => _removeCategory(tagText),
-            child: const Icon(
-              Icons.close,
-              color: Colors.white,
-              size: 16,
+            const SizedBox(width: 6),
+            GestureDetector(
+              onTap: () => _removeCategory(tagText),
+              child: const Icon(
+                Icons.close,
+                color: Colors.white,
+                size: 16,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
