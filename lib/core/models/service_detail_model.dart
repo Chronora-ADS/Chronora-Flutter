@@ -111,9 +111,11 @@ class AcceptedRequestInfo {
     final expiresAt = _readFirstString(
       json,
       const [
-        'expiresAt',
-        'verificationCodeExpiresAt',
         'authenticationCodeExpiresAt',
+        'verificationCodeExpiresAt',
+        'startAuthenticationCodeExpiresAt',
+        'codigoAutenticacaoExpiraEm',
+        'expiresAt',
       ],
     );
 
