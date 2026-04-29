@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
@@ -118,8 +119,14 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
     if (value == null || value.isEmpty) {
       return 'Senha e obrigatoria';
     }
-    if (value.length < 6) {
-      return 'Senha deve ter pelo menos 6 caracteres';
+    if (value.length < 8) {
+      return 'Senha deve ter pelo menos 8 caracteres';
+    }
+    if (!RegExp(r'[A-Z]').hasMatch(value)) {
+      return 'Senha deve conter pelo menos uma letra maiuscula';
+    }
+    if (!RegExp(r'\d').hasMatch(value)) {
+      return 'Senha deve conter pelo menos um numero';
     }
     return null;
   }
@@ -249,6 +256,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
                     validator: _validatePhone,
+                    inputFormatters: const [_BrazilianPhoneInputFormatter()],
                     textInputAction: TextInputAction.next,
                     onFieldSubmitted: (_) {
                       FocusScope.of(context).nextFocus();
@@ -409,5 +417,32 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+}
+
+class _BrazilianPhoneInputFormatter extends TextInputFormatter {
+  const _BrazilianPhoneInputFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    final limited = digits.length > 11 ? digits.substring(0, 11) : digits;
+    final buffer = StringBuffer();
+
+    for (var i = 0; i < limited.length; i++) {
+      if (i == 0) buffer.write('(');
+      if (i == 2) buffer.write(') ');
+      if (i == 7) buffer.write('-');
+      buffer.write(limited[i]);
+    }
+
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
   }
 }

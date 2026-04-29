@@ -643,6 +643,22 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     return null;
   }
 
+  String? _descriptionValidator(String? value) {
+    final requiredMessage = _requiredValidator(value);
+    if (requiredMessage != null) return requiredMessage;
+
+    final wordCount = value!
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .length;
+
+    if (wordCount < 20) {
+      return 'A descricao deve ter pelo menos 20 palavras';
+    }
+    return null;
+  }
+
   String? _chronosValidator(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Este campo é obrigatório';
@@ -704,7 +720,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       ),
       child: TextFormField(
         controller: _descriptionController,
-        validator: _requiredValidator,
+        validator: _descriptionValidator,
         maxLines: null,
         minLines: 3,
         keyboardType: TextInputType.multiline,

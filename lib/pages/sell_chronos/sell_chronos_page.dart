@@ -30,10 +30,20 @@ class SellChronosController extends ChangeNotifier {
   late TextEditingController amountController;
   late TextEditingController pixKeyController;
   
-  SellChronosController() {
+  SellChronosController({
+    int? initialBalance,
+    bool autoloadBalance = true,
+  }) {
     amountController = TextEditingController();
     pixKeyController = TextEditingController();
-    _loadCurrentBalance(); // Carrega saldo ao criar controller
+    if (initialBalance != null) {
+      currentBalance = initialBalance;
+      isLoadingBalance = false;
+    } else if (autoloadBalance) {
+      _loadCurrentBalance(); // Carrega saldo ao criar controller
+    } else {
+      isLoadingBalance = false;
+    }
   }
   
   @override

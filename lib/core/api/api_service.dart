@@ -12,6 +12,13 @@ class ApiService {
     'API_BASE_URL',
     defaultValue: '',
   );
+  static http.Client? _clientForTesting;
+
+  static http.Client get _client => _clientForTesting ?? http.Client();
+
+  static void setClientForTesting(http.Client? client) {
+    _clientForTesting = client;
+  }
 
   static String get baseUrl {
     final configuredBaseUrl = _configuredBaseUrl.trim();
@@ -80,7 +87,7 @@ class ApiService {
     try {
       final headers = _buildHeaders(token: token);
 
-      return await http.post(
+      return await _client.post(
         _buildUri(endpoint),
         headers: headers,
         body: jsonEncode(data),
@@ -94,7 +101,7 @@ class ApiService {
     try {
       final headers = _buildHeaders(token: token);
 
-      return await http.get(
+      return await _client.get(
         _buildUri(endpoint),
         headers: headers,
       );
@@ -111,7 +118,7 @@ class ApiService {
     try {
       final headers = _buildHeaders(token: token);
 
-      return await http.put(
+      return await _client.put(
         _buildUri(endpoint),
         headers: headers,
         body: jsonEncode(data),
@@ -125,7 +132,7 @@ class ApiService {
     try {
       final headers = _buildHeaders(token: token);
 
-      return await http.delete(
+      return await _client.delete(
         _buildUri(endpoint),
         headers: headers,
       );
@@ -141,7 +148,7 @@ class ApiService {
     try {
       final finalHeaders = _buildHeaders(extra: headers);
 
-      return await http.put(
+      return await _client.put(
         _buildUri(endpoint),
         headers: finalHeaders,
       );

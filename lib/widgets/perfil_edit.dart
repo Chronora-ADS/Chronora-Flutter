@@ -43,7 +43,17 @@ class _PerfilEditState extends State<PerfilEdit> {
     currentPasswordController = TextEditingController();
     newPasswordController = TextEditingController();
     confirmPasswordController = TextEditingController();
+    currentPasswordController.addListener(_handlePasswordGateChanged);
   }
+
+  void _handlePasswordGateChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  bool get _canUpdateProfile =>
+      !_isLoading && currentPasswordController.text.trim().isNotEmpty;
 
   @override
   void didChangeDependencies() {
@@ -368,7 +378,7 @@ class _PerfilEditState extends State<PerfilEdit> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _updateProfile,
+                        onPressed: _canUpdateProfile ? _updateProfile : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.amareloClaro,
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -519,6 +529,13 @@ class _PerfilEditState extends State<PerfilEdit> {
   }
 
   Future<void> _updateProfile() async {
+    if (currentPasswordController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Digite sua senha atual para atualizar o perfil')),
+      );
+      return;
+    }
+
     if (nameController.text.isEmpty || emailController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Preencha todos os campos obrigatórios')),
@@ -572,6 +589,7 @@ class _PerfilEditState extends State<PerfilEdit> {
     emailController.dispose();
     phoneController.dispose();
     descricaoController.dispose();
+    currentPasswordController.removeListener(_handlePasswordGateChanged);
     currentPasswordController.dispose();
     newPasswordController.dispose();
     confirmPasswordController.dispose();

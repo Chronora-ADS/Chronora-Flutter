@@ -29,15 +29,26 @@ class BuyChronosController extends ChangeNotifier {
   String errorMessage = '';
   bool isLoading = false;
   bool isLoadingBalance = true; // Novo estado para carregamento do saldo
-  final ChronosWalletService _walletService = ChronosWalletService();
+  final ChronosWalletService _walletService;
   String selectedPaymentMethod = 'Cartão de Crédito';
 
   // Controllers
   late TextEditingController amountController;
 
-  BuyChronosController() {
+  BuyChronosController({
+    ChronosWalletService? walletService,
+    int? initialBalance,
+    bool autoloadBalance = true,
+  }) : _walletService = walletService ?? ChronosWalletService() {
     amountController = TextEditingController();
-    _loadCurrentBalance(); // Carrega saldo ao criar controller
+    if (initialBalance != null) {
+      currentBalance = initialBalance;
+      isLoadingBalance = false;
+    } else if (autoloadBalance) {
+      _loadCurrentBalance(); // Carrega saldo ao criar controller
+    } else {
+      isLoadingBalance = false;
+    }
   }
 
   @override
