@@ -1,10 +1,12 @@
 import 'dart:convert';
+import 'package:chronora/core/constants/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/main_page_requests_model.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/services/api_service.dart';
+import '../../widgets/service_image.dart';
 import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
@@ -24,6 +26,7 @@ class _RequestViewState extends State<RequestView> {
   bool _isLoading = true;
   String? _errorMessage;
   bool _isOwner = false;
+  bool _showAcceptAction = true;
   int? _currentUserId;
 
   bool _isDrawerOpen = false;
@@ -59,17 +62,23 @@ class _RequestViewState extends State<RequestView> {
 
   Future<void> _loadData() async {
     await _getCurrentUserFromApi();
-    
+
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map) {
+      final showAcceptAction = args['showAcceptAction'];
+      if (showAcceptAction is bool) {
+        _showAcceptAction = showAcceptAction;
+      }
+    }
+
     int? serviceId;
-    
+
     if (widget.serviceId != null) {
       serviceId = widget.serviceId;
     } else if (widget.service != null) {
       serviceId = widget.service!.id;
     } else {
       // Tenta pegar dos argumentos da rota
-      final args = ModalRoute.of(context)?.settings.arguments;
-      
       if (args is Service) {
         serviceId = args.id;
       } else if (args is Map && args['service'] is Service) {
@@ -85,6 +94,7 @@ class _RequestViewState extends State<RequestView> {
         _isLoading = false;
       });
     }
+
   }
 
   Future<void> _fetchServiceDetail(int? serviceId) async {
@@ -204,7 +214,7 @@ class _RequestViewState extends State<RequestView> {
     // Navega para a página de edição usando o ID na URL
     Navigator.pushNamed(
       context,
-      '/request-editing/${_serviceDetail!.id}',
+      '${AppRoutes.requestEditing}/${_serviceDetail!.id}',
     ).then((edited) {
       if (edited == true) {
         // Se editado, recarrega os detalhes
@@ -399,33 +409,19 @@ class _RequestViewState extends State<RequestView> {
                       ),
                       child: _serviceDetail!.serviceImageUrl != null &&
                               _serviceDetail!.serviceImageUrl!.isNotEmpty
-                          ? Image.network(
-                              _serviceDetail!.serviceImageUrl!,
+                          ? ServiceImage(
+                              imageSource: _serviceDetail!.serviceImageUrl,
                               width: 160,
                               height: 90,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: AppColors.cinza,
-                                  child: const Icon(Icons.broken_image,
-                                      size: 40, color: AppColors.cinza),
-                                );
-                              },
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return const Center(
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                        AppColors.amareloClaro),
-                                  ),
-                                );
-                              },
+                              borderRadius: BorderRadius.circular(12),
+                              placeholderColor: AppColors.cinza,
+                              iconColor: Colors.black45,
                             )
                           : Container(
                               color: AppColors.cinza,
                               child: const Icon(Icons.image,
-                                  size: 40, color: AppColors.cinza),
+                                  size: 40, color: Colors.black45),
                             ),
                     ),
                   ),
@@ -656,7 +652,7 @@ class _RequestViewState extends State<RequestView> {
           ),
         ],
       );
-    } else {
+    } else if (_showAcceptAction) {
       // Botão para outros usuários: Aceitar
       return SizedBox(
         width: double.infinity,
@@ -677,6 +673,25 @@ class _RequestViewState extends State<RequestView> {
         ),
       );
     }
+
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () => Navigator.pop(context),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.amareloUmPoucoEscuro,
+          foregroundColor: AppColors.branco,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+        child: const Text(
+          'Voltar',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
   }
 
   String _formatDate(String date) {

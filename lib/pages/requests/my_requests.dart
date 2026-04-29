@@ -945,15 +945,24 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         final navigationArguments = {
           'service': envelope.service,
           'readOnly': !canEdit,
+          'showAcceptAction': false,
         };
 
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           child: ServiceCard(
             service: envelope.service,
-            enableNavigation: true,
-            navigationRoute: AppRoutes.requestEditing,
-            navigationArguments: navigationArguments,
+            onView: () async {
+              final result = await Navigator.pushNamed(
+                context,
+                '${AppRoutes.requestView}/${envelope.service.id}',
+                arguments: navigationArguments,
+              );
+
+              if (result == true) {
+                await _loadMyRequests();
+              }
+            },
             onEdit: canEdit
                 ? () async {
                     final result = await Navigator.pushNamed(
@@ -963,13 +972,6 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
                     );
 
                     if (result == true) {
-                      await _loadMyRequests();
-                    }
-                  }
-                : null,
-            onCardEdited: canEdit
-                ? (edited) async {
-                    if (edited) {
                       await _loadMyRequests();
                     }
                   }

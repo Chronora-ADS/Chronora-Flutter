@@ -36,7 +36,7 @@ class ServiceDetailModel {
       deadline: json['deadline'] ?? '',
       categoryEntities: _parseCategories(json['categoryEntities']),
       modality: json['modality'] ?? '',
-      serviceImageUrl: json['serviceImageUrl'],
+      serviceImageUrl: _parseServiceImage(json),
       userCreator: UserCreator.fromJson(json['userCreator'] ?? {}),
       postedAt: json['postedAt'] ?? '',
     );
@@ -50,6 +50,20 @@ class ServiceDetailModel {
     }
   
     return [];
+  }
+
+  static String? _parseServiceImage(Map<String, dynamic> json) {
+    final rawValue = json['serviceImageUrl'] ?? json['serviceImage'];
+    if (rawValue == null) {
+      return null;
+    }
+
+    final value = rawValue.toString().trim();
+    if (value.isEmpty || value.toLowerCase() == 'null') {
+      return null;
+    }
+
+    return value;
   }
 
   Map<String, dynamic> toJson() {

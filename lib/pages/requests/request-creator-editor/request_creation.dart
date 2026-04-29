@@ -167,13 +167,14 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   // Método para converter imagem para base64
   Future<String?> _convertImageToBase64() async {
     try {
-      if (kIsWeb) {
-        if (_imageBytes != null) {
-          return base64Encode(_imageBytes!);
-        }
-      } else if (_selectedImage != null) {
+      if (_imageBytes != null) {
+        return base64Encode(_imageBytes!);
+      }
+
+      if (_selectedImage != null) {
         return base64Encode(await _selectedImage!.readAsBytes());
       }
+
       return null;
     } catch (e) {
       print('Erro ao converter imagem: $e');
@@ -227,7 +228,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
 
       // Converter imagem para base64 se existir
       String? base64Image;
-      if (_selectedImage != null) {
+      if (_selectedImage != null || _imageBytes != null) {
         base64Image = await _convertImageToBase64();
       }
 
@@ -377,10 +378,15 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         } else if (response.statusCode == 500) {
           errorMessage = 'Erro interno do servidor. Tente novamente.';
         }
+        errorMessage = _buildCreateRequestErrorMessage(
+          statusCode: response.statusCode,
+          responseBody: error,
+          fallbackMessage: errorMessage,
+        );
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('$errorMessage (${response.statusCode})'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
           ),
         );
@@ -799,6 +805,50 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     }
     
     return null;
+  }
+
+  String _buildCreateRequestErrorMessage({
+    required int statusCode,
+    required String responseBody,
+    required String fallbackMessage,
+  }) {
+    final serverMessage = _extractServerMessage(responseBody);
+
+    if (serverMessage.isEmpty || serverMessage == fallbackMessage) {
+      return '$fallbackMessage ($statusCode)';
+    }
+
+    return '$fallbackMessage ($statusCode): $serverMessage';
+  }
+
+  String _extractServerMessage(String responseBody) {
+    final trimmedBody = responseBody.trim();
+    if (trimmedBody.isEmpty) {
+      return '';
+    }
+
+    try {
+      final decoded = json.decode(trimmedBody);
+      if (decoded is Map<String, dynamic>) {
+        final candidates = [
+          decoded['message'],
+          decoded['error'],
+          decoded['details'],
+          decoded['trace'],
+        ];
+
+        for (final candidate in candidates) {
+          final text = candidate?.toString().trim() ?? '';
+          if (text.isNotEmpty) {
+            return text;
+          }
+        }
+      }
+    } catch (_) {
+      // Mantem o corpo bruto quando a resposta nao for JSON.
+    }
+
+    return trimmedBody;
   }
 
   Widget _buildCategoriesField() {

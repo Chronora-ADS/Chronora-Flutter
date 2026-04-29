@@ -1,6 +1,8 @@
+import 'package:chronora/core/constants/app_routes.dart';
 import 'package:chronora/core/constants/app_colors.dart';
 import 'package:chronora/core/models/main_page_requests_model.dart';
 import 'package:flutter/material.dart';
+import 'package:chronora/widgets/service_image.dart';
 
 class ServiceCard extends StatelessWidget {
   final Service service;
@@ -34,7 +36,7 @@ class ServiceCard extends StatelessWidget {
 
     final result = await Navigator.pushNamed(
       context,
-      navigationRoute ?? '/request-view/${service.id}',
+      navigationRoute ?? '${AppRoutes.requestView}/${service.id}',
       arguments: navigationArguments ?? service,
     );
 
@@ -67,33 +69,22 @@ class ServiceCard extends StatelessWidget {
                     ),
                   ),
                   child: service.serviceImageUrl.isNotEmpty
-                      ? Image.network(
-                          service.serviceImageUrl,
+                      ? ServiceImage(
+                          imageSource: service.serviceImageUrl,
                           height: 300,
                           width: double.infinity,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: Colors.grey[300],
-                              child: const Icon(Icons.broken_image, size: 50),
-                            );
-                          },
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) {
-                              return child;
-                            }
-
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          },
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(30),
+                            topRight: Radius.circular(30),
+                          ),
                         )
                       : Container(
                           color: Colors.grey[300],
                           child: const Icon(
                             Icons.image,
                             size: 50,
-                            color: Colors.grey,
+                            color: Colors.black45,
                           ),
                         ),
                 ),

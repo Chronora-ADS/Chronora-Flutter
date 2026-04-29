@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:universal_html/html.dart' as html;
 import 'dart:typed_data';
 import 'dart:convert';
+import 'package:chronora/core/models/create_request_model.dart';
+import 'package:chronora/core/utils/service_image_resolver.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:chronora/core/services/api_service.dart';
 import 'package:chronora/core/models/service_detail_model.dart';
@@ -102,18 +104,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     _chronosController.text = service.timeChronos.toString();
 
     // Se tiver imagem, converte de base64
-    if (service.serviceImageUrl.isNotEmpty) {
-      try {
-        final imageBytes = base64.decode(service.serviceImageUrl);
-        setState(() {
-          _imageBytes = imageBytes;
-          _selectedImage = null;
-          _imageFileName = 'imagem_servico.jpg';
-        });
-      } catch (e) {
-        print('Erro ao decodificar imagem: $e');
-      }
-    }
+    _populateExistingImage(service.serviceImageUrl);
 
     // Preenche categorias
     final categoryNames = service.categoryEntities
@@ -161,16 +152,18 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     // Carrega imagem se existir
     if (serviceDetail.serviceImageUrl != null &&
         serviceDetail.serviceImageUrl!.isNotEmpty) {
-      try {
-        setState(() {
-          _imageBytes = base64.decode(serviceDetail.serviceImageUrl!);
-          _selectedImage = null;
-          _imageFileName = 'imagem_servico.jpg';
-        });
-      } catch (e) {
-        print('Erro ao decodificar imagem: $e');
-      }
+      _populateExistingImage(serviceDetail.serviceImageUrl!);
     }
+  }
+
+  void _populateExistingImage(String rawImage) {
+    final imageBytes = ServiceImageResolver.tryDecodeBytes(rawImage);
+
+    setState(() {
+      _imageBytes = imageBytes;
+      _selectedImage = null;
+      _imageFileName = 'imagem_servico.jpg';
+    });
   }
 
   void _updateReadOnlyFromArguments(dynamic arguments) {
@@ -376,13 +369,14 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   // Método para converter imagem para base64
   Future<String?> _convertImageToBase64() async {
     try {
-      if (kIsWeb) {
-        if (_imageBytes != null) {
-          return base64Encode(_imageBytes!);
-        }
-      } else if (_selectedImage != null) {
+      if (_imageBytes != null) {
+        return base64Encode(_imageBytes!);
+      }
+
+      if (_selectedImage != null) {
         return base64Encode(await _selectedImage!.readAsBytes());
       }
+
       return null;
     } catch (e) {
       print('Erro ao converter imagem: $e');
@@ -437,7 +431,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
       // Converter imagem para base64 se existir
       String? base64Image;
-      if (_selectedImage != null) {
+      if (_selectedImage != null || _imageBytes != null) {
         base64Image = await _convertImageToBase64();
       }
 
@@ -553,7 +547,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         'title': _titleController.text.trim(),
         'description': _descriptionController.text.trim(),
         'timeChronos': timeChronos,
-        'modality': _selectedModality!,
+        'modality': CreateRequestModel.modalityToApi(_selectedModality!),
         'deadline': formattedDeadline,
         'categories': _categoriesTags,
         if (base64Image != null) 'serviceImage': base64Image,

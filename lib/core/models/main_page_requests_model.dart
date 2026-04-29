@@ -100,7 +100,12 @@ class Service {
       return '';
     }
 
-    return rawValue.toString();
+    final value = rawValue.toString().trim();
+    if (value.isEmpty || value.toLowerCase() == 'null') {
+      return '';
+    }
+
+    return value;
   }
 
   static int? _toInt(dynamic value) {

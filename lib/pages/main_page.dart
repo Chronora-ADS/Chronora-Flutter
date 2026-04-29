@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:core';
+import 'package:chronora/core/constants/app_routes.dart';
 import 'package:chronora/core/models/main_page_requests_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
@@ -326,7 +327,7 @@ class _MainPageState extends State<MainPage> {
                               onPressed: () async {
                                 final result = await Navigator.pushNamed(
                                   context,
-                                  '/request-creation'
+                                  AppRoutes.requestCreation,
                                 );
 
                                 // Se retornou true, atualiza os serviços
@@ -542,7 +543,7 @@ class _MainPageState extends State<MainPage> {
               // Usa a rota com o ID na URL
               final result = await Navigator.pushNamed(
                 context,
-                '/request-view/${service.id}', // URL com ID
+                '${AppRoutes.requestView}/${service.id}',
               );
               
               if (result == true) {

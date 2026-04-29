@@ -1,6 +1,7 @@
 // notification_page.dart
 
 import 'dart:convert';
+import 'package:chronora/core/constants/app_routes.dart';
 import 'package:chronora/widgets/notification_card.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -76,7 +77,7 @@ class _notificationState extends State<NotificationPage> {
   void _onNotificationTap(NotificationCard notification) async {
     final result = await Navigator.pushNamed(
       context,
-      '/request-view/${notification.service.id}',
+      '${AppRoutes.requestView}/${notification.service.id}',
     );
 
     // Opcional: recarregar notificações se a tela retornou true (indicando edição)
