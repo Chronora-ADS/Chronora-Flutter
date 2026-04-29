@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'core/constants/app_routes.dart';
 
 void main() {
@@ -19,7 +18,7 @@ class ChronoraFlutter extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFF0B0C0C),
       ),
       initialRoute: AppRoutes.login,
-      routes: AppRoutes.routes,
+      onGenerateRoute: AppRoutes.onGenerateRoute, // Apenas isso, sem routes
       debugShowCheckedModeBanner: false,
     );
   }

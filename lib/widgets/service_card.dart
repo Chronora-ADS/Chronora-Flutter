@@ -5,37 +5,48 @@ import 'package:flutter/material.dart';
 class ServiceCard extends StatelessWidget {
   final Service service;
   final VoidCallback? onEdit;
+  final VoidCallback? onView;
   final ValueChanged<bool>? onCardEdited;
   final bool enableNavigation;
-  final String navigationRoute;
+  final String? navigationRoute;
   final Object? navigationArguments;
 
   const ServiceCard({
     super.key,
     required this.service,
     this.onEdit,
+    this.onView,
     this.onCardEdited,
     this.enableNavigation = true,
-    this.navigationRoute = '/request-editing',
+    this.navigationRoute,
     this.navigationArguments,
   });
+
+  Future<void> _handleTap(BuildContext context) async {
+    if (onView != null) {
+      onView!();
+      return;
+    }
+
+    if (!enableNavigation) {
+      return;
+    }
+
+    final result = await Navigator.pushNamed(
+      context,
+      navigationRoute ?? '/request-view/${service.id}',
+      arguments: navigationArguments ?? service,
+    );
+
+    if (result == true && onCardEdited != null) {
+      onCardEdited!(true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: enableNavigation
-          ? () async {
-              final result = await Navigator.pushNamed(
-                context,
-                navigationRoute,
-                arguments: navigationArguments ?? service,
-              );
-
-              if (result == true && onCardEdited != null) {
-                onCardEdited!(true);
-              }
-            }
-          : null,
+      onTap: enableNavigation || onView != null ? () => _handleTap(context) : null,
       child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFFB5BFAE),
@@ -68,7 +79,10 @@ class ServiceCard extends StatelessWidget {
                             );
                           },
                           loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
+                            if (loadingProgress == null) {
+                              return child;
+                            }
+
                             return const Center(
                               child: CircularProgressIndicator(),
                             );

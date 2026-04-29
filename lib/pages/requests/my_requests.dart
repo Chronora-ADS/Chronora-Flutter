@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:chronora/core/constants/app_routes.dart';
 import 'package:chronora/core/constants/app_colors.dart';
 import 'package:chronora/core/models/main_page_requests_model.dart';
 import 'package:chronora/core/services/api_service.dart';
@@ -951,12 +952,13 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
           child: ServiceCard(
             service: envelope.service,
             enableNavigation: true,
+            navigationRoute: AppRoutes.requestEditing,
             navigationArguments: navigationArguments,
             onEdit: canEdit
                 ? () async {
                     final result = await Navigator.pushNamed(
                       context,
-                      '/request-editing',
+                      AppRoutes.requestEditing,
                       arguments: navigationArguments,
                     );
 

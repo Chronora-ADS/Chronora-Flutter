@@ -1,28 +1,41 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http; //
+
+import 'package:chronora/core/constants/app_config.dart';
+import 'package:http/http.dart' as http;
 
 class ApiService {
-  // static const String baseUrl = 'https://chronora-java.onrender.com';
-  static const String baseUrl = 'http://localhost:8085';
+  static const String baseUrl = AppConfig.apiBaseUrl;
   static const Duration _defaultTimeout = Duration(seconds: 45);
 
-  static Future<http.Response> post(String endpoint, Map<String, dynamic> data,
-      {String? token, Duration? timeout}) async {
-    try {
-      final headers = {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        if (token != null) 'Authorization': 'Bearer $token',
-      };
+  static Uri _uri(String endpoint) {
+    final normalizedEndpoint =
+        endpoint.startsWith('/') ? endpoint : '/$endpoint';
+    return Uri.parse('$baseUrl$normalizedEndpoint');
+  }
 
-      final response = await http.post(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: headers,
-        body: jsonEncode(data),
-      ).timeout(timeout ?? _defaultTimeout);
-      return response;
+  static Map<String, String> _headers({String? token}) {
+    return {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+  }
+
+  static Future<http.Response> post(
+    String endpoint,
+    Map<String, dynamic> data, {
+    String? token,
+    Duration? timeout,
+  }) async {
+    try {
+      return await http
+          .post(
+            _uri(endpoint),
+            headers: _headers(token: token),
+            body: jsonEncode(data),
+          )
+          .timeout(timeout ?? _defaultTimeout);
     } catch (e) {
-      throw Exception('Erro de conexão: $e');
+      throw Exception('Erro de conexao: $e');
     }
   }
 
@@ -32,39 +45,50 @@ class ApiService {
     Duration? timeout,
   }) async {
     try {
-      final headers = {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        if (token != null) 'Authorization': 'Bearer $token',
-      };
-
-      final response = await http.get(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: headers,
-      ).timeout(timeout ?? _defaultTimeout);
-      return response;
+      return await http
+          .get(
+            _uri(endpoint),
+            headers: _headers(token: token),
+          )
+          .timeout(timeout ?? _defaultTimeout);
     } catch (e) {
-      throw Exception('Erro de conexão: $e');
+      throw Exception('Erro de conexao: $e');
     }
   }
 
-  static Future<http.Response> put(String endpoint, Map<String, dynamic> data,
-    {String? token, Duration? timeout}) async {
+  static Future<http.Response> put(
+    String endpoint,
+    Map<String, dynamic> data, {
+    String? token,
+    Duration? timeout,
+  }) async {
     try {
-      final headers = {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        if (token != null) 'Authorization': 'Bearer $token',
-      };
-
-      final response = await http.put(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: headers,
-        body: jsonEncode(data),
-      ).timeout(timeout ?? _defaultTimeout);
-      return response;
+      return await http
+          .put(
+            _uri(endpoint),
+            headers: _headers(token: token),
+            body: jsonEncode(data),
+          )
+          .timeout(timeout ?? _defaultTimeout);
     } catch (e) {
-      throw Exception('Erro de conexão: $e');
+      throw Exception('Erro de conexao: $e');
+    }
+  }
+
+  static Future<http.Response> delete(
+    String endpoint, {
+    String? token,
+    Duration? timeout,
+  }) async {
+    try {
+      return await http
+          .delete(
+            _uri(endpoint),
+            headers: _headers(token: token),
+          )
+          .timeout(timeout ?? _defaultTimeout);
+    } catch (e) {
+      throw Exception('Erro de conexao: $e');
     }
   }
 
@@ -74,19 +98,17 @@ class ApiService {
     Duration? timeout,
   }) async {
     try {
-      final finalHeaders = {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        ...headers, // Mescla os headers fornecidos
-      };
-
-      final response = await http.put(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: finalHeaders,
-      ).timeout(timeout ?? _defaultTimeout);
-      return response;
+      return await http
+          .put(
+            _uri(endpoint),
+            headers: {
+              'Content-Type': 'application/json',
+              ...headers,
+            },
+          )
+          .timeout(timeout ?? _defaultTimeout);
     } catch (e) {
-      throw Exception('Erro de conexão: $e');
+      throw Exception('Erro de conexao: $e');
     }
   }
 }
