@@ -2,6 +2,7 @@ import 'package:chronora/widgets/header.dart';
 import 'package:chronora/widgets/side_menu.dart';
 import 'package:chronora/widgets/wallet_modal.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show LengthLimitingTextInputFormatter;
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:universal_html/html.dart' as html;
@@ -31,6 +32,9 @@ class RequestEditingPage extends StatefulWidget {
 }
 
 class _RequestEditingPageState extends State<RequestEditingPage> {
+  static const int _descriptionMaxLength = 2500;
+  static const int _categoryMaxLength = 30;
+
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -306,12 +310,19 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   }
 
   void _addCategory(String category) {
-    if (category.trim().isNotEmpty) {
-      setState(() {
-        _categoriesTags.add(category.trim());
-        _categoriesController.clear();
-      });
+    final trimmedCategory = category.trim();
+    if (trimmedCategory.isEmpty) {
+      return;
     }
+
+    final categoryToAdd = trimmedCategory.length > _categoryMaxLength
+        ? trimmedCategory.substring(0, _categoryMaxLength)
+        : trimmedCategory;
+
+    setState(() {
+      _categoriesTags.add(categoryToAdd);
+      _categoriesController.clear();
+    });
   }
 
   void _removeCategory(String category) {
@@ -714,6 +725,19 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     return null;
   }
 
+  String? _descriptionValidator(String? value) {
+    final requiredMessage = _requiredValidator(value);
+    if (requiredMessage != null) {
+      return requiredMessage;
+    }
+
+    if (value!.length > _descriptionMaxLength) {
+      return 'A descricao deve ter no maximo $_descriptionMaxLength caracteres';
+    }
+
+    return null;
+  }
+
   String? _chronosValidator(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Este campo é obrigatório';
@@ -729,17 +753,17 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     if (value == null || value.trim().isEmpty) {
       return 'Data é obrigatória';
     }
-    
+
     final parts = value.split('/');
     if (parts.length != 3) {
       return 'Use o formato DD/MM/YYYY';
     }
-    
+
     try {
       final day = int.parse(parts[0]);
       final month = int.parse(parts[1]);
       final year = int.parse(parts[2]);
-      
+
       final date = DateTime(year, month, day);
       if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
         return 'Data não pode ser no passado';
@@ -747,7 +771,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     } catch (e) {
       return 'Data inválida';
     }
-    
+
     return null;
   }
 
@@ -910,22 +934,32 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   }
 
   Widget _buildTag(String tagText) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFC29503),
-        borderRadius: BorderRadius.circular(20),
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width - 32,
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildPaintbrushIcon(),
-          const SizedBox(width: 6),
-          Text(
-            tagText,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFFC29503),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildPaintbrushIcon(),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                tagText,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 6),
@@ -936,8 +970,8 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
               color: Colors.white,
               size: 16,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1340,7 +1374,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           ),
           if (_isDrawerOpen)
             Positioned(
-              top: kToolbarHeight * 1.5,
+              top: kToolbarHeight,
               left: 0,
               right: 0,
               bottom: 0,

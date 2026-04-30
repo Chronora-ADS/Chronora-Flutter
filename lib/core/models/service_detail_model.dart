@@ -13,6 +13,7 @@ class ServiceDetailModel {
   final String? serviceImageUrl;
   final UserCreator userCreator;
   final String postedAt;
+  final AcceptedRequestInfo? acceptedRequestInfo;
 
   ServiceDetailModel({
     this.id,
@@ -24,7 +25,8 @@ class ServiceDetailModel {
     required this.modality,
     this.serviceImageUrl,
     required this.userCreator,
-    required this.postedAt
+    required this.postedAt,
+    this.acceptedRequestInfo,
   });
 
   factory ServiceDetailModel.fromJson(Map<String, dynamic> json) {
@@ -39,6 +41,7 @@ class ServiceDetailModel {
       serviceImageUrl: _parseServiceImage(json),
       userCreator: UserCreator.fromJson(json['userCreator'] ?? {}),
       postedAt: json['postedAt'] ?? '',
+      acceptedRequestInfo: AcceptedRequestInfo.fromJson(json),
     );
   }
 
@@ -76,7 +79,158 @@ class ServiceDetailModel {
       'categories': categoryEntities.map((e) => e.name).toList(),
       'modality': modality,
       if (serviceImageUrl != null) 'serviceImage': serviceImageUrl,
-      'postedAt': postedAt
+      'postedAt': postedAt,
+      if (acceptedRequestInfo != null) ...acceptedRequestInfo!.toJson(),
     };
+  }
+}
+
+class AcceptedRequestInfo {
+  final UserCreator? acceptedUser;
+  final String? acceptedAt;
+  final String? authenticationCode;
+  final String? expiresAt;
+
+  const AcceptedRequestInfo({
+    this.acceptedUser,
+    this.acceptedAt,
+    this.authenticationCode,
+    this.expiresAt,
+  });
+
+  bool get hasAcceptedUser =>
+      acceptedUser != null &&
+      ((acceptedUser!.name).trim().isNotEmpty || acceptedUser!.phoneNumber != null);
+
+  factory AcceptedRequestInfo.fromJson(Map<String, dynamic> json) {
+    final acceptedUserJson = _extractAcceptedUserJson(json);
+    final acceptedAt = _readFirstString(
+      json,
+      const [
+        'acceptedAt',
+        'accepted_at',
+        'aceitoEm',
+        'acceptedDate',
+      ],
+    );
+    final authenticationCode = _readFirstString(
+      json,
+      const [
+        'authenticationCode',
+        'verificationCode',
+        'startAuthenticationCode',
+        'codigoAutenticacao',
+      ],
+    );
+    final expiresAt = _readFirstString(
+      json,
+      const [
+        'authenticationCodeExpiresAt',
+        'verificationCodeExpiresAt',
+        'startAuthenticationCodeExpiresAt',
+        'codigoAutenticacaoExpiraEm',
+        'expiresAt',
+      ],
+    );
+
+    if (acceptedUserJson == null &&
+        (acceptedAt == null || acceptedAt.isEmpty) &&
+        (authenticationCode == null || authenticationCode.isEmpty) &&
+        (expiresAt == null || expiresAt.isEmpty)) {
+      return const AcceptedRequestInfo();
+    }
+
+    return AcceptedRequestInfo(
+      acceptedUser: acceptedUserJson != null
+          ? UserCreator.fromJson(acceptedUserJson)
+          : null,
+      acceptedAt: acceptedAt,
+      authenticationCode: authenticationCode,
+      expiresAt: expiresAt,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (acceptedUser != null) 'acceptedUser': acceptedUser!.toJson(),
+      if (acceptedAt != null) 'acceptedAt': acceptedAt,
+      if (authenticationCode != null)
+        'authenticationCode': authenticationCode,
+      if (expiresAt != null) 'verificationCodeExpiresAt': expiresAt,
+    };
+  }
+
+  static Map<String, dynamic>? _extractAcceptedUserJson(
+    Map<String, dynamic> json,
+  ) {
+    const candidateKeys = [
+      'acceptedUser',
+      'userAccepted',
+      'acceptedBy',
+      'acceptedProvider',
+      'providerAccepted',
+      'prestadorAceito',
+    ];
+
+    for (final key in candidateKeys) {
+      final value = json[key];
+      if (value is Map<String, dynamic>) {
+        return value;
+      }
+    }
+
+    final acceptedUserId = _readFirstInt(
+      json,
+      const ['acceptedUserId', 'acceptedById', 'providerAcceptedId'],
+    );
+    final acceptedUserName = _readFirstString(
+      json,
+      const ['acceptedUserName', 'acceptedByName', 'providerAcceptedName'],
+    );
+    final acceptedUserPhone = _readFirstInt(
+      json,
+      const ['acceptedUserPhone', 'acceptedByPhone', 'providerAcceptedPhone'],
+    );
+
+    if (acceptedUserId == null &&
+        (acceptedUserName == null || acceptedUserName.isEmpty) &&
+        acceptedUserPhone == null) {
+      return null;
+    }
+
+    return {
+      if (acceptedUserId != null) 'id': acceptedUserId,
+      if (acceptedUserName != null) 'name': acceptedUserName,
+      if (acceptedUserPhone != null) 'phoneNumber': acceptedUserPhone,
+    };
+  }
+
+  static String? _readFirstString(
+    Map<String, dynamic> json,
+    List<String> keys,
+  ) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is String && value.trim().isNotEmpty) {
+        return value.trim();
+      }
+    }
+    return null;
+  }
+
+  static int? _readFirstInt(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is int) {
+        return value;
+      }
+      if (value is String) {
+        final parsed = int.tryParse(value);
+        if (parsed != null) {
+          return parsed;
+        }
+      }
+    }
+    return null;
   }
 }

@@ -432,7 +432,7 @@ class _MainPageState extends State<MainPage> {
           // Menu lateral
           if (_isDrawerOpen)
             Positioned(
-              top: kToolbarHeight * 1.5,
+              top: kToolbarHeight,
               left: 0,
               right: 0,
               bottom: 0,

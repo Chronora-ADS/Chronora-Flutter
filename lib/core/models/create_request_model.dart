@@ -5,7 +5,7 @@ class CreateRequestModel {
   final String deadline;
   final List<String> categories;
   final String modality;
-  final String? serviceImage;
+  final String serviceImage;
 
   CreateRequestModel({
     required this.title,
@@ -14,7 +14,7 @@ class CreateRequestModel {
     required this.deadline,
     required this.categories,
     required this.modality,
-    this.serviceImage,
+    required this.serviceImage,
   });
 
   Map<String, dynamic> toJson() {
@@ -79,7 +79,7 @@ class CreateRequestModel {
               .toList() ??
           [],
       modality: json['modality'] ?? '',
-      serviceImage: json['serviceImage'],
+      serviceImage: json['serviceImage'] ?? '',
     );
   }
 }
