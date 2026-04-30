@@ -2,7 +2,6 @@ import 'package:chronora/widgets/header.dart';
 import 'package:chronora/widgets/side_menu.dart';
 import 'package:chronora/widgets/wallet_modal.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show LengthLimitingTextInputFormatter;
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:universal_html/html.dart' as html;
@@ -828,7 +827,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       child: TextFormField(
         controller: _descriptionController,
         readOnly: _isReadOnly,
-        validator: _requiredValidator,
+        validator: _descriptionValidator,
         maxLines: null,
         minLines: 3,
         keyboardType: TextInputType.multiline,
@@ -961,7 +960,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
                 ),
               ),
             ),
-          ),
           const SizedBox(width: 6),
           GestureDetector(
             onTap: _isReadOnly ? null : () => _removeCategory(tagText),
@@ -970,7 +968,8 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
               color: Colors.white,
               size: 16,
             ),
-          ],
+          ),
+        ],
         ),
       ),
     );
