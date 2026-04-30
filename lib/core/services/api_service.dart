@@ -99,14 +99,17 @@ class ApiService {
   
   static Future<http.Response> putString(
     String endpoint,
-    Map<String, dynamic> data, {
+    String data, {
     String? token,
   }) async {
     try {
       return await http.put(
         _uri(endpoint),
-        headers: _headers(token: token),
-        body: jsonEncode(data),
+        headers: {
+          'Content-Type': 'text/plain',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: data,
       );
     } catch (e) {
       throw Exception('Erro de conexao: $e');

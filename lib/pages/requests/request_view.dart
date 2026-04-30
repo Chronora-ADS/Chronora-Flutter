@@ -14,7 +14,8 @@ import '../../widgets/wallet_modal.dart';
 
 class RequestView extends StatefulWidget {
   final int? serviceId;
-  final Service? service; // Serviço passado da main page (opcional via construtor)
+  final Service?
+      service; // Serviço passado da main page (opcional via construtor)
 
   const RequestView({super.key, this.serviceId, this.service});
 
@@ -76,6 +77,7 @@ class _RequestViewState extends State<RequestView> {
       ],
     );
   }
+
   Future<void> _getCurrentUserFromApi() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -155,9 +157,10 @@ class _RequestViewState extends State<RequestView> {
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         final detail = ServiceDetailModel.fromJson(data);
-        final backendAcceptedInfo = detail.acceptedRequestInfo?.hasAcceptedUser == true
-            ? detail.acceptedRequestInfo
-            : null;
+        final backendAcceptedInfo =
+            detail.acceptedRequestInfo?.hasAcceptedUser == true
+                ? detail.acceptedRequestInfo
+                : null;
         final cachedAcceptedInfo = backendAcceptedInfo == null
             ? await _loadAcceptedRequestInfo(serviceId)
             : null;
@@ -171,7 +174,8 @@ class _RequestViewState extends State<RequestView> {
         print('Creator ID: ${detail.userCreator.id}');
 
         // Verifica se o usuário atual é o dono do serviço
-        final isOwner = detail.userCreator.id.toString() == _currentUserId?.toString();
+        final isOwner =
+            detail.userCreator.id.toString() == _currentUserId?.toString();
 
         setState(() {
           _serviceDetail = detail;
@@ -404,7 +408,8 @@ class _RequestViewState extends State<RequestView> {
       if (!mounted) return;
 
       setState(() {
-        _serviceDetail = resolvedServiceDetail ?? _serviceDetail ?? serviceDetail;
+        _serviceDetail =
+            resolvedServiceDetail ?? _serviceDetail ?? serviceDetail;
         _acceptedRequestInfo = acceptedRequestInfo;
         _isLoading = false;
       });
@@ -414,7 +419,8 @@ class _RequestViewState extends State<RequestView> {
         '/request-accepted-view',
         arguments: {
           'serviceId': serviceId,
-          'serviceDetail': resolvedServiceDetail ?? _serviceDetail ?? serviceDetail,
+          'serviceDetail':
+              resolvedServiceDetail ?? _serviceDetail ?? serviceDetail,
           'audience': RequestAcceptedAudience.provider,
           'acceptedUserName': acceptedRequestInfo.acceptedUser?.name,
           'acceptedUserPhone': acceptedRequestInfo.acceptedUser?.phoneNumber,
@@ -475,7 +481,8 @@ class _RequestViewState extends State<RequestView> {
       }
 
       final acceptedInfo = AcceptedRequestInfo.fromJson(decoded);
-      if (!acceptedInfo.hasAcceptedUser || _isAcceptedRequestExpired(acceptedInfo)) {
+      if (!acceptedInfo.hasAcceptedUser ||
+          _isAcceptedRequestExpired(acceptedInfo)) {
         await prefs.remove(_acceptedRequestStorageKey(serviceId));
         return null;
       }
@@ -511,11 +518,34 @@ class _RequestViewState extends State<RequestView> {
       return false;
     }
 
+    final parsedExpiresAt = _parseBackendDateTime(expiresAt);
+    return parsedExpiresAt != null && !DateTime.now().isBefore(parsedExpiresAt);
+  }
+
+  DateTime? _parseBackendDateTime(String rawDateTime) {
     try {
-      return !DateTime.now().isBefore(DateTime.parse(expiresAt));
+      final parsed = DateTime.parse(rawDateTime);
+      if (parsed.isUtc || _hasExplicitTimeZone(rawDateTime)) {
+        return parsed.toLocal();
+      }
+
+      return DateTime.utc(
+        parsed.year,
+        parsed.month,
+        parsed.day,
+        parsed.hour,
+        parsed.minute,
+        parsed.second,
+        parsed.millisecond,
+        parsed.microsecond,
+      ).toLocal();
     } catch (_) {
-      return false;
+      return null;
     }
+  }
+
+  bool _hasExplicitTimeZone(String value) {
+    return value.endsWith('Z') || RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(value);
   }
 
   Future<ServiceDetailModel?> _fetchServiceDetailSnapshot(int serviceId) async {
@@ -725,10 +755,10 @@ class _RequestViewState extends State<RequestView> {
                 onMenuPressed: _toggleDrawer,
               ),
               Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: _buildContent(),
-                  ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: _buildContent(),
+                ),
               ),
             ],
           ),
@@ -806,272 +836,279 @@ class _RequestViewState extends State<RequestView> {
     }
 
     return Container(
-      child: 
-        Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: const BoxDecoration(
-                color: AppColors.branco,
-                borderRadius: BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
+        child: Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: const BoxDecoration(
+            color: AppColors.branco,
+            borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(12), topRight: Radius.circular(12)),
+          ),
+          width: double.infinity,
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // Título
+            Text(
+              _serviceDetail!.title,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
               ),
-              width: double.infinity,
-              child: Column(
+            ),
+          ]),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: const BoxDecoration(
+            color: AppColors.preto,
+            border: Border(
+                bottom: BorderSide(
+                    color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
+                top: BorderSide(
+                    color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
+                left: BorderSide(
+                    color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
+                right: BorderSide(
+                    color: AppColors.amareloUmPoucoMaisEscuro, width: 3)),
+            borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(12),
+                bottomRight: Radius.circular(12)),
+          ),
+          child: Column(
+            children: [
+              // Linha com imagem à esquerda e informações à direita
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Título
-                  Text(
-                    _serviceDetail!.title,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ]
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              decoration: const BoxDecoration(
-                color: AppColors.preto,
-                border: Border(
-                  bottom: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
-                  top: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
-                  left: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
-                  right: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3)
-                ),
-                borderRadius: BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
-              ),
-              child: Column(
-                children: [
-                  // Linha com imagem à esquerda e informações à direita
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Imagem
-                      ClipRRect(
-                        child: Container(
-                          width: 200,
-                          height: 113,
-                          decoration: BoxDecoration(
-                            color: AppColors.cinza,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: _serviceDetail!.serviceImageUrl != null &&
-                                  _serviceDetail!.serviceImageUrl!.isNotEmpty
-                              ? Image.network(
-                                  _serviceDetail!.serviceImageUrl!,
-                                  width: 160,
-                                  height: 90,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      color: AppColors.cinza,
-                                      child: const Icon(Icons.broken_image,
-                                          size: 40, color: AppColors.cinza),
-                                    );
-                                  },
-                                  loadingBuilder: (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return const Center(
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(
-                                            AppColors.amareloClaro),
-                                      ),
-                                    );
-                                  },
-                                )
-                              : Container(
-                                  color: AppColors.cinza,
-                                  child: const Icon(Icons.image,
-                                      size: 40, color: AppColors.cinza),
-                                ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      // Informações à direita
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            // Prazo
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppColors.amareloUmPoucoEscuro,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                'Prazo: ${_formatDate(_serviceDetail!.deadline)}',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.branco,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            // Modalidade
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppColors.amareloUmPoucoEscuro,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                _serviceDetail!.modality,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.branco,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            // Chronos
-                            // Chronos com ícone alinhado à direita
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Image.asset(
-                                    'assets/img/CoinYellow.png',
-                                    width: 20,
-                                    height: 20,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        const Icon(Icons.currency_bitcoin, color: AppColors.amareloClaro, size: 20),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Flexible(
-                                    child: Text(
-                                      '${_serviceDetail!.timeChronos} Chronos',
-                                      style: const TextStyle(
-                                        color: AppColors.amareloClaro,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 20,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: 
-                      // Descrição
-                      Text(
-                        _serviceDetail!.description,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: AppColors.branco
-                        ),
-                      ),
-                  )
-                ],
-              ),
-            ),
-        
-            const SizedBox(height: 5),
-            if (_serviceDetail!.categoryEntities.isNotEmpty) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _serviceDetail!.categoryEntities.map((cat) {
-                    return Container(
+                  // Imagem
+                  ClipRRect(
+                    child: Container(
+                      width: 200,
+                      height: 113,
                       decoration: BoxDecoration(
-                        color: AppColors.amareloClaro,
-                        borderRadius: BorderRadius.circular(8),
+                        color: AppColors.cinza,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: Text(
-                        cat.name,
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
-
-            // Informações do criador em container separado
-            ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.branco,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Postado às ${_formatTime(_serviceDetail!.postedAt)} por:',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: AppColors.amareloClaro,
-                          child: Text(
-                            _serviceDetail!.userCreator.name.isNotEmpty
-                                ? _serviceDetail!.userCreator.name[0].toUpperCase()
-                                : '?',
-                            style: const TextStyle(color: AppColors.branco),
-                          ), // imagem perfil
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _serviceDetail!.userCreator.name,
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 4),
-                              const Row(
-                                children: [
-                                  Text(
-                                    // _serviceDetail!.userCreator.rating?.toStringAsFixed(1) ?? 
-                                    "5.0",
-                                    style: TextStyle(fontSize: 14),
+                      child: _serviceDetail!.serviceImageUrl != null &&
+                              _serviceDetail!.serviceImageUrl!.isNotEmpty
+                          ? Image.network(
+                              _serviceDetail!.serviceImageUrl!,
+                              width: 160,
+                              height: 90,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: AppColors.cinza,
+                                  child: const Icon(Icons.broken_image,
+                                      size: 40, color: AppColors.cinza),
+                                );
+                              },
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        AppColors.amareloClaro),
                                   ),
-                                  SizedBox(width: 4),
-                                  Icon(Icons.star, color: AppColors.amareloClaro, size: 16),
-                                ],
+                                );
+                              },
+                            )
+                          : Container(
+                              color: AppColors.cinza,
+                              child: const Icon(Icons.image,
+                                  size: 40, color: AppColors.cinza),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Informações à direita
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        // Prazo
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.amareloUmPoucoEscuro,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'Prazo: ${_formatDate(_serviceDetail!.deadline)}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.branco,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Modalidade
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.amareloUmPoucoEscuro,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _serviceDetail!.modality,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.branco,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Chronos
+                        // Chronos com ícone alinhado à direita
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Image.asset(
+                                'assets/img/CoinYellow.png',
+                                width: 20,
+                                height: 20,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(Icons.currency_bitcoin,
+                                        color: AppColors.amareloClaro,
+                                        size: 20),
+                              ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  '${_serviceDetail!.timeChronos} Chronos',
+                                  style: const TextStyle(
+                                    color: AppColors.amareloClaro,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child:
+                    // Descrição
+                    Text(
+                  _serviceDetail!.description,
+                  style: const TextStyle(fontSize: 16, color: AppColors.branco),
+                ),
+              )
             ],
+          ),
+        ),
 
-            // Botões de ação
-            _buildActionButtons(),
-          ],
-        )
-    );
+        const SizedBox(height: 5),
+        if (_serviceDetail!.categoryEntities.isNotEmpty) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _serviceDetail!.categoryEntities.map((cat) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.amareloClaro,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Text(
+                    cat.name,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+
+        // Informações do criador em container separado
+        ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.branco,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Postado às ${_formatTime(_serviceDetail!.postedAt)} por:',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: AppColors.amareloClaro,
+                      child: Text(
+                        _serviceDetail!.userCreator.name.isNotEmpty
+                            ? _serviceDetail!.userCreator.name[0].toUpperCase()
+                            : '?',
+                        style: const TextStyle(color: AppColors.branco),
+                      ), // imagem perfil
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _serviceDetail!.userCreator.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 4),
+                          const Row(
+                            children: [
+                              Text(
+                                // _serviceDetail!.userCreator.rating?.toStringAsFixed(1) ??
+                                "5.0",
+                                style: TextStyle(fontSize: 14),
+                              ),
+                              SizedBox(width: 4),
+                              Icon(Icons.star,
+                                  color: AppColors.amareloClaro, size: 16),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+
+        // Botões de ação
+        _buildActionButtons(),
+      ],
+    ));
   }
 
   // ignore: unused_element
@@ -1128,7 +1165,8 @@ class _RequestViewState extends State<RequestView> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.preto,
                 foregroundColor: AppColors.branco,
-                side: const BorderSide(color: AppColors.amareloUmPoucoEscuro, width: 4),
+                side: const BorderSide(
+                    color: AppColors.amareloUmPoucoEscuro, width: 4),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

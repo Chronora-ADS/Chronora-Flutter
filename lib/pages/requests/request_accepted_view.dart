@@ -15,6 +15,37 @@ import '../../widgets/wallet_modal.dart';
 
 enum RequestAcceptedAudience { provider, requester }
 
+DateTime? _parseBackendDateTime(String? rawDateTime) {
+  final value = rawDateTime?.trim();
+  if (value == null || value.isEmpty) {
+    return null;
+  }
+
+  try {
+    final parsed = DateTime.parse(value);
+    if (parsed.isUtc || _hasExplicitTimeZone(value)) {
+      return parsed.toLocal();
+    }
+
+    return DateTime.utc(
+      parsed.year,
+      parsed.month,
+      parsed.day,
+      parsed.hour,
+      parsed.minute,
+      parsed.second,
+      parsed.millisecond,
+      parsed.microsecond,
+    ).toLocal();
+  } catch (_) {
+    return null;
+  }
+}
+
+bool _hasExplicitTimeZone(String value) {
+  return value.endsWith('Z') || RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(value);
+}
+
 class RequestAcceptedView extends StatefulWidget {
   final ServiceDetailModel? serviceDetail;
   final RequestAcceptedAudience audience;
@@ -101,17 +132,18 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         }
       }
 
-      final acceptedUserName = (arguments['acceptedUserName'] as String?)?.trim();
+      final acceptedUserName =
+          (arguments['acceptedUserName'] as String?)?.trim();
       final acceptedUserPhone = arguments['acceptedUserPhone'];
       final audience = arguments['audience'];
       final isRequesterView = arguments['isRequesterView'] == true;
       final authenticationCode =
           (arguments['authenticationCode'] as String?)?.trim() ??
-          (arguments['startAuthenticationCode'] as String?)?.trim();
+              (arguments['startAuthenticationCode'] as String?)?.trim();
       final authenticationCodeExpiresAt =
           (arguments['authenticationCodeExpiresAt'] as String?)?.trim() ??
-          (arguments['verificationCodeExpiresAt'] as String?)?.trim() ??
-          (arguments['expiresAt'] as String?)?.trim();
+              (arguments['verificationCodeExpiresAt'] as String?)?.trim() ??
+              (arguments['expiresAt'] as String?)?.trim();
       final acceptedAt = arguments['acceptedAt'];
 
       if (acceptedUserName != null && acceptedUserName.isNotEmpty) {
@@ -187,9 +219,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       _authenticationCode = acceptedCode;
     }
 
-    if (_authenticationCodeExpiresAt == null) {
-      _applyAuthenticationCodeExpiresAt(acceptedRequestInfo?.expiresAt);
-    }
+    _applyAuthenticationCodeExpiresAt(acceptedRequestInfo?.expiresAt);
 
     final serviceAcceptedAt = acceptedRequestInfo?.acceptedAt?.trim();
     if (serviceAcceptedAt != null && serviceAcceptedAt.isNotEmpty) {
@@ -216,7 +246,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         return;
       }
 
-      final response = await ApiService.get('/service/get/$serviceId', token: token);
+      final response =
+          await ApiService.get('/service/get/$serviceId', token: token);
       if (response.statusCode != 200) {
         return;
       }
@@ -334,9 +365,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   void _applyAuthenticationCodeExpiresAt(String? rawExpiresAt) {
     if (rawExpiresAt == null || rawExpiresAt.isEmpty) return;
 
-    try {
-      _authenticationCodeExpiresAt = DateTime.parse(rawExpiresAt);
-    } catch (_) {}
+    _authenticationCodeExpiresAt =
+        _parseBackendDateTime(rawExpiresAt) ?? _authenticationCodeExpiresAt;
   }
 
   void _startAuthenticationCodeCountdown() {
@@ -369,8 +399,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         ? Duration.zero
         : expiresAt.difference(DateTime.now());
 
-    final safeRemaining =
-        remaining.isNegative ? Duration.zero : remaining;
+    final safeRemaining = remaining.isNegative ? Duration.zero : remaining;
 
     if (!mounted) {
       _remainingAuthenticationCodeTime = safeRemaining;
@@ -400,7 +429,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     if (_isHandlingExpiration || _isLeavingAcceptedView) return;
     _isHandlingExpiration = true;
 
-    final serviceId = _resolvedServiceDetail?.id;
+    final serviceId = _resolvedServiceDetail?.id ?? _serviceId;
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -431,7 +460,13 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
   Future<void> _openStartRequestDialog() async {
     final pageContext = context;
-    final serviceId = _resolvedServiceDetail?.id;
+    final serviceId = _resolvedServiceDetail?.id ?? _serviceId;
+
+    await _syncAcceptedRequestState();
+    if (!mounted || _isLeavingAcceptedView) return;
+
+    final latestAuthenticationCode =
+        _resolvedServiceDetail?.acceptedRequestInfo?.authenticationCode?.trim();
 
     await showDialog<void>(
       context: context,
@@ -439,7 +474,10 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       builder: (dialogContext) {
         return _StartRequestDialog(
           serviceId: serviceId,
-          authenticationCode: _authenticationCode,
+          authenticationCode:
+              (latestAuthenticationCode?.isNotEmpty ?? false)
+                  ? latestAuthenticationCode!
+                  : _authenticationCode,
           authenticationCodeExpiresAt: _authenticationCodeExpiresAt,
           onSuccess: () async {
             ScaffoldMessenger.of(pageContext)
@@ -463,7 +501,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   void _startAcceptedRequestSync() {
     _acceptedRequestSyncTimer?.cancel();
 
-    final serviceId = _resolvedServiceDetail?.id;
+    final serviceId = _resolvedServiceDetail?.id ?? _serviceId;
     if (serviceId == null) {
       return;
     }
@@ -476,7 +514,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   Future<void> _syncAcceptedRequestState() async {
     if (_isLeavingAcceptedView) return;
 
-    final serviceId = _resolvedServiceDetail?.id;
+    final serviceId = _resolvedServiceDetail?.id ?? _serviceId;
     if (serviceId == null) {
       return;
     }
@@ -488,7 +526,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         return;
       }
 
-      final response = await ApiService.get('/service/get/$serviceId', token: token);
+      final response =
+          await ApiService.get('/service/get/$serviceId', token: token);
       if (response.statusCode != 200) {
         return;
       }
@@ -502,16 +541,28 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       final latestAcceptedInfo = latestDetail.acceptedRequestInfo;
       final hasActiveAcceptedRequest =
           latestAcceptedInfo?.hasAcceptedUser == true &&
-          (latestAcceptedInfo?.authenticationCode?.trim().isNotEmpty ?? false) &&
-          (latestAcceptedInfo?.expiresAt?.trim().isNotEmpty ?? false);
+              (latestAcceptedInfo?.authenticationCode?.trim().isNotEmpty ??
+                  false) &&
+              (latestAcceptedInfo?.expiresAt?.trim().isNotEmpty ?? false);
 
       if (!hasActiveAcceptedRequest) {
         await _leaveAcceptedView(
           const SnackBar(
-            content: Text('Pedido confirmado. Retornando para a pagina inicial.'),
+            content:
+                Text('Pedido confirmado. Retornando para a pagina inicial.'),
             backgroundColor: Colors.green,
           ),
         );
+        return;
+      }
+
+      final latestExpiresAt = latestAcceptedInfo?.expiresAt?.trim();
+      if (latestExpiresAt != null && latestExpiresAt.isNotEmpty && mounted) {
+        setState(() {
+          _resolvedServiceDetail = latestDetail;
+          _applyAuthenticationCodeExpiresAt(latestExpiresAt);
+        });
+        _syncRemainingAuthenticationCodeTime();
       }
     } catch (_) {}
   }
@@ -523,7 +574,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     _countdownTimer?.cancel();
     _acceptedRequestSyncTimer?.cancel();
 
-    final serviceId = _resolvedServiceDetail?.id;
+    final serviceId = _resolvedServiceDetail?.id ?? _serviceId;
     if (serviceId != null) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('accepted_request_info_$serviceId');
@@ -677,8 +728,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             child: AnimatedSlide(
               duration: const Duration(milliseconds: 280),
               curve: Curves.easeOutCubic,
-              offset:
-                  _isShowingDetails ? Offset.zero : const Offset(0, -0.16),
+              offset: _isShowingDetails ? Offset.zero : const Offset(0, -0.16),
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 220),
                 opacity: _isShowingDetails ? 1 : 0,
@@ -863,7 +913,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     final creator = _resolvedServiceDetail?.userCreator;
 
     return _InfoCard(
-      header: 'Postado as ${_formatTime(_resolvedServiceDetail?.postedAt)} por:',
+      header:
+          'Postado as ${_formatTime(_resolvedServiceDetail?.postedAt)} por:',
       highlightBorder: _isRequesterView,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -875,7 +926,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  creator?.name.isNotEmpty == true ? creator!.name : 'Solicitante',
+                  creator?.name.isNotEmpty == true
+                      ? creator!.name
+                      : 'Solicitante',
                   style: const TextStyle(
                     fontSize: 18,
                     color: AppColors.preto,
@@ -922,7 +975,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   }
 
   Widget _buildCalloutCard() {
-    final phone = _formatPhoneNumber(_resolvedServiceDetail?.userCreator.phoneNumber);
+    final phone =
+        _formatPhoneNumber(_resolvedServiceDetail?.userCreator.phoneNumber);
 
     return Container(
       width: double.infinity,
@@ -1419,7 +1473,8 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
   bool get _isExpired => _remainingTime.inSeconds <= 0;
 
   String get _formattedCountdown {
-    final safeSeconds = _remainingTime.inSeconds < 0 ? 0 : _remainingTime.inSeconds;
+    final safeSeconds =
+        _remainingTime.inSeconds < 0 ? 0 : _remainingTime.inSeconds;
     final minutes = (safeSeconds ~/ 60).toString().padLeft(2, '0');
     final seconds = (safeSeconds % 60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
@@ -1508,7 +1563,7 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
 
       final response = await ApiService.putString(
         '/service/startService/$serviceId',
-        {'code': typedCode},
+        typedCode,
         token: token,
       );
 
