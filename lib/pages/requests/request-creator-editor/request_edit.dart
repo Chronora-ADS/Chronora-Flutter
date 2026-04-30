@@ -804,7 +804,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       child: TextFormField(
         controller: _descriptionController,
         readOnly: _isReadOnly,
-        validator: _descriptionValidator,
+        validator: _requiredValidator,
         maxLines: null,
         minLines: 3,
         keyboardType: TextInputType.multiline,
@@ -927,6 +927,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
               color: Colors.white,
               fontWeight: FontWeight.bold,
             ),
+          ),
           const SizedBox(width: 6),
           GestureDetector(
             onTap: _isReadOnly ? null : () => _removeCategory(tagText),
