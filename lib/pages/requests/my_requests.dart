@@ -12,14 +12,6 @@ import 'package:chronora/widgets/wallet_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum OrdenacaoTipo {
-  maisRecentes,
-  maisAntigos,
-  maiorAvaliacao,
-  maiorChronos,
-  menorChronos,
-}
-
 class UserIdentity {
   final int? id;
   final String name;
@@ -30,53 +22,6 @@ class UserIdentity {
     required this.name,
     required this.email,
   });
-}
-
-class RequestFilterState {
-  final double minRating;
-  final int? minChronos;
-  final int? maxChronos;
-  final String? category;
-  final String? modality;
-  final OrdenacaoTipo ordenacao;
-
-  const RequestFilterState({
-    this.minRating = 0,
-    this.minChronos,
-    this.maxChronos,
-    this.category,
-    this.modality,
-    this.ordenacao = OrdenacaoTipo.maisRecentes,
-  });
-
-  RequestFilterState copyWith({
-    double? minRating,
-    int? minChronos,
-    int? maxChronos,
-    String? category,
-    bool clearCategory = false,
-    String? modality,
-    bool clearModality = false,
-    OrdenacaoTipo? ordenacao,
-  }) {
-    return RequestFilterState(
-      minRating: minRating ?? this.minRating,
-      minChronos: minChronos ?? this.minChronos,
-      maxChronos: maxChronos ?? this.maxChronos,
-      category: clearCategory ? null : (category ?? this.category),
-      modality: clearModality ? null : (modality ?? this.modality),
-      ordenacao: ordenacao ?? this.ordenacao,
-    );
-  }
-
-  bool get isActive {
-    return minRating > 0 ||
-        minChronos != null ||
-        maxChronos != null ||
-        category != null ||
-        modality != null ||
-        ordenacao != OrdenacaoTipo.maisRecentes;
-  }
 }
 
 class ServiceEnvelope {
@@ -115,7 +60,6 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
   String _errorMessage = '';
 
   UserIdentity _currentUser = const UserIdentity(id: null, name: '', email: '');
-  RequestFilterState _filters = const RequestFilterState();
   String? _selectedStatus;
   List<ServiceEnvelope> _services = [];
 
@@ -260,22 +204,6 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         .toList();
   }
 
-  List<String> get _availableCategories {
-    final categories = <String>{};
-
-    for (final envelope in _services) {
-      for (final category in envelope.service.categoryEntities) {
-        final name = category.name.trim();
-        if (name.isNotEmpty) {
-          categories.add(name);
-        }
-      }
-    }
-
-    final values = categories.toList()..sort();
-    return values;
-  }
-
   Map<String, List<ServiceEnvelope>> get _requestsByStatus {
     final grouped = <String, List<ServiceEnvelope>>{
       for (final status in _serviceStatuses) status: <ServiceEnvelope>[],
@@ -286,14 +214,15 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       final belongsToCurrentUser = _isCreatedByCurrentUser(envelope) ||
           _isAcceptedByCurrentUser(envelope);
 
-      if (!belongsToCurrentUser || !_matchesFilters(envelope)) {
+      if (!belongsToCurrentUser || !_matchesSearch(envelope)) {
         continue;
       }
 
       merged[envelope.service.id] = envelope;
     }
 
-    final ordered = merged.values.toList()..sort(_compareServices);
+    final ordered = merged.values.toList()
+      ..sort((a, b) => b.service.id.compareTo(a.service.id));
 
     for (final envelope in ordered) {
       final status = _normalizeStatus(envelope.service.status);
@@ -421,11 +350,11 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     return false;
   }
 
-  bool _matchesFilters(ServiceEnvelope envelope) {
+  bool _matchesSearch(ServiceEnvelope envelope) {
     final service = envelope.service;
     final query = _normalizeText(_searchQuery);
 
-    final matchesSearch = query.isEmpty ||
+    return query.isEmpty ||
         _normalizeText(service.title).contains(query) ||
         _normalizeText(service.description).contains(query) ||
         _normalizeText(service.userCreator.name).contains(query) ||
@@ -433,86 +362,11 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         service.categoryEntities.any(
           (category) => _normalizeText(category.name).contains(query),
         );
-
-    final matchesRating =
-        _extractUserRating(envelope.raw) >= _filters.minRating;
-    final matchesChronos = (_filters.minChronos == null ||
-            service.timeChronos >= _filters.minChronos!) &&
-        (_filters.maxChronos == null ||
-            service.timeChronos <= _filters.maxChronos!);
-    final matchesCategory = _filters.category == null ||
-        service.categoryEntities.any(
-          (category) =>
-              _normalizeText(category.name) ==
-              _normalizeText(_filters.category!),
-        );
-    final matchesModality = _filters.modality == null ||
-        _normalizeText(service.modality) == _normalizeText(_filters.modality!);
-
-    return matchesSearch &&
-        matchesRating &&
-        matchesChronos &&
-        matchesCategory &&
-        matchesModality;
-  }
-
-  int _compareServices(ServiceEnvelope a, ServiceEnvelope b) {
-    switch (_filters.ordenacao) {
-      case OrdenacaoTipo.maisRecentes:
-        return b.service.id.compareTo(a.service.id);
-      case OrdenacaoTipo.maisAntigos:
-        return a.service.id.compareTo(b.service.id);
-      case OrdenacaoTipo.maiorAvaliacao:
-        return _extractUserRating(b.raw).compareTo(_extractUserRating(a.raw));
-      case OrdenacaoTipo.maiorChronos:
-        return b.service.timeChronos.compareTo(a.service.timeChronos);
-      case OrdenacaoTipo.menorChronos:
-        return a.service.timeChronos.compareTo(b.service.timeChronos);
-    }
-  }
-
-  double _extractUserRating(Map<String, dynamic> raw) {
-    final values = <double>[];
-
-    void collect(dynamic node, {String key = ''}) {
-      if (node is Map<String, dynamic>) {
-        for (final entry in node.entries) {
-          collect(entry.value, key: entry.key.toLowerCase());
-        }
-        return;
-      }
-
-      if (node is List) {
-        for (final item in node) {
-          collect(item, key: key);
-        }
-        return;
-      }
-
-      if (key.contains('rating') || key.contains('avali')) {
-        final value = _toDouble(node);
-        if (value != null) {
-          values.add(value);
-        }
-      }
-    }
-
-    collect(raw['userCreator'], key: 'usercreator');
-    collect(raw);
-
-    return values.isEmpty ? 0 : values.first;
   }
 
   int? _toInt(dynamic value) {
     if (value is int) return value;
     if (value is String) return int.tryParse(value);
-    return null;
-  }
-
-  double? _toDouble(dynamic value) {
-    if (value is double) return value;
-    if (value is int) return value.toDouble();
-    if (value is String) return double.tryParse(value.replaceAll(',', '.'));
     return null;
   }
 
@@ -552,24 +406,6 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     });
   }
 
-  Future<void> _showFiltersModal() async {
-    final newFilters = await showModalBottomSheet<RequestFilterState>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _RequestFiltersModal(
-        initialFilters: _filters,
-        availableCategories: _availableCategories,
-      ),
-    );
-
-    if (newFilters != null) {
-      setState(() {
-        _filters = newFilters;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final requestsByStatus = _requestsByStatus;
@@ -600,8 +436,6 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
                           _buildSearchField(),
                           const SizedBox(height: 24),
                           _buildSeparators(),
-                          const SizedBox(height: 24),
-                          _buildFiltersButton(),
                           const SizedBox(height: 24),
                           _buildContent(requestsByStatus: requestsByStatus),
                         ],
@@ -710,33 +544,6 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     );
   }
 
-  Widget _buildFiltersButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: _showFiltersModal,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.branco,
-          foregroundColor: AppColors.preto,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              _filters.isActive ? 'Filtros aplicados' : 'Filtros',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-            ),
-            const Icon(Icons.keyboard_arrow_down, size: 30),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildContent({
     required Map<String, List<ServiceEnvelope>> requestsByStatus,
   }) {
@@ -757,7 +564,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
     if (_currentUser.name.isEmpty && _currentUser.email.isEmpty) {
       return _buildFeedbackText(
-        'Não foi possível identificar o usuário logado para filtrar seus pedidos.',
+        'Nao foi possivel identificar o usuario logado para carregar seus pedidos.',
       );
     }
 
@@ -769,7 +576,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
           const Padding(
             padding: EdgeInsets.only(top: 20),
             child: Text(
-              'Selecione uma categoria para visualizar os pedidos.',
+              'Selecione um status para visualizar os pedidos.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.branco,
@@ -923,9 +730,9 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
   }) {
     if (services.isEmpty) {
       return _buildFeedbackText(
-        _searchQuery.trim().isEmpty && !_filters.isActive
+        _searchQuery.trim().isEmpty
             ? _emptyStatusMessage(status)
-            : 'Nenhum pedido ${_statusDescription(status)} combina com os filtros.',
+            : 'Nenhum pedido ${_statusDescription(status)} combina com a busca.',
       );
     }
 
@@ -1053,332 +860,5 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
   }
 }
 
-class _RequestFiltersModal extends StatefulWidget {
-  final RequestFilterState initialFilters;
-  final List<String> availableCategories;
 
-  const _RequestFiltersModal({
-    required this.initialFilters,
-    required this.availableCategories,
-  });
 
-  @override
-  State<_RequestFiltersModal> createState() => _RequestFiltersModalState();
-}
-
-class _RequestFiltersModalState extends State<_RequestFiltersModal> {
-  static const List<_ChronosRangeOption> _chronosOptions = [
-    _ChronosRangeOption(label: 'Todos', min: null, max: null),
-    _ChronosRangeOption(label: '1-5 Chronos', min: 1, max: 5),
-    _ChronosRangeOption(label: '6-10 Chronos', min: 6, max: 10),
-    _ChronosRangeOption(label: '11-20 Chronos', min: 11, max: 20),
-    _ChronosRangeOption(label: '21-50 Chronos', min: 21, max: 50),
-    _ChronosRangeOption(label: '51+ Chronos', min: 51, max: null),
-  ];
-
-  late RequestFilterState _draftFilters;
-
-  @override
-  void initState() {
-    super.initState();
-    _draftFilters = widget.initialFilters;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.78,
-      decoration: const BoxDecoration(
-        color: AppColors.branco,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(32),
-          topRight: Radius.circular(32),
-        ),
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(
-                child: Center(
-                  child: Text(
-                    'Filtros',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.preto,
-                    ),
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close, size: 32),
-              ),
-            ],
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSectionTitle('Avaliação do usuário'),
-                  _buildDropdown<double>(
-                    fieldKey: 'min-rating',
-                    value: _draftFilters.minRating,
-                    items: const [
-                      DropdownMenuItem(value: 0, child: Text('Todas')),
-                      DropdownMenuItem(value: 3, child: Text('> 3 estrelas')),
-                      DropdownMenuItem(value: 4, child: Text('> 4 estrelas')),
-                      DropdownMenuItem(
-                          value: 4.5, child: Text('> 4.5 estrelas')),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _draftFilters = _draftFilters.copyWith(
-                          minRating: value ?? 0,
-                        );
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _buildSectionTitle('Tempo'),
-                  _buildDropdown<_ChronosRangeOption>(
-                    fieldKey: 'chronos-range',
-                    value: _selectedChronosOption(),
-                    items: _chronosOptions
-                        .map(
-                          (option) => DropdownMenuItem(
-                            value: option,
-                            child: Text(option.label),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _draftFilters = _draftFilters.copyWith(
-                          minChronos: value.min,
-                          maxChronos: value.max,
-                        );
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _buildSectionTitle('Categorias'),
-                  _buildDropdown<String?>(
-                    fieldKey: 'category',
-                    value: _draftFilters.category,
-                    items: [
-                      const DropdownMenuItem<String?>(
-                        value: null,
-                        child: Text('Todas'),
-                      ),
-                      ...widget.availableCategories.map(
-                        (category) => DropdownMenuItem<String?>(
-                          value: category,
-                          child: Text(category),
-                        ),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _draftFilters = _draftFilters.copyWith(
-                          category: value,
-                          clearCategory: value == null,
-                        );
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _buildSectionTitle('Modalidade'),
-                  _buildDropdown<String?>(
-                    fieldKey: 'modality',
-                    value: _draftFilters.modality,
-                    items: const [
-                      DropdownMenuItem<String?>(
-                        value: null,
-                        child: Text('Todas'),
-                      ),
-                      DropdownMenuItem<String?>(
-                        value: 'Presencial',
-                        child: Text('Presencial'),
-                      ),
-                      DropdownMenuItem<String?>(
-                        value: 'À distância',
-                        child: Text('À distância'),
-                      ),
-                      DropdownMenuItem<String?>(
-                        value: 'Remoto',
-                        child: Text('Remoto'),
-                      ),
-                      DropdownMenuItem<String?>(
-                        value: 'Híbrido',
-                        child: Text('Híbrido'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _draftFilters = _draftFilters.copyWith(
-                          modality: value,
-                          clearModality: value == null,
-                        );
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _buildSectionTitle('Ordenação'),
-                  _buildDropdown<OrdenacaoTipo>(
-                    fieldKey: 'ordering',
-                    value: _draftFilters.ordenacao,
-                    items: const [
-                      DropdownMenuItem(
-                        value: OrdenacaoTipo.maisRecentes,
-                        child: Text('Mais recentes'),
-                      ),
-                      DropdownMenuItem(
-                        value: OrdenacaoTipo.maisAntigos,
-                        child: Text('Mais antigos'),
-                      ),
-                      DropdownMenuItem(
-                        value: OrdenacaoTipo.maiorAvaliacao,
-                        child: Text('Melhores avaliados'),
-                      ),
-                      DropdownMenuItem(
-                        value: OrdenacaoTipo.maiorChronos,
-                        child: Text('Maior tempo'),
-                      ),
-                      DropdownMenuItem(
-                        value: OrdenacaoTipo.menorChronos,
-                        child: Text('Menor tempo'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _draftFilters = _draftFilters.copyWith(
-                          ordenacao: value,
-                        );
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        setState(() {
-                          _draftFilters = const RequestFilterState();
-                        });
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(
-                          color: AppColors.amareloUmPoucoEscuro,
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: const Text(
-                        'Limpar filtros',
-                        style: TextStyle(
-                          color: AppColors.amareloUmPoucoEscuro,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(context, _draftFilters),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.amareloUmPoucoEscuro,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                'Aplicar',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.branco,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  _ChronosRangeOption _selectedChronosOption() {
-    return _chronosOptions.firstWhere(
-      (option) =>
-          option.min == _draftFilters.minChronos &&
-          option.max == _draftFilters.maxChronos,
-      orElse: () => _chronosOptions.first,
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: AppColors.preto,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDropdown<T>({
-    required String fieldKey,
-    required T value,
-    required List<DropdownMenuItem<T>> items,
-    required ValueChanged<T?> onChanged,
-  }) {
-    return DropdownButtonFormField<T>(
-      key: ValueKey<String>('dropdown-$fieldKey-${value?.hashCode ?? 'null'}'),
-      initialValue: value,
-      items: items,
-      onChanged: onChanged,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: AppColors.branco,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4),
-          borderSide: const BorderSide(color: AppColors.brancoBorda),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4),
-          borderSide: const BorderSide(color: AppColors.brancoBorda),
-        ),
-      ),
-      icon: const Icon(Icons.keyboard_arrow_down),
-    );
-  }
-}
-
-class _ChronosRangeOption {
-  final String label;
-  final int? min;
-  final int? max;
-
-  const _ChronosRangeOption({
-    required this.label,
-    required this.min,
-    required this.max,
-  });
-}
