@@ -6,8 +6,6 @@ import 'package:chronora/pages/notification/notification_page.dart';
 import 'package:chronora/pages/profile_page.dart';
 import 'package:chronora/pages/requests/my_requests.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_creation.dart';
-import 'package:chronora/pages/requests/request_accepted_view.dart';
-import 'package:chronora/pages/requests/request_view.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_edit.dart';
 import 'package:chronora/pages/requests/request_view.dart';
 import 'package:chronora/pages/sell_chronos/sell_chronos_page.dart';
@@ -20,7 +18,6 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String requestCreation = '/request-creation';
   static const String requestView = '/request-view';
-  static const String requestAcceptedView = '/request-accepted-view';
   static const String requestEditing = '/request-editing';
   static const String myRequests = '/my-orders';
   static const String buyChronos = '/buy-chronos';
@@ -62,6 +59,31 @@ class AppRoutes {
           builder: (context) => const MainPage(),
           settings: settings,
         );
+      case profile:
+        return MaterialPageRoute(
+          builder: (context) => const ProfilePage(),
+          settings: settings,
+        );
+      case requestCreation:
+        return MaterialPageRoute(
+          builder: (context) => const RequestCreationPage(),
+          settings: settings,
+        );
+      case requestView:
+        return MaterialPageRoute(
+          builder: (context) => const RequestView(),
+          settings: settings,
+        );
+      case requestEditing:
+        return MaterialPageRoute(
+          builder: (context) => const RequestEditingPage(),
+          settings: settings,
+        );
+      case myRequests:
+        return MaterialPageRoute(
+          builder: (context) => const MeusPedidosPage(),
+          settings: settings,
+        );
       case buyChronos:
         return MaterialPageRoute(
           builder: (context) => const BuyChronosPage(),
@@ -72,23 +94,12 @@ class AppRoutes {
           builder: (context) => const SellChronosPage(),
           settings: settings,
         );
-      case requestCreation:
-        return MaterialPageRoute(
-          builder: (context) => const RequestCreationPage(),
-          settings: settings,
-        );
       case notification:
         return MaterialPageRoute(
           builder: (context) => const NotificationPage(),
           settings: settings,
         );
-      case requestAcceptedView:
-        return MaterialPageRoute(
-          builder: (context) => const RequestAcceptedView(),
-          settings: settings,
-        );
       default:
-        // Rota padrão: volta para a main
         return MaterialPageRoute(
           builder: (context) => const MainPage(),
           settings: settings,

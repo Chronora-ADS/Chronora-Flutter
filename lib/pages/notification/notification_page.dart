@@ -107,7 +107,7 @@ class _notificationState extends State<NotificationPage> {
           ),
           if (_isDrawerOpen)
             Positioned(
-              top: kToolbarHeight,
+              top: kToolbarHeight * 1.5,
               left: 0,
               right: 0,
               bottom: 0,
