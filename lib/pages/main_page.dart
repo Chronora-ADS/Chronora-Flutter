@@ -25,6 +25,7 @@ class _MainPageState extends State<MainPage> {
 
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
+  int _walletRefreshVersion = 0;
 
 
   List<Service> services = [];
@@ -104,6 +105,15 @@ class _MainPageState extends State<MainPage> {
         errorMessage = "Falha ao carregar os serviços: $error";
       });
     }
+  }
+
+  Future<void> _refreshServicesAndWallet() async {
+    await _fetchServices();
+    if (!mounted) return;
+
+    setState(() {
+      _walletRefreshVersion++;
+    });
   }
 
   void _filterServices() {
@@ -273,6 +283,7 @@ class _MainPageState extends State<MainPage> {
           Column(
             children: [
               Header(
+                key: ValueKey(_walletRefreshVersion),
                 onMenuPressed: _toggleDrawer,
               ),
               Expanded(
@@ -331,7 +342,7 @@ class _MainPageState extends State<MainPage> {
 
                                 // Se retornou true, atualiza os serviços
                                 if (result == true) {
-                                  await _fetchServices();
+                                  await _refreshServicesAndWallet();
                                 }
                               },
                               style: ElevatedButton.styleFrom(
@@ -538,20 +549,17 @@ class _MainPageState extends State<MainPage> {
           child: ServiceCard(
             service: service,
             onView: () async {
-              
               // Usa a rota com o ID na URL
-              final result = await Navigator.pushNamed(
+              await Navigator.pushNamed(
                 context,
                 '/request-view/${service.id}', // URL com ID
               );
-              
-              if (result == true) {
-                await _fetchServices();
-              }
+
+              await _refreshServicesAndWallet();
             },
             onCardEdited: (edited) async {
               if (edited) {
-                await _fetchServices();
+                await _refreshServicesAndWallet();
               }
             },
           ),

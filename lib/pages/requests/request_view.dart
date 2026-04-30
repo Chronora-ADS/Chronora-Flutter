@@ -33,6 +33,7 @@ class _RequestViewState extends State<RequestView> {
   String? _currentUserName;
   int? _currentUserPhone;
   AcceptedRequestInfo? _acceptedRequestInfo;
+  int _walletRefreshVersion = 0;
 
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
@@ -291,6 +292,11 @@ class _RequestViewState extends State<RequestView> {
       '/request-editing/$serviceId',
     ).then((edited) {
       if (edited == true) {
+        if (mounted) {
+          setState(() {
+            _walletRefreshVersion++;
+          });
+        }
         // Se editado, recarrega os detalhes
         _fetchServiceDetail(serviceId);
       }
@@ -714,7 +720,10 @@ class _RequestViewState extends State<RequestView> {
           _buildBackgroundImages(),
           Column(
             children: [
-              Header(onMenuPressed: _toggleDrawer),
+              Header(
+                key: ValueKey(_walletRefreshVersion),
+                onMenuPressed: _toggleDrawer,
+              ),
               Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(16),
