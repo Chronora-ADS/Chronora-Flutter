@@ -28,6 +28,7 @@ class _RequestViewState extends State<RequestView> {
   bool _isOwner = false;
   bool _showAcceptAction = true;
   int? _currentUserId;
+  int _walletRefreshVersion = 0;
 
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
@@ -217,6 +218,11 @@ class _RequestViewState extends State<RequestView> {
       '${AppRoutes.requestEditing}/${_serviceDetail!.id}',
     ).then((edited) {
       if (edited == true) {
+        if (mounted) {
+          setState(() {
+            _walletRefreshVersion++;
+          });
+        }
         // Se editado, recarrega os detalhes
         _fetchServiceDetail(_serviceDetail!.id);
       }
@@ -275,7 +281,10 @@ class _RequestViewState extends State<RequestView> {
           _buildBackgroundImages(),
           Column(
             children: [
-              Header(onMenuPressed: _toggleDrawer),
+              Header(
+                key: ValueKey(_walletRefreshVersion),
+                onMenuPressed: _toggleDrawer,
+              ),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
