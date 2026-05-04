@@ -10,6 +10,7 @@ import '../../core/models/service_detail_model.dart';
 import '../../core/services/auth_session_service.dart';
 import '../../widgets/backgrounds/background_default_widget.dart';
 import '../../widgets/header.dart';
+import '../../widgets/service_image.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
 
@@ -32,8 +33,10 @@ class _RequestViewState extends State<RequestView> {
   bool _isLoading = true;
   String? _errorMessage;
   bool _isOwner = false;
+  bool _showAcceptAction = true;
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
+  int _walletRefreshVersion = 0;
   bool _resolvedRouteArguments = false;
 
   @override
@@ -48,14 +51,19 @@ class _RequestViewState extends State<RequestView> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_resolvedRouteArguments || widget.serviceId != null || widget.service != null) {
+    if (_resolvedRouteArguments) {
       return;
     }
 
     _resolvedRouteArguments = true;
-    final serviceId = _resolveServiceIdFromArguments(
-      ModalRoute.of(context)?.settings.arguments,
-    );
+    final arguments = ModalRoute.of(context)?.settings.arguments;
+    _applyRouteOptions(arguments);
+
+    if (widget.serviceId != null || widget.service != null) {
+      return;
+    }
+
+    final serviceId = _resolveServiceIdFromArguments(arguments);
 
     if (serviceId == null) {
       setState(() {
@@ -82,6 +90,12 @@ class _RequestViewState extends State<RequestView> {
     return null;
   }
 
+  void _applyRouteOptions(dynamic arguments) {
+    if (arguments is Map && arguments['showAcceptAction'] is bool) {
+      _showAcceptAction = arguments['showAcceptAction'] as bool;
+    }
+  }
+
   Future<void> _loadData(int serviceId) async {
     if (mounted) {
       setState(() {
@@ -97,7 +111,8 @@ class _RequestViewState extends State<RequestView> {
       }
 
       final currentUserId = await _fetchCurrentUserId(token);
-      final response = await ApiService.get('/service/get/$serviceId', token: token);
+      final response =
+          await ApiService.get('/service/get/$serviceId', token: token);
       if (response.statusCode != 200) {
         throw Exception(
           ApiService.extractErrorMessage(
@@ -215,6 +230,9 @@ class _RequestViewState extends State<RequestView> {
       AppRoutes.requestEditingWithId(detail!.id!),
     ).then((edited) {
       if (edited == true && mounted) {
+        setState(() {
+          _walletRefreshVersion++;
+        });
         _loadData(detail.id!);
       }
     });
@@ -249,7 +267,10 @@ class _RequestViewState extends State<RequestView> {
         children: [
           Column(
             children: [
-              Header(onMenuPressed: _toggleDrawer),
+              Header(
+                key: ValueKey(_walletRefreshVersion),
+                onMenuPressed: _toggleDrawer,
+              ),
               Expanded(
                 child: BackgroundDefaultWidget(
                   child: SingleChildScrollView(
@@ -450,40 +471,13 @@ class _RequestViewState extends State<RequestView> {
   }
 
   Widget _buildServiceImage(ServiceDetailModel detail) {
-    final imageValue = _normalizeImageValue(detail.serviceImage ?? '');
-
-    if (imageValue.isEmpty) {
-      return Container(
-        height: 240,
-        color: const Color(0xFFD8DBD2),
-        child: const Icon(Icons.image, size: 48, color: Colors.grey),
-      );
-    }
-
-    if (_isDataUriImage(imageValue)) {
-      return Image.memory(
-        base64.decode(imageValue.split(',').last),
-        height: 240,
-        width: double.infinity,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(
-          height: 240,
-          color: const Color(0xFFD8DBD2),
-          child: const Icon(Icons.broken_image, size: 48, color: Colors.grey),
-        ),
-      );
-    }
-
-    return Image.network(
-      imageValue,
+    return ServiceImage(
+      imageSource: detail.serviceImageUrl,
       height: 240,
       width: double.infinity,
       fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Container(
-        height: 240,
-        color: const Color(0xFFD8DBD2),
-        child: const Icon(Icons.broken_image, size: 48, color: Colors.grey),
-      ),
+      placeholderColor: const Color(0xFFD8DBD2),
+      iconColor: Colors.grey,
     );
   }
 
@@ -562,13 +556,32 @@ class _RequestViewState extends State<RequestView> {
       );
     }
 
+    if (!_showAcceptAction) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: () => Navigator.pop(context),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.amareloUmPoucoEscuro,
+            foregroundColor: AppColors.branco,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+          ),
+          child: const Text(
+            'Voltar',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+    }
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         onPressed: () {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Fluxo de aceitacao ainda nao foi ligado nesta branch.'),
+              content:
+                  Text('Fluxo de aceitacao ainda nao foi ligado nesta branch.'),
             ),
           );
         },
@@ -595,46 +608,5 @@ class _RequestViewState extends State<RequestView> {
     final month = parsed.month.toString().padLeft(2, '0');
     final year = parsed.year.toString();
     return '$day/$month/$year';
-  }
-
-  String _normalizeImageValue(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) {
-      return '';
-    }
-
-    if (_isDataUriImage(trimmed) || _isNetworkImage(trimmed)) {
-      return trimmed;
-    }
-
-    final imageUri = Uri.tryParse(trimmed);
-    if (imageUri == null) {
-      return trimmed;
-    }
-
-    if (!imageUri.hasScheme) {
-      return Uri.parse(ApiService.baseUrl).resolveUri(imageUri).toString();
-    }
-
-    if (imageUri.host == 'localhost' || imageUri.host == '127.0.0.1') {
-      final apiBaseUri = Uri.parse(ApiService.baseUrl);
-      return imageUri
-          .replace(
-            scheme: apiBaseUri.scheme,
-            host: apiBaseUri.host,
-            port: apiBaseUri.hasPort ? apiBaseUri.port : null,
-          )
-          .toString();
-    }
-
-    return trimmed;
-  }
-
-  bool _isDataUriImage(String value) {
-    return value.startsWith('data:image/');
-  }
-
-  bool _isNetworkImage(String value) {
-    return value.startsWith('http://') || value.startsWith('https://');
   }
 }

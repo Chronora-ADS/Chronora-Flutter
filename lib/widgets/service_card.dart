@@ -1,44 +1,55 @@
-import 'dart:convert';
-
-import 'package:chronora/core/constants/app_colors.dart';
 import 'package:chronora/core/constants/app_routes.dart';
+import 'package:chronora/core/constants/app_colors.dart';
 import 'package:chronora/core/models/main_page_requests_model.dart';
 import 'package:flutter/material.dart';
-
-import '../core/api/api_service.dart';
+import 'package:chronora/widgets/service_image.dart';
 
 class ServiceCard extends StatelessWidget {
   final Service service;
-  final VoidCallback? onView;
   final VoidCallback? onEdit;
+  final VoidCallback? onView;
   final ValueChanged<bool>? onCardEdited;
+  final bool enableNavigation;
+  final String? navigationRoute;
+  final Object? navigationArguments;
 
   const ServiceCard({
     super.key,
     required this.service,
-    this.onView,
     this.onEdit,
+    this.onView,
     this.onCardEdited,
+    this.enableNavigation = true,
+    this.navigationRoute,
+    this.navigationArguments,
   });
+
+  Future<void> _handleTap(BuildContext context) async {
+    if (onView != null) {
+      onView!();
+      return;
+    }
+
+    if (!enableNavigation) {
+      return;
+    }
+
+    final result = await Navigator.pushNamed(
+      context,
+      navigationRoute ?? '${AppRoutes.requestView}/${service.id}',
+      arguments: navigationArguments ?? service,
+    );
+
+    if (result == true && onCardEdited != null) {
+      onCardEdited!(true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () async {
-        if (onView != null) {
-          onView!();
-          return;
-        }
-
-        final result = await Navigator.pushNamed(
-          context,
-          AppRoutes.requestViewWithId(service.id),
-        );
-
-        if (result == true && onCardEdited != null) {
-          onCardEdited!(true);
-        }
-      },
+      onTap:
+          enableNavigation || onView != null ? () => _handleTap(context) : null,
       child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFFB5BFAE),
@@ -49,7 +60,35 @@ class ServiceCard extends StatelessWidget {
           children: [
             Stack(
               children: [
-                _buildServiceImage(),
+                Container(
+                  height: 300,
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(30),
+                    ),
+                  ),
+                  child: service.serviceImageUrl.isNotEmpty
+                      ? ServiceImage(
+                          imageSource: service.serviceImageUrl,
+                          height: 300,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(30),
+                            topRight: Radius.circular(30),
+                          ),
+                        )
+                      : Container(
+                          color: Colors.grey[300],
+                          child: const Icon(
+                            Icons.image,
+                            size: 50,
+                            color: Colors.black45,
+                          ),
+                        ),
+                ),
                 Positioned(
                   top: 16,
                   right: 16,
@@ -137,9 +176,7 @@ class ServiceCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(
                         '${service.timeChronos} chronos',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -161,8 +198,10 @@ class ServiceCard extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Image.asset('assets/img/Paintbrush.png',
-                                  width: 16),
+                              Image.asset(
+                                'assets/img/Paintbrush.png',
+                                width: 16,
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 category.name,
@@ -187,130 +226,5 @@ class ServiceCard extends StatelessWidget {
 
   String _formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-  }
-
-  Widget _buildServiceImage() {
-    final imageValue = _normalizeImageValue(service.serviceImage);
-
-    if (imageValue.isEmpty) {
-      return _buildImagePlaceholder();
-    }
-
-    if (_isDataUriImage(imageValue)) {
-      return _buildBase64Image(imageValue.split(',').last);
-    }
-
-    if (_isNetworkImage(imageValue)) {
-      return ClipRRect(
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
-        ),
-        child: Image.network(
-          imageValue,
-          height: 300,
-          width: double.infinity,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) =>
-              _buildImagePlaceholder(),
-        ),
-      );
-    }
-
-    if (_isLikelyBase64(imageValue)) {
-      return _buildBase64Image(imageValue);
-    }
-
-    return _buildImagePlaceholder();
-  }
-
-  Widget _buildImagePlaceholder() {
-    return Container(
-      height: 300,
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        color: Color(0xFFD8DBD2),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
-        ),
-      ),
-      child: const Icon(Icons.image, size: 50, color: Colors.grey),
-    );
-  }
-
-  bool _isNetworkImage(String value) {
-    return value.startsWith('http://') || value.startsWith('https://');
-  }
-
-  bool _isDataUriImage(String value) {
-    return value.startsWith('data:image/');
-  }
-
-  bool _isLikelyBase64(String value) {
-    final normalized = value.replaceAll('\n', '').trim();
-    if (normalized.length < 80 || normalized.contains(' ')) {
-      return false;
-    }
-
-    return RegExp(r'^[A-Za-z0-9+/=]+$').hasMatch(normalized);
-  }
-
-  Widget _buildBase64Image(String value) {
-    try {
-      return ClipRRect(
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
-        ),
-        child: Image.memory(
-          base64.decode(value),
-          height: 300,
-          width: double.infinity,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) =>
-              _buildImagePlaceholder(),
-        ),
-      );
-    } catch (_) {
-      return _buildImagePlaceholder();
-    }
-  }
-
-  String _normalizeImageValue(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) {
-      return '';
-    }
-
-    if (_isDataUriImage(trimmed) || _isLikelyBase64(trimmed)) {
-      return trimmed;
-    }
-
-    final imageUri = Uri.tryParse(trimmed);
-    if (imageUri == null) {
-      return trimmed;
-    }
-
-    if (!imageUri.hasScheme) {
-      return Uri.parse(ApiService.baseUrl).resolveUri(imageUri).toString();
-    }
-
-    if (_isLocalhostUri(imageUri)) {
-      final apiBaseUri = Uri.parse(ApiService.baseUrl);
-      return imageUri
-          .replace(
-            scheme: apiBaseUri.scheme,
-            host: apiBaseUri.host,
-            port: apiBaseUri.hasPort ? apiBaseUri.port : null,
-          )
-          .toString();
-    }
-
-    return trimmed;
-  }
-
-  bool _isLocalhostUri(Uri uri) {
-    return uri.host == 'localhost' || uri.host == '127.0.0.1';
   }
 }

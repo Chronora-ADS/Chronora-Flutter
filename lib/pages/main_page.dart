@@ -24,11 +24,11 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   final TextEditingController _searchController = TextEditingController();
-  final ServiceCatalogService _serviceCatalogService =
-      ServiceCatalogService();
+  final ServiceCatalogService _serviceCatalogService = ServiceCatalogService();
 
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
+  int _walletRefreshVersion = 0;
   String _userName = 'Usuario';
   double _userRating = 0.0;
   String? _userPhotoUrl;
@@ -94,6 +94,15 @@ class _MainPageState extends State<MainPage> {
   Future<void> _reloadServices() async {
     await _fetchServices(showLoading: true, reset: true);
     _scheduleFetchRemainingServicesForFilters();
+  }
+
+  Future<void> _refreshServicesAndWallet() async {
+    await _reloadServices();
+    if (!mounted) return;
+
+    setState(() {
+      _walletRefreshVersion++;
+    });
   }
 
   Future<void> _fetchServices({
@@ -295,9 +304,10 @@ class _MainPageState extends State<MainPage> {
     final maxTime = _activeFilters.tempoValue >= ServiceFilters.maxTempoValue
         ? null
         : _activeFilters.tempoValue.toInt();
-    final ratingFloor = _activeFilters.avaliacaoValue == ServiceFilters.allRatings
-        ? null
-        : double.tryParse(_activeFilters.avaliacaoValue);
+    final ratingFloor =
+        _activeFilters.avaliacaoValue == ServiceFilters.allRatings
+            ? null
+            : double.tryParse(_activeFilters.avaliacaoValue);
     final hasRatingData =
         source.any((service) => service.userCreator.rating != null);
 
@@ -331,7 +341,9 @@ class _MainPageState extends State<MainPage> {
 
       if (ratingFloor != null && hasRatingData) {
         final rating = service.userCreator.rating;
-        if (rating == null || rating < ratingFloor || rating >= ratingFloor + 1) {
+        if (rating == null ||
+            rating < ratingFloor ||
+            rating >= ratingFloor + 1) {
           return false;
         }
       }
@@ -348,8 +360,8 @@ class _MainPageState extends State<MainPage> {
       case ServiceFilters.sortOldest:
         return a.id.compareTo(b.id);
       case ServiceFilters.sortBestRated:
-        final ratingComparison =
-            _compareNullableDoubleDesc(a.userCreator.rating, b.userCreator.rating);
+        final ratingComparison = _compareNullableDoubleDesc(
+            a.userCreator.rating, b.userCreator.rating);
         if (ratingComparison != 0) return ratingComparison;
         return b.id.compareTo(a.id);
       case ServiceFilters.sortHighestTime:
@@ -507,6 +519,7 @@ class _MainPageState extends State<MainPage> {
           Column(
             children: [
               Header(
+                key: ValueKey(_walletRefreshVersion),
                 onMenuPressed: _toggleDrawer,
               ),
               Expanded(
@@ -565,7 +578,7 @@ class _MainPageState extends State<MainPage> {
                                 );
 
                                 if (result == true) {
-                                  await _reloadServices();
+                                  await _refreshServicesAndWallet();
                                 }
                               },
                               style: ElevatedButton.styleFrom(
@@ -781,12 +794,12 @@ class _MainPageState extends State<MainPage> {
               );
 
               if (result == true) {
-                await _reloadServices();
+                await _refreshServicesAndWallet();
               }
             },
             onCardEdited: (edited) async {
               if (edited) {
-                await _reloadServices();
+                await _refreshServicesAndWallet();
               }
             },
           ),

@@ -1,3 +1,9 @@
+export 'category_entity.dart';
+export 'user_creator.dart';
+
+import 'category_entity.dart';
+import 'user_creator.dart';
+
 class Service {
   final int id;
   final String title;
@@ -5,9 +11,11 @@ class Service {
   final String serviceImage;
   final int timeChronos;
   final UserCreator userCreator;
+  final UserCreator? userAccepted;
   final List<CategoryEntity> categoryEntities;
   final DateTime deadline;
   final String modality;
+  final String status;
 
   Service({
     required this.id,
@@ -16,108 +24,107 @@ class Service {
     required this.serviceImage,
     required this.timeChronos,
     required this.userCreator,
+    this.userAccepted,
     required this.categoryEntities,
     required this.deadline,
     required this.modality,
+    required this.status,
   });
 
+  String get serviceImageUrl => serviceImage;
+
   factory Service.fromJson(Map<String, dynamic> json) {
-    final userCreatorJson = json['userCreator'];
-    UserCreator userCreator;
-
-    if (userCreatorJson != null && userCreatorJson is Map<String, dynamic>) {
-      final userCreatorData = Map<String, dynamic>.from(userCreatorJson);
-      userCreatorData.putIfAbsent(
-        'rating',
-        () => json['rating'] ?? json['userRating'] ?? json['avaliacao'],
-      );
-      userCreator = UserCreator.fromJson(userCreatorData);
-    } else {
-      userCreator = UserCreator(name: 'Usuario Desconhecido');
-    }
-
-    DateTime deadline;
-    try {
-      if (json['deadline'] != null) {
-        deadline = DateTime.parse(json['deadline']);
-      } else {
-        deadline = DateTime.now().add(const Duration(days: 30));
-      }
-    } catch (_) {
-      deadline = DateTime.now().add(const Duration(days: 30));
-    }
+    final userCreator = _parseUser(
+          json['userCreator'],
+          fallbackRating:
+              json['rating'] ?? json['userRating'] ?? json['avaliacao'],
+        ) ??
+        UserCreator(name: 'Usuario desconhecido');
 
     return Service(
-      id: _toInt(json['id']),
-      title: json['title'] ?? 'Titulo nao disponivel',
-      description: json['description'] ?? 'Descricao nao disponivel',
-      serviceImage:
-          (json['serviceImage'] ?? json['serviceImageUrl'] ?? '').toString(),
-      timeChronos: _toInt(json['timeChronos']),
+      id: _toInt(json['id']) ?? 0,
+      title: (json['title'] ?? 'Titulo nao disponivel').toString(),
+      description:
+          (json['description'] ?? 'Descricao nao disponivel').toString(),
+      serviceImage: _parseServiceImage(json),
+      timeChronos: _toInt(json['timeChronos']) ?? 0,
       userCreator: userCreator,
+      userAccepted: _parseUser(json['userAccepted']) ??
+          _parseUser(json['acceptedBy']) ??
+          _parseUser(json['userExecutor']),
       categoryEntities: _parseCategories(
         json['categoryEntities'] ?? json['categories'],
       ),
-      deadline: deadline,
-      modality: json['modality'] ?? '',
+      deadline: _parseDeadline(json['deadline']),
+      modality: (json['modality'] ?? '').toString(),
+      status: (json['status'] ?? 'CRIADO').toString(),
     );
   }
 
-  static List<CategoryEntity> _parseCategories(dynamic categories) {
-    if (categories is! List) return [];
-
-    return categories.map((item) {
-      if (item is Map<String, dynamic>) {
-        return CategoryEntity.fromJson(item);
-      }
-      if (item is String) {
-        return CategoryEntity(name: item);
-      }
-      return CategoryEntity(name: '');
-    }).toList();
-  }
-
-  static int _toInt(dynamic value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    if (value is String) return int.tryParse(value) ?? 0;
-    return 0;
-  }
-}
-
-class UserCreator {
-  final String name;
-  final double? rating;
-
-  UserCreator({required this.name, this.rating});
-
-  factory UserCreator.fromJson(Map<String, dynamic> json) {
-    return UserCreator(
-      name: json['name'] ?? '',
-      rating: _toDouble(
-        json['rating'] ?? json['userRating'] ?? json['avaliacao'],
-      ),
-    );
-  }
-
-  static double? _toDouble(dynamic value) {
-    if (value == null) return null;
-    if (value is num) return value.toDouble();
-    if (value is String) {
-      return double.tryParse(value.replaceAll(',', '.'));
+  static UserCreator? _parseUser(dynamic value, {dynamic fallbackRating}) {
+    if (value is Map<String, dynamic>) {
+      final data = Map<String, dynamic>.from(value);
+      data.putIfAbsent('rating', () => fallbackRating);
+      return UserCreator.fromJson(data);
     }
+
+    if (value is List) {
+      for (final item in value) {
+        final parsed = _parseUser(item, fallbackRating: fallbackRating);
+        if (parsed != null) {
+          return parsed;
+        }
+      }
+    }
+
     return null;
   }
-}
 
-class CategoryEntity {
-  final String name;
+  static List<CategoryEntity> _parseCategories(dynamic value) {
+    if (value is List) {
+      return value.map(CategoryEntity.fromJson).toList();
+    }
 
-  CategoryEntity({required this.name});
+    return [];
+  }
 
-  factory CategoryEntity.fromJson(Map<String, dynamic> json) {
-    return CategoryEntity(
-      name: json['name'] ?? '',
-    );
+  static DateTime _parseDeadline(dynamic value) {
+    if (value is String && value.isNotEmpty) {
+      final parsed = DateTime.tryParse(value);
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value);
+    }
+
+    if (value is num) {
+      return DateTime.fromMillisecondsSinceEpoch(value.toInt());
+    }
+
+    return DateTime.now().add(const Duration(days: 30));
+  }
+
+  static String _parseServiceImage(Map<String, dynamic> json) {
+    final rawValue = json['serviceImageUrl'] ?? json['serviceImage'];
+    if (rawValue == null) {
+      return '';
+    }
+
+    final value = rawValue.toString().trim();
+    if (value.isEmpty || value.toLowerCase() == 'null') {
+      return '';
+    }
+
+    return value;
+  }
+
+  static int? _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 }

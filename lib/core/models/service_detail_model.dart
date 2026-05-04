@@ -11,6 +11,7 @@ class ServiceDetailModel {
   final String modality;
   final String? serviceImage;
   final UserCreator userCreator;
+  final String postedAt;
 
   ServiceDetailModel({
     this.id,
@@ -22,37 +23,49 @@ class ServiceDetailModel {
     required this.modality,
     this.serviceImage,
     required this.userCreator,
+    this.postedAt = '',
   });
+
+  String? get serviceImageUrl => serviceImage;
 
   factory ServiceDetailModel.fromJson(Map<String, dynamic> json) {
     return ServiceDetailModel(
       id: _toNullableInt(json['id']),
-      title: json['title'] ?? '',
-      description: json['description'] ?? '',
+      title: (json['title'] ?? '').toString(),
+      description: (json['description'] ?? '').toString(),
       timeChronos: _toInt(json['timeChronos']),
-      deadline: json['deadline'] ?? '',
+      deadline: (json['deadline'] ?? '').toString(),
       categoryEntities: _parseCategories(
         json['categoryEntities'] ?? json['categories'],
       ),
-      modality: json['modality'] ?? '',
-      serviceImage:
-          (json['serviceImage'] ?? json['serviceImageUrl'])?.toString(),
-      userCreator: UserCreator.fromJson(json['userCreator'] ?? {}),
+      modality: (json['modality'] ?? '').toString(),
+      serviceImage: _parseServiceImage(json),
+      userCreator: UserCreator.fromJson(
+        (json['userCreator'] as Map?)?.cast<String, dynamic>() ??
+            const <String, dynamic>{},
+      ),
+      postedAt: (json['postedAt'] ?? '').toString(),
     );
   }
 
   static List<CategoryEntity> _parseCategories(dynamic categories) {
     if (categories is! List) return [];
 
-    return categories.map((item) {
-      if (item is Map<String, dynamic>) {
-        return CategoryEntity.fromJson(item);
-      }
-      if (item is String) {
-        return CategoryEntity(name: item);
-      }
-      return CategoryEntity(name: '');
-    }).toList();
+    return categories.map(CategoryEntity.fromJson).toList();
+  }
+
+  static String? _parseServiceImage(Map<String, dynamic> json) {
+    final rawValue = json['serviceImageUrl'] ?? json['serviceImage'];
+    if (rawValue == null) {
+      return null;
+    }
+
+    final value = rawValue.toString().trim();
+    if (value.isEmpty || value.toLowerCase() == 'null') {
+      return null;
+    }
+
+    return value;
   }
 
   static int _toInt(dynamic value) {
@@ -78,8 +91,10 @@ class ServiceDetailModel {
       'timeChronos': timeChronos,
       'deadline': deadline,
       'categoryEntities': categoryEntities.map((e) => e.toJson()).toList(),
+      'categories': categoryEntities.map((e) => e.name).toList(),
       'modality': modality,
       if (serviceImage != null) 'serviceImage': serviceImage,
+      if (postedAt.isNotEmpty) 'postedAt': postedAt,
     };
   }
 }

@@ -44,7 +44,8 @@ class _NotificationPageState extends State<NotificationPage> {
         throw Exception('Usuario nao autenticado.');
       }
 
-      final response = await ApiService.get('/notification/get/all', token: token);
+      final response =
+          await ApiService.get('/notification/get/all', token: token);
       if (response.statusCode != 200) {
         throw Exception(
           ApiService.extractErrorMessage(
@@ -92,7 +93,8 @@ class _NotificationPageState extends State<NotificationPage> {
       return decoded;
     }
     if (decoded is Map<String, dynamic>) {
-      final data = decoded['data'] ?? decoded['content'] ?? decoded['notifications'];
+      final data =
+          decoded['data'] ?? decoded['content'] ?? decoded['notifications'];
       if (data is List) {
         return data;
       }

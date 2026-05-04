@@ -1,15 +1,16 @@
 import 'package:chronora/pages/auth/account_creation_page.dart';
 import 'package:chronora/pages/auth/forgot_password_page.dart';
 import 'package:chronora/pages/auth/login_page.dart';
-import 'package:chronora/pages/main_page.dart';
 import 'package:chronora/pages/buy_chronos/buy_chronos_page.dart';
+import 'package:chronora/pages/main_page.dart';
 import 'package:chronora/pages/notification/notification_page.dart';
 import 'package:chronora/pages/placeholder/coming_soon_page.dart';
 import 'package:chronora/pages/profile_page.dart';
-import 'package:chronora/pages/sell_chronos/sell_chronos_page.dart';
+import 'package:chronora/pages/requests/my_requests.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_creation.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_edit.dart';
 import 'package:chronora/pages/requests/request_view.dart';
+import 'package:chronora/pages/sell_chronos/sell_chronos_page.dart';
 import 'package:flutter/material.dart';
 
 class AppRoutes {
@@ -43,11 +44,7 @@ class AppRoutes {
       requestEditing: (context) => const RequestEditingPage(),
       notifications: (context) => const NotificationPage(),
       profile: (context) => const ProfilePage(),
-      myOrders: (context) => const ComingSoonPage(
-            title: 'Meus pedidos',
-            description:
-                'Esta tela ainda esta em construcao, mas a rota ja esta registrada para nao quebrar a navegacao.',
-          ),
+      myOrders: (context) => const MeusPedidosPage(),
       settings: (context) => const ComingSoonPage(
             title: 'Configuracoes',
             description:
