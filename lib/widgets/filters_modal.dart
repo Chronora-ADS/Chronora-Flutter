@@ -1,26 +1,51 @@
 import 'package:flutter/material.dart';
+
 import '../core/constants/app_colors.dart';
+import '../core/constants/modality_options.dart';
+
+class ServiceFilters {
+  static const double maxTempoValue = 100.0;
+  static const String allRatings = 'all';
+  static const String sortMostRecent = '0';
+  static const String sortOldest = '1';
+  static const String sortBestRated = '2';
+  static const String sortHighestTime = '3';
+  static const String sortLowestTime = '4';
+
+  final String deadlineText;
+  final double tempoValue;
+  final String avaliacaoValue;
+  final String ordenacaoValue;
+  final String? modalidadeSelecionada;
+  final String categoriaText;
+
+  const ServiceFilters({
+    this.deadlineText = '',
+    this.tempoValue = maxTempoValue,
+    this.avaliacaoValue = allRatings,
+    this.ordenacaoValue = sortMostRecent,
+    this.modalidadeSelecionada,
+    this.categoriaText = '',
+  });
+
+  bool get hasActiveFilters =>
+      deadlineText.trim().isNotEmpty ||
+      tempoValue < maxTempoValue ||
+      avaliacaoValue != allRatings ||
+      (modalidadeSelecionada?.trim().isNotEmpty ?? false) ||
+      categoriaText.trim().isNotEmpty;
+
+  bool get hasCustomSort => ordenacaoValue != sortMostRecent;
+}
 
 class FiltersModal extends StatefulWidget {
-  final Function(List<String> selectedCategories, String selectedTipoServico, double tempoValue, String ordenacaoValue, int prazoDias, DateTime? selectedPrazoDate) onApplyFilters;
-  final Function()? onClearFilters; // Função opcional para limpar filtros
-  final double initialTempoValue;
-  final String initialAvaliacaoValue;
-  final String initialOrdenacaoValue;
-  final List<String> initialSelectedCategories;
-  final String initialSelectedTipoServico;
-  final int initialPrazoDias;
+  final ValueChanged<ServiceFilters> onApplyFilters;
+  final ServiceFilters initialFilters;
 
   const FiltersModal({
     super.key,
     required this.onApplyFilters,
-    this.onClearFilters,
-    this.initialTempoValue = 0.0, // Valor inicial agora é 0 ("Qualquer")
-    this.initialAvaliacaoValue = "0",
-    this.initialOrdenacaoValue = "0",
-    this.initialSelectedCategories = const [],
-    this.initialSelectedTipoServico = "",
-    this.initialPrazoDias = 0,
+    this.initialFilters = const ServiceFilters(),
   });
 
   @override
@@ -31,26 +56,23 @@ class _FiltersModalState extends State<FiltersModal> {
   late double tempoValue;
   late String avaliacaoValue;
   late String ordenacaoValue;
-  late String selectedTipoServico;
-  int prazoDias = 0;
-  DateTime? _selectedPrazoDate;
-  final TextEditingController _categoriaController = TextEditingController();
-  Set<String> selectedCategories = <String>{};
+  String? modalidadeSelecionada;
+  late final TextEditingController _deadlineController;
+  late final TextEditingController _categoriaController;
 
   @override
   void initState() {
     super.initState();
-    tempoValue = widget.initialTempoValue;
-    avaliacaoValue = widget.initialAvaliacaoValue;
-    ordenacaoValue = widget.initialOrdenacaoValue;
-    selectedTipoServico = widget.initialSelectedTipoServico;
-    prazoDias = widget.initialPrazoDias;
-    selectedCategories = widget.initialSelectedCategories.toSet();
-
-    // Initialize the selected date based on prazoDias
-    if (widget.initialPrazoDias > 0) {
-      _selectedPrazoDate = DateTime.now().add(Duration(days: widget.initialPrazoDias));
-    }
+    tempoValue = widget.initialFilters.tempoValue;
+    avaliacaoValue = widget.initialFilters.avaliacaoValue;
+    ordenacaoValue = widget.initialFilters.ordenacaoValue;
+    modalidadeSelecionada = widget.initialFilters.modalidadeSelecionada;
+    _deadlineController = TextEditingController(
+      text: widget.initialFilters.deadlineText,
+    );
+    _categoriaController = TextEditingController(
+      text: widget.initialFilters.categoriaText,
+    );
   }
 
   @override
@@ -86,15 +108,13 @@ class _FiltersModalState extends State<FiltersModal> {
             ],
           ),
           const SizedBox(height: 20),
-
           Expanded(
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Prazo
                   _buildFilterSection(
-                    'Prazo limite',
+                    'Prazo',
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
@@ -103,117 +123,75 @@ class _FiltersModalState extends State<FiltersModal> {
                             Border.all(color: AppColors.amareloUmPoucoEscuro),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              _selectedPrazoDate != null
-                                ? 'Até ${_selectedPrazoDate!.day}/${_selectedPrazoDate!.month}'
-                                : 'Selecione a data limite',
-                              style: TextStyle(
-                                color: _selectedPrazoDate != null
-                                  ? AppColors.preto
-                                  : AppColors.amareloUmPoucoEscuro.withOpacity(0.6),
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.date_range, color: AppColors.amareloUmPoucoEscuro),
-                            onPressed: () {
-                              _showPrazoDialog();
-                            },
-                          ),
-                        ],
+                      child: TextField(
+                        controller: _deadlineController,
+                        decoration: const InputDecoration(
+                          hintText: 'dd/mm/aaaa',
+                          border: InputBorder.none,
+                        ),
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Tipo de serviço
                   _buildFilterSection(
-                    'Tipo de serviço',
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () {
-                              setState(() {
-                                selectedTipoServico = selectedTipoServico == 'À distância' ? '' : 'À distância';
-                              });
-                            },
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(
-                                  color: selectedTipoServico == 'À distância'
-                                      ? AppColors.amareloUmPoucoEscuro
-                                      : AppColors.amareloUmPoucoEscuro.withOpacity(0.3)),
-                              backgroundColor: selectedTipoServico == 'À distância'
-                                  ? AppColors.amareloClaro.withOpacity(0.1)
-                                  : AppColors.branco,
-                            ),
-                            child: Text(
-                              'À distância',
-                              style: TextStyle(
-                                color: selectedTipoServico == 'À distância'
-                                    ? AppColors.preto
-                                    : AppColors.amareloUmPoucoEscuro.withOpacity(0.6),
-                              ),
-                            ),
+                    'Tipo de servico',
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: ModalityOptions.labels.map((modality) {
+                        final selected = modalidadeSelecionada == modality;
+                        return ChoiceChip(
+                          label: Text(modality),
+                          selected: selected,
+                          selectedColor:
+                              AppColors.amareloClaro.withValues(alpha: 0.4),
+                          side: const BorderSide(
+                            color: AppColors.amareloUmPoucoEscuro,
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () {
-                              setState(() {
-                                selectedTipoServico = selectedTipoServico == 'Presencial' ? '' : 'Presencial';
-                              });
-                            },
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(
-                                  color: selectedTipoServico == 'Presencial'
-                                      ? AppColors.amareloUmPoucoEscuro
-                                      : AppColors.amareloUmPoucoEscuro.withOpacity(0.3)),
-                              backgroundColor: selectedTipoServico == 'Presencial'
-                                  ? AppColors.amareloClaro.withOpacity(0.1)
-                                  : AppColors.branco,
-                            ),
-                            child: Text(
-                              'Presencial',
-                              style: TextStyle(
-                                color: selectedTipoServico == 'Presencial'
-                                    ? AppColors.preto
-                                    : AppColors.amareloUmPoucoEscuro.withOpacity(0.6),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                          onSelected: (isSelected) {
+                            setState(() {
+                              modalidadeSelecionada =
+                                  isSelected ? modality : null;
+                            });
+                          },
+                        );
+                      }).toList(),
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Avaliação
                   _buildFilterSection(
-                    'Avaliação de usuário',
+                    'Avaliacao de usuario',
                     DropdownButtonFormField<String>(
                       initialValue: avaliacaoValue,
                       items: const [
                         DropdownMenuItem(
-                            value: "0", child: Text("0 - 1 estrelas")),
+                          value: ServiceFilters.allRatings,
+                          child: Text('Todas as avaliacoes'),
+                        ),
                         DropdownMenuItem(
-                            value: "1", child: Text("1 - 2 estrelas")),
+                          value: '0',
+                          child: Text('0 - 1 estrelas'),
+                        ),
                         DropdownMenuItem(
-                            value: "2", child: Text("2 - 3 estrelas")),
+                          value: '1',
+                          child: Text('1 - 2 estrelas'),
+                        ),
                         DropdownMenuItem(
-                            value: "3", child: Text("3 - 4 estrelas")),
+                          value: '2',
+                          child: Text('2 - 3 estrelas'),
+                        ),
                         DropdownMenuItem(
-                            value: "4", child: Text("4 - 5 estrelas")),
+                          value: '3',
+                          child: Text('3 - 4 estrelas'),
+                        ),
+                        DropdownMenuItem(
+                          value: '4',
+                          child: Text('4 - 5 estrelas'),
+                        ),
                       ],
                       onChanged: (value) {
                         setState(() {
-                          avaliacaoValue = value!;
+                          avaliacaoValue = value ?? ServiceFilters.allRatings;
                         });
                       },
                       decoration: InputDecoration(
@@ -222,24 +200,22 @@ class _FiltersModalState extends State<FiltersModal> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: const BorderSide(
-                              color: AppColors.amareloUmPoucoEscuro),
+                            color: AppColors.amareloUmPoucoEscuro,
+                          ),
                         ),
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Tempo
                   _buildFilterSection(
                     'Tempo',
                     Column(
                       children: [
                         Slider(
                           value: tempoValue,
-                          min: 0,
-                          max: 100,
-                          divisions: 20, // 20 divisões para cobrir 0-100 com incrementos de 5
+                          min: 5,
+                          max: ServiceFilters.maxTempoValue,
+                          divisions: 19,
                           onChanged: (value) {
                             setState(() {
                               tempoValue = value;
@@ -248,117 +224,63 @@ class _FiltersModalState extends State<FiltersModal> {
                           activeColor: AppColors.amareloClaro,
                         ),
                         Text(
-                          tempoValue == 0
-                              ? "Qualquer"
-                              : tempoValue == 5
-                                  ? "0-5 horas"
-                                  : "${tempoValue.toInt() - 5}-${tempoValue.toInt()} horas",
+                          tempoValue >= ServiceFilters.maxTempoValue
+                              ? 'Todos os tempos'
+                              : 'Ate ${tempoValue.toInt()} horas',
                           style: const TextStyle(fontSize: 14),
                         ),
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Categorias
                   _buildFilterSection(
                     'Categorias',
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          decoration: BoxDecoration(
-                            color: AppColors.branco,
-                            border:
-                                Border.all(color: AppColors.amareloUmPoucoEscuro),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: TextField(
-                            controller: _categoriaController,
-                            onSubmitted: (value) {
-                              if (value.trim().isNotEmpty) {
-                                setState(() {
-                                  selectedCategories.add(value.trim());
-                                });
-                                _categoriaController.clear();
-                              }
-                            },
-                            decoration: InputDecoration(
-                              hintText: 'Digite e pressione Enter',
-                              border: InputBorder.none,
-                            ),
+                    TextField(
+                      controller: _categoriaController,
+                      decoration: InputDecoration(
+                        hintText: 'Digite ou escolha',
+                        filled: true,
+                        fillColor: AppColors.branco,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: AppColors.amareloUmPoucoEscuro,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8.0,
-                          runSpacing: 4.0,
-                          children: selectedCategories.map((categoria) {
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.amareloClaro,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    categoria,
-                                    style: const TextStyle(
-                                      color: AppColors.preto,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        selectedCategories.remove(categoria);
-                                      });
-                                    },
-                                    child: const Icon(
-                                      Icons.close,
-                                      size: 16,
-                                      color: AppColors.preto,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Ordenação
                   _buildFilterSection(
-                    'Ordenação',
+                    'Ordenacao',
                     DropdownButtonFormField<String>(
                       initialValue: ordenacaoValue,
                       items: const [
                         DropdownMenuItem(
-                            value: "0", child: Text("Mais recentes")),
+                          value: ServiceFilters.sortMostRecent,
+                          child: Text('Mais recentes'),
+                        ),
                         DropdownMenuItem(
-                            value: "1", child: Text("Mais antigos")),
+                          value: ServiceFilters.sortOldest,
+                          child: Text('Mais antigos'),
+                        ),
                         DropdownMenuItem(
-                            value: "2", child: Text("Melhores avaliados")),
+                          value: ServiceFilters.sortBestRated,
+                          child: Text('Melhores avaliados'),
+                        ),
                         DropdownMenuItem(
-                            value: "3", child: Text("Maior tempo")),
+                          value: ServiceFilters.sortHighestTime,
+                          child: Text('Maior tempo'),
+                        ),
                         DropdownMenuItem(
-                            value: "4", child: Text("Menor tempo")),
+                          value: ServiceFilters.sortLowestTime,
+                          child: Text('Menor tempo'),
+                        ),
                       ],
                       onChanged: (value) {
                         setState(() {
-                          ordenacaoValue = value!;
+                          ordenacaoValue =
+                              value ?? ServiceFilters.sortMostRecent;
                         });
                       },
                       decoration: InputDecoration(
@@ -367,7 +289,8 @@ class _FiltersModalState extends State<FiltersModal> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: const BorderSide(
-                              color: AppColors.amareloUmPoucoEscuro),
+                            color: AppColors.amareloUmPoucoEscuro,
+                          ),
                         ),
                       ),
                     ),
@@ -376,41 +299,32 @@ class _FiltersModalState extends State<FiltersModal> {
               ),
             ),
           ),
-
           const SizedBox(height: 20),
-
           Row(
             children: [
               Expanded(
-                child: ElevatedButton(
+                child: OutlinedButton(
                   onPressed: () {
-                    // Limpar todos os filtros
                     setState(() {
-                      tempoValue = 0.0; // Reseta para "Qualquer"
-                      avaliacaoValue = "0";
-                      ordenacaoValue = "0";
-                      selectedTipoServico = "";
-                      selectedCategories.clear();
-                      prazoDias = 0;
-                      _selectedPrazoDate = null;
+                      tempoValue = ServiceFilters.maxTempoValue;
+                      avaliacaoValue = ServiceFilters.allRatings;
+                      ordenacaoValue = ServiceFilters.sortMostRecent;
+                      modalidadeSelecionada = null;
+                      _deadlineController.clear();
                       _categoriaController.clear();
                     });
-
-                    // Chama a função de callback para limpar filtros no widget pai, se existir
-                    if (widget.onClearFilters != null) {
-                      Navigator.pop(context);
-                      widget.onClearFilters!();
-                    }
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.amareloClaro,
+                  style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
+                    side: const BorderSide(
+                      color: AppColors.amareloUmPoucoEscuro,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   child: const Text(
-                    'Limpar Filtros',
+                    'Limpar',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -423,8 +337,18 @@ class _FiltersModalState extends State<FiltersModal> {
               Expanded(
                 child: ElevatedButton(
                   onPressed: () {
+                    FocusScope.of(context).unfocus();
+                    widget.onApplyFilters(
+                      ServiceFilters(
+                        deadlineText: _deadlineController.text.trim(),
+                        tempoValue: tempoValue,
+                        avaliacaoValue: avaliacaoValue,
+                        ordenacaoValue: ordenacaoValue,
+                        modalidadeSelecionada: modalidadeSelecionada,
+                        categoriaText: _categoriaController.text.trim(),
+                      ),
+                    );
                     Navigator.pop(context);
-                    widget.onApplyFilters(selectedCategories.toList(), selectedTipoServico, tempoValue, ordenacaoValue, prazoDias, _selectedPrazoDate);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.amareloUmPoucoEscuro,
@@ -450,27 +374,6 @@ class _FiltersModalState extends State<FiltersModal> {
     );
   }
 
-  Future<void> _showPrazoDialog() async {
-    DateTime? initialDate = _selectedPrazoDate ?? DateTime.now();
-
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-
-    if (picked != null) {
-      // Calculate days difference from today
-      final today = DateTime.now();
-      final difference = picked.difference(today);
-      setState(() {
-        _selectedPrazoDate = picked;
-        prazoDias = difference.inDays;
-      });
-    }
-  }
-
   Widget _buildFilterSection(String title, Widget child) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -491,6 +394,7 @@ class _FiltersModalState extends State<FiltersModal> {
 
   @override
   void dispose() {
+    _deadlineController.dispose();
     _categoriaController.dispose();
     super.dispose();
   }

@@ -1,9 +1,10 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/services/api_service.dart';
+import '../../core/api/api_service.dart';
+import '../../core/constants/app_routes.dart';
+import '../../core/services/auth_session_service.dart';
 
 class WalletModal extends StatefulWidget {
   final VoidCallback onClose;
@@ -72,8 +73,7 @@ class _WalletModalState extends State<WalletModal> {
   }
 
   Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
+    return AuthSessionService.getValidAccessToken();
   }
 
   @override
@@ -155,7 +155,7 @@ class _WalletModalState extends State<WalletModal> {
             child: InkWell(
               onTap: () {
                 widget.onClose();
-                Navigator.pushNamed(context, '/buy-chronos');
+                Navigator.pushNamed(context, AppRoutes.buyChronos);
               },
               child: Container(
                 padding: const EdgeInsets.all(16),
@@ -185,7 +185,7 @@ class _WalletModalState extends State<WalletModal> {
             child: InkWell(
               onTap: () {
                 widget.onClose();
-                Navigator.pushNamed(context, '/sell-chronos');
+                Navigator.pushNamed(context, AppRoutes.sellChronos);
               },
               child: Container(
                 padding: const EdgeInsets.all(16),

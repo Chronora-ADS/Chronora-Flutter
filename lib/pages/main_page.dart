@@ -1,16 +1,17 @@
 import 'dart:convert';
-import 'dart:core';
-import 'package:chronora/core/constants/app_routes.dart';
+
 import 'package:chronora/core/models/main_page_requests_model.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 
+import '../core/api/api_service.dart';
+import '../core/api/service_catalog_service.dart';
 import '../core/constants/app_colors.dart';
-import '../core/services/api_service.dart';
+import '../core/constants/app_routes.dart';
+import '../core/services/auth_session_service.dart';
 import '../widgets/backgrounds/background_default_widget.dart';
+import '../widgets/filters_modal.dart';
 import '../widgets/header.dart';
 import '../widgets/service_card.dart';
-import '../widgets/filters_modal.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/wallet_modal.dart';
 
@@ -23,93 +24,80 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   final TextEditingController _searchController = TextEditingController();
+  final ServiceCatalogService _serviceCatalogService = ServiceCatalogService();
 
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
   int _walletRefreshVersion = 0;
-
+  String _userName = 'Usuario';
+  double _userRating = 0.0;
+  String? _userPhotoUrl;
 
   List<Service> services = [];
-  List<Service> filteredServices = [];
+  List<Service> _visibleServices = [];
   bool isLoading = true;
   String errorMessage = '';
+  bool _isFetching = false;
+  bool _isFetchingAllForFilters = false;
+  bool _isLoadingMore = false;
+  static const int _pageSize = 10;
+  int _nextPage = 0;
+  bool _hasMorePages = true;
 
-  double tempoValue = 0.0; // 0 representa "Qualquer"
-  bool _isTimeFilterActive = false; // Indica se o filtro de tempo está ativo
-  String avaliacaoValue = "0";
-  String ordenacaoValue = "0";
-  List<String> selectedCategories = [];
-  String selectedTipoServico = "";
-  int _prazoDias = 0; // Variável para armazenar o prazo selecionado em dias a partir de hoje
-  DateTime? _selectedPrazoDate; // Data exata selecionada pelo usuário
+  ServiceFilters _activeFilters = const ServiceFilters();
 
   @override
   void initState() {
     super.initState();
-    _fetchServices();
+    _searchController.addListener(_handleSearchChanged);
+    _fetchCurrentUser();
+    _reloadServices();
   }
 
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
-  }
+  bool get _hasSearchQuery => _searchController.text.trim().isNotEmpty;
 
-  Future<void> _fetchServices() async {
+  bool get _isFilterMode =>
+      _hasSearchQuery ||
+      _activeFilters.hasActiveFilters ||
+      _activeFilters.hasCustomSort;
+
+  Future<void> _fetchCurrentUser() async {
     try {
-      final String? token = await _getToken();
+      final token = await AuthSessionService.getValidAccessToken();
+      if (token == null) return;
 
-      if (token == null) {
-        setState(() {
-          isLoading = false;
-          errorMessage =
-              "Você precisa estar logado para visualizar os serviços.";
-        });
-        return;
-      }
+      final response = await ApiService.get('/user/get', token: token);
+      if (response.statusCode != 200) return;
 
-      final response = await ApiService.get('/service/get/all', token: token);
+      final data = json.decode(response.body);
+      if (data is! Map<String, dynamic> || !mounted) return;
 
-      if (response.statusCode == 200) {
-        final dynamic responseData = json.decode(response.body);
-        List<dynamic> data = [];
-
-        if (responseData is Map<String, dynamic>) {
-          if (responseData.containsKey('services')) {
-            data = responseData['services'] as List<dynamic>;
-          } else if (responseData.containsKey('data')) {
-            data = responseData['data'] as List<dynamic>;
-          } else if (responseData.containsKey('content')) {
-            data = responseData['content'] as List<dynamic>;
-          } else {
-            print('Estrutura inesperada: $responseData');
-          }
-        } else if (responseData is List<dynamic>) {
-          data = responseData;
+      setState(() {
+        _userName = (data['name'] ?? 'Usuario').toString();
+        final ratingRaw =
+            data['rating'] ?? data['userRating'] ?? data['avaliacao'];
+        if (ratingRaw is num) {
+          _userRating = ratingRaw.toDouble();
+        } else if (ratingRaw is String) {
+          _userRating = double.tryParse(ratingRaw) ?? 0.0;
         }
 
-        setState(() {
-          services = data.map((item) => Service.fromJson(item)).toList();
-          // Atualiza a lista filtrada também
-          filteredServices = services;
-          isLoading = false;
-        });
-      } else {
-        setState(() {
-          isLoading = false;
-          errorMessage = "Erro ${response.statusCode} ao carregar os serviços.";
-        });
-      }
-    } catch (error) {
-      print('Erro na requisição: $error');
-      setState(() {
-        isLoading = false;
-        errorMessage = "Falha ao carregar os serviços: $error";
+        final photo =
+            data['profileImageUrl'] ?? data['profileImage'] ?? data['photoUrl'];
+        _userPhotoUrl = photo?.toString();
       });
+    } catch (_) {
+      // Mantem fallback visual sem quebrar a pagina principal.
     }
   }
 
+  Future<void> _reloadServices() async {
+    await _fetchServices(showLoading: true, reset: true);
+    _scheduleFetchRemainingServicesForFilters();
+  }
+
   Future<void> _refreshServicesAndWallet() async {
-    await _fetchServices();
+    await _reloadServices();
     if (!mounted) return;
 
     setState(() {
@@ -117,98 +105,376 @@ class _MainPageState extends State<MainPage> {
     });
   }
 
-  void _filterServices() {
-    final query = _searchController.text.toLowerCase().trim();
+  Future<void> _fetchServices({
+    bool showLoading = false,
+    bool reset = false,
+  }) async {
+    if (_isFetching) return;
+    _isFetching = true;
 
-    setState(() {
-      filteredServices = services.where((service) {
-        // Filtra pelo título
-        final titleMatch = service.title.toLowerCase().contains(query);
-        // Filtra pela descrição
-        final descriptionMatch = service.description.toLowerCase().contains(query);
-        // Filtra pela modalidade
-        final modalityMatch = service.modality.toLowerCase().contains(query);
-        // Filtra pelas categorias
-        final categoryMatch = service.categoryEntities.any((category) =>
-          category.name.toLowerCase().contains(query));
+    if (reset) {
+      _nextPage = 0;
+      _hasMorePages = true;
+      services = [];
+      _visibleServices = [];
+    }
 
-        // Verifica se o serviço corresponde à pesquisa textual
-        bool matchesSearch = query.isEmpty || titleMatch || descriptionMatch || modalityMatch || categoryMatch;
-
-        // Verifica se o serviço tem pelo menos uma das categorias selecionadas (filtro OR)
-        bool matchesCategories = selectedCategories.isEmpty ||
-          service.categoryEntities.any((category) =>
-            selectedCategories.any((selectedCategory) =>
-              category.name.toLowerCase().contains(selectedCategory.toLowerCase())));
-
-        // Verifica se o serviço corresponde ao tipo de serviço selecionado
-        bool matchesTipoServico = selectedTipoServico.isEmpty ||
-          // Se o filtro for 'À distância', verifica se a modalidade é 'Remoto'
-          (selectedTipoServico == 'À distância' && service.modality.toLowerCase().contains('remoto')) ||
-          // Se o filtro for 'Presencial', verifica se a modalidade é 'Presencial'
-          (selectedTipoServico == 'Presencial' && service.modality.toLowerCase().contains('presencial'));
-
-        // Verifica se o serviço corresponde ao filtro de tempo em chronos
-        bool matchesTempo = true; // Por padrão, não filtra por tempo
-
-        // Aplica o filtro de tempo apenas se ele estiver ativo
-        if (_isTimeFilterActive && tempoValue > 0) {
-          int tempoMax = tempoValue.toInt();
-          int tempoMin;
-
-          // Ajusta o tempo mínimo com base no valor do slider
-          // Quando tempoValue é 5, representa o intervalo 0-5 horas
-          if (tempoValue == 5) {
-            tempoMin = 0; // Para o intervalo 0-5 horas
-          } else {
-            tempoMin = tempoMax - 5;
-          }
-
-          matchesTempo = service.timeChronos >= tempoMin && service.timeChronos <= tempoMax;
+    if (mounted) {
+      setState(() {
+        if (showLoading || services.isEmpty) {
+          isLoading = true;
+          _isLoadingMore = false;
+        } else {
+          _isLoadingMore = true;
         }
+        errorMessage = '';
+      });
+    }
 
-        // Verifica se o serviço corresponde ao filtro de prazo
-        bool matchesPrazo = true; // Por padrão, não filtra por prazo
+    try {
+      final result = await _serviceCatalogService.fetchServices(
+        page: _nextPage,
+        size: _pageSize,
+      );
 
-        // Aplica o filtro de prazo apenas se a data estiver definida
-        if (_selectedPrazoDate != null) {
-          DateTime hoje = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-          DateTime prazoLimite = DateTime(_selectedPrazoDate!.year, _selectedPrazoDate!.month, _selectedPrazoDate!.day);
+      final updatedServices = reset || _nextPage == 0
+          ? result.services
+          : _mergeServices(services, result.services);
 
-          // O serviço está dentro do prazo se seu deadline estiver entre hoje (inclusive) e a data limite (inclusive)
-          matchesPrazo = (service.deadline.isAtSameMomentAs(hoje) || service.deadline.isAfter(hoje)) &&
-                         (service.deadline.isBefore(prazoLimite) || service.deadline.isAtSameMomentAs(prazoLimite));
+      final totalPages = result.totalPages;
+      final currentPage = result.page ?? _nextPage;
+      final hasMore = totalPages != null
+          ? currentPage + 1 < totalPages
+          : result.services.length >= _pageSize;
+
+      if (mounted) {
+        setState(() {
+          services = updatedServices;
+          _visibleServices = _applyFiltersToList(updatedServices);
+          _nextPage = currentPage + 1;
+          _hasMorePages = hasMore;
+          isLoading = false;
+          _isLoadingMore = false;
+          errorMessage = '';
+        });
+      }
+    } on ServiceCatalogException catch (error) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          _isLoadingMore = false;
+          errorMessage = error.message;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          _isLoadingMore = false;
+          errorMessage = 'Falha ao carregar os servicos: $error';
+        });
+      }
+    } finally {
+      _isFetching = false;
+      _scheduleFetchRemainingServicesForFilters();
+    }
+  }
+
+  Future<void> _fetchRemainingServicesForFilters() async {
+    if (_isFetching ||
+        _isFetchingAllForFilters ||
+        !_isFilterMode ||
+        !_hasMorePages) {
+      return;
+    }
+
+    _isFetchingAllForFilters = true;
+
+    if (mounted) {
+      setState(() {
+        if (services.isEmpty) {
+          isLoading = true;
+        } else {
+          _isLoadingMore = true;
         }
+        errorMessage = '';
+      });
+    }
 
-        return matchesSearch && matchesCategories && matchesTipoServico && matchesTempo && matchesPrazo;
-      }).toList();
+    var loadedServices = List<Service>.from(services);
+    var nextPage = _nextPage;
+    var hasMorePages = _hasMorePages;
 
-      // Aplica ordenação com base no valor selecionado
-      switch (ordenacaoValue) {
-        case "0": // Mais recentes
-          // Ordenar por ID em ordem decrescente (mais recentes primeiro)
-          filteredServices.sort((a, b) => b.id.compareTo(a.id));
-          break;
-        case "1": // Mais antigos
-          // Ordenar por ID em ordem crescente (mais antigos primeiro)
-          filteredServices.sort((a, b) => a.id.compareTo(b.id));
-          break;
-        case "2": // Melhores avaliados
-          // Não há propriedade rating no modelo Service, então ordena por ID como fallback
-          filteredServices.sort((a, b) => b.id.compareTo(a.id));
-          break;
-        case "3": // Maior tempo
-          // Ordenar por tempo em chronos (maior primeiro)
-          filteredServices.sort((a, b) => b.timeChronos.compareTo(a.timeChronos));
-          break;
-        case "4": // Menor tempo
-          // Ordenar por tempo em chronos (menor primeiro)
-          filteredServices.sort((a, b) => a.timeChronos.compareTo(b.timeChronos));
-          break;
-        default:
-          break;
+    try {
+      while (hasMorePages) {
+        final result = await _serviceCatalogService.fetchServices(
+          page: nextPage,
+          size: _pageSize,
+        );
+
+        loadedServices = _mergeServices(loadedServices, result.services);
+
+        final totalPages = result.totalPages;
+        final currentPage = result.page ?? nextPage;
+        nextPage = currentPage + 1;
+        hasMorePages = totalPages != null
+            ? currentPage + 1 < totalPages
+            : result.services.length >= _pageSize;
+      }
+
+      if (mounted) {
+        setState(() {
+          services = loadedServices;
+          _visibleServices = _applyFiltersToList(loadedServices);
+          _nextPage = nextPage;
+          _hasMorePages = hasMorePages;
+          isLoading = false;
+          _isLoadingMore = false;
+          errorMessage = '';
+        });
+      }
+    } on ServiceCatalogException catch (error) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          _isLoadingMore = false;
+          errorMessage = error.message;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          _isLoadingMore = false;
+          errorMessage =
+              'Falha ao carregar os servicos restantes para os filtros: $error';
+        });
+      }
+    } finally {
+      _isFetchingAllForFilters = false;
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          _isLoadingMore = false;
+        });
+      }
+    }
+  }
+
+  void _scheduleFetchRemainingServicesForFilters() {
+    if (!_isFilterMode ||
+        !_hasMorePages ||
+        _isFetching ||
+        _isFetchingAllForFilters) {
+      return;
+    }
+
+    Future.microtask(() {
+      if (mounted) {
+        _fetchRemainingServicesForFilters();
       }
     });
+  }
+
+  void _handleSearchChanged() {
+    if (!mounted) return;
+
+    setState(() {
+      _visibleServices = _applyFiltersToList(services);
+    });
+
+    _scheduleFetchRemainingServicesForFilters();
+  }
+
+  void _handleFiltersApplied(ServiceFilters filters) {
+    setState(() {
+      _activeFilters = filters;
+      _visibleServices = _applyFiltersToList(services);
+    });
+
+    _scheduleFetchRemainingServicesForFilters();
+  }
+
+  List<Service> _applyFiltersToList(List<Service> source) {
+    final normalizedQuery = _normalizeText(_searchController.text);
+    final normalizedCategory = _normalizeText(_activeFilters.categoriaText);
+    final normalizedModality =
+        _normalizeModality(_activeFilters.modalidadeSelecionada ?? '');
+    final selectedDeadline = _parseDate(_activeFilters.deadlineText);
+    final maxTime = _activeFilters.tempoValue >= ServiceFilters.maxTempoValue
+        ? null
+        : _activeFilters.tempoValue.toInt();
+    final ratingFloor =
+        _activeFilters.avaliacaoValue == ServiceFilters.allRatings
+            ? null
+            : double.tryParse(_activeFilters.avaliacaoValue);
+    final hasRatingData =
+        source.any((service) => service.userCreator.rating != null);
+
+    final filtered = source.where((service) {
+      if (normalizedQuery.isNotEmpty &&
+          !_matchesSearch(service, normalizedQuery)) {
+        return false;
+      }
+
+      if (selectedDeadline != null &&
+          _dateOnly(service.deadline).isAfter(selectedDeadline)) {
+        return false;
+      }
+
+      if (normalizedCategory.isNotEmpty &&
+          !service.categoryEntities.any(
+            (category) =>
+                _normalizeText(category.name).contains(normalizedCategory),
+          )) {
+        return false;
+      }
+
+      if (normalizedModality.isNotEmpty &&
+          _normalizeModality(service.modality) != normalizedModality) {
+        return false;
+      }
+
+      if (maxTime != null && service.timeChronos > maxTime) {
+        return false;
+      }
+
+      if (ratingFloor != null && hasRatingData) {
+        final rating = service.userCreator.rating;
+        if (rating == null ||
+            rating < ratingFloor ||
+            rating >= ratingFloor + 1) {
+          return false;
+        }
+      }
+
+      return true;
+    }).toList();
+
+    filtered.sort(_compareServices);
+    return filtered;
+  }
+
+  int _compareServices(Service a, Service b) {
+    switch (_activeFilters.ordenacaoValue) {
+      case ServiceFilters.sortOldest:
+        return a.id.compareTo(b.id);
+      case ServiceFilters.sortBestRated:
+        final ratingComparison = _compareNullableDoubleDesc(
+            a.userCreator.rating, b.userCreator.rating);
+        if (ratingComparison != 0) return ratingComparison;
+        return b.id.compareTo(a.id);
+      case ServiceFilters.sortHighestTime:
+        final timeComparison = b.timeChronos.compareTo(a.timeChronos);
+        if (timeComparison != 0) return timeComparison;
+        return b.id.compareTo(a.id);
+      case ServiceFilters.sortLowestTime:
+        final timeComparison = a.timeChronos.compareTo(b.timeChronos);
+        if (timeComparison != 0) return timeComparison;
+        return b.id.compareTo(a.id);
+      case ServiceFilters.sortMostRecent:
+      default:
+        return b.id.compareTo(a.id);
+    }
+  }
+
+  int _compareNullableDoubleDesc(double? left, double? right) {
+    if (left == null && right == null) return 0;
+    if (left == null) return 1;
+    if (right == null) return -1;
+    return right.compareTo(left);
+  }
+
+  bool _matchesSearch(Service service, String query) {
+    final searchableContent = [
+      service.title,
+      service.description,
+      service.userCreator.name,
+      service.modality,
+      ...service.categoryEntities.map((category) => category.name),
+    ].map(_normalizeText).join(' ');
+
+    return searchableContent.contains(query);
+  }
+
+  List<Service> _mergeServices(List<Service> current, List<Service> incoming) {
+    final mergedById = <int, Service>{};
+
+    for (final service in current) {
+      mergedById[service.id] = service;
+    }
+
+    for (final service in incoming) {
+      mergedById[service.id] = service;
+    }
+
+    return mergedById.values.toList();
+  }
+
+  String _normalizeText(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('à', 'a')
+        .replaceAll('ã', 'a')
+        .replaceAll('â', 'a')
+        .replaceAll('ä', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('è', 'e')
+        .replaceAll('ê', 'e')
+        .replaceAll('ë', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ì', 'i')
+        .replaceAll('î', 'i')
+        .replaceAll('ï', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ò', 'o')
+        .replaceAll('õ', 'o')
+        .replaceAll('ô', 'o')
+        .replaceAll('ö', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ù', 'u')
+        .replaceAll('û', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ç', 'c')
+        .trim();
+  }
+
+  String _normalizeModality(String value) {
+    final normalized = _normalizeText(value);
+
+    if (normalized.contains('presencial')) return 'presencial';
+    if (normalized.contains('remoto')) return 'remoto';
+    if (normalized.contains('hibrido')) return 'hibrido';
+
+    return normalized;
+  }
+
+  DateTime? _parseDate(String value) {
+    final text = value.trim();
+    if (text.isEmpty) return null;
+
+    final parts = text.split('/');
+    if (parts.length != 3) return null;
+
+    final day = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final year = int.tryParse(parts[2]);
+
+    if (day == null || month == null || year == null) return null;
+
+    final parsedDate = DateTime(year, month, day);
+    if (parsedDate.day != day ||
+        parsedDate.month != month ||
+        parsedDate.year != year) {
+      return null;
+    }
+
+    return _dateOnly(parsedDate);
+  }
+
+  DateTime _dateOnly(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
   }
 
   void _showFiltersModal() {
@@ -217,25 +483,8 @@ class _MainPageState extends State<MainPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => FiltersModal(
-        onApplyFilters: (selectedCategoriesList, selectedTipoServicoString, tempoValueParam, ordenacaoValueParam, prazoDias, selectedPrazoDate) {
-          setState(() {
-            selectedCategories = selectedCategoriesList;
-            selectedTipoServico = selectedTipoServicoString;
-            tempoValue = tempoValueParam; // Atualiza o valor do tempo
-            ordenacaoValue = ordenacaoValueParam; // Atualiza o valor de ordenação
-            _isTimeFilterActive = true; // Marca que o filtro de tempo está ativo
-            _prazoDias = prazoDias; // Atualiza o valor do prazo
-            _selectedPrazoDate = selectedPrazoDate; // Atualiza a data selecionada
-          });
-          _filterServices();
-        },
-        onClearFilters: _clearFilters, // Passa a função de limpar filtros
-        initialTempoValue: tempoValue,
-        initialAvaliacaoValue: avaliacaoValue,
-        initialOrdenacaoValue: ordenacaoValue,
-        initialSelectedCategories: selectedCategories,
-        initialSelectedTipoServico: selectedTipoServico,
-        initialPrazoDias: _prazoDias,
+        onApplyFilters: _handleFiltersApplied,
+        initialFilters: _activeFilters,
       ),
     );
   }
@@ -248,24 +497,9 @@ class _MainPageState extends State<MainPage> {
 
   void _openWallet() {
     setState(() {
-      _isDrawerOpen = false; // Fecha o side menu
-      _isWalletOpen = true; // Abre a carteira
+      _isDrawerOpen = false;
+      _isWalletOpen = true;
     });
-  }
-
-  void _clearFilters() {
-    setState(() {
-      tempoValue = 0.0; // Reseta para "Qualquer"
-      _isTimeFilterActive = false; // Reseta o estado do filtro de tempo
-      avaliacaoValue = "0";
-      ordenacaoValue = "0";
-      selectedCategories = [];
-      selectedTipoServico = "";
-      _prazoDias = 0; // Reseta o prazo
-      _selectedPrazoDate = null; // Reseta a data selecionada
-      _searchController.clear();
-    });
-    _filterServices();
   }
 
   void _closeWallet() {
@@ -276,11 +510,12 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0B0C0C),
       body: Stack(
         children: [
-          // Conteúdo principal
           Column(
             children: [
               Header(
@@ -298,16 +533,15 @@ class _MainPageState extends State<MainPage> {
                     ),
                     child: Column(
                       children: [
-                        // Search Bar
                         Container(
                           margin: const EdgeInsets.only(bottom: 16),
                           child: TextField(
                             controller: _searchController,
-                            onSubmitted: (_) => _filterServices(),
                             decoration: InputDecoration(
-                              hintText: 'Pintura de parede, aula de inglês...',
+                              hintText: 'Pintura de parede, aula de ingles...',
                               hintStyle: const TextStyle(
-                                  color: AppColors.textoPlaceholder),
+                                color: AppColors.textoPlaceholder,
+                              ),
                               filled: true,
                               fillColor: AppColors.branco,
                               border: OutlineInputBorder(
@@ -315,18 +549,20 @@ class _MainPageState extends State<MainPage> {
                                 borderSide: BorderSide.none,
                               ),
                               contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              prefixIcon: const Icon(Icons.search,
-                                  color: AppColors.textoPlaceholder),
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              prefixIcon: const Icon(
+                                Icons.search,
+                                color: AppColors.textoPlaceholder,
+                              ),
                             ),
                           ),
                         ),
-
-                        // Make Request Section
                         Column(
                           children: [
                             const Text(
-                              'As horas acumuladas no seu banco representam oportunidades reais de ação.',
+                              'As horas acumuladas no seu banco representam oportunidades reais de acao.',
                               style: TextStyle(
                                 color: AppColors.branco,
                                 fontSize: 16,
@@ -341,7 +577,6 @@ class _MainPageState extends State<MainPage> {
                                   AppRoutes.requestCreation,
                                 );
 
-                                // Se retornou true, atualiza os serviços
                                 if (result == true) {
                                   await _refreshServicesAndWallet();
                                 }
@@ -350,7 +585,9 @@ class _MainPageState extends State<MainPage> {
                                 backgroundColor: AppColors.branco,
                                 foregroundColor: AppColors.preto,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 12),
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -373,7 +610,7 @@ class _MainPageState extends State<MainPage> {
                             ),
                             const SizedBox(height: 8),
                             const Text(
-                              'ou realize o de alguém',
+                              'ou realize o de alguem',
                               style: TextStyle(
                                 color: AppColors.branco,
                                 fontSize: 14,
@@ -381,57 +618,54 @@ class _MainPageState extends State<MainPage> {
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 24),
                         Align(
-                            alignment: Alignment.center,
-                            child: Container(
-                                width: MediaQuery.of(context).size.width * 0.8,
-                                height: 3,
-                                color: AppColors.branco,
-                            ),
+                          alignment: Alignment.center,
+                          child: Container(
+                            width: screenWidth * 0.8,
+                            height: 3,
+                            color: AppColors.branco,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Align(
-                            alignment: Alignment.center,
-                            child: Container(
-                                width: MediaQuery.of(context).size.width * 0.5,
-                                height: 3,
-                                color: AppColors.branco,
-                            ),
+                          alignment: Alignment.center,
+                          child: Container(
+                            width: screenWidth * 0.5,
+                            height: 3,
+                            color: AppColors.branco,
+                          ),
                         ),
                         const SizedBox(height: 24),
-
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: _showFiltersModal,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.branco,
-                                  foregroundColor: AppColors.preto,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                icon: const Icon(Icons.filter_list, size: 20),
-                                label: const Text(
-                                  'Filtros',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _showFiltersModal,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.branco,
+                              foregroundColor: AppColors.preto,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                          ],
+                            icon: const Icon(Icons.filter_list, size: 20),
+                            label: const Text(
+                              'Filtros',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                         ),
-
                         const SizedBox(height: 24),
-
                         _buildServicesList(),
+                        const SizedBox(height: 12),
+                        _buildLoadMoreButton(),
                       ],
                     ),
                   ),
@@ -439,22 +673,27 @@ class _MainPageState extends State<MainPage> {
               ),
             ],
           ),
-
-          // Menu lateral
           if (_isDrawerOpen)
             Positioned(
-              top: kToolbarHeight * 1.5,
+              top: 0,
               left: 0,
               right: 0,
               bottom: 0,
               child: Container(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: Row(
                   children: [
                     SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(
-                        onWalletPressed: _openWallet, // Usa a nova função
+                      width: screenWidth * 0.6,
+                      child: SafeArea(
+                        top: true,
+                        bottom: false,
+                        child: SideMenu(
+                          onWalletPressed: _openWallet,
+                          userName: _userName,
+                          userRating: _userRating,
+                          userPhotoUrl: _userPhotoUrl,
+                        ),
                       ),
                     ),
                     Expanded(
@@ -469,8 +708,6 @@ class _MainPageState extends State<MainPage> {
                 ),
               ),
             ),
-
-          // Modal da Carteira
           if (_isWalletOpen)
             Positioned(
               top: 0,
@@ -478,12 +715,12 @@ class _MainPageState extends State<MainPage> {
               right: 0,
               bottom: 0,
               child: Container(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
                     child: WalletModal(
-                      onClose: _closeWallet, // Usa a nova função
+                      onClose: _closeWallet,
                     ),
                   ),
                 ),
@@ -506,7 +743,6 @@ class _MainPageState extends State<MainPage> {
       );
     }
 
-
     if (errorMessage.isNotEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 40),
@@ -523,16 +759,19 @@ class _MainPageState extends State<MainPage> {
       );
     }
 
-    if (filteredServices.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 40),
+    if (_visibleServices.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
         child: Center(
           child: Text(
-            'Nenhum serviço encontrado.',
-            style: TextStyle(
+            _isFilterMode
+                ? 'Nenhum servico corresponde a busca ou aos filtros.'
+                : 'Nenhum servico encontrado.',
+            style: const TextStyle(
               color: AppColors.branco,
               fontSize: 16,
             ),
+            textAlign: TextAlign.center,
           ),
         ),
       );
@@ -541,22 +780,22 @@ class _MainPageState extends State<MainPage> {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: filteredServices.length,
+      itemCount: _visibleServices.length,
       itemBuilder: (context, index) {
-        final service = filteredServices[index];
-        
+        final service = _visibleServices[index];
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           child: ServiceCard(
             service: service,
             onView: () async {
-              // Usa a rota com o ID na URL
-              await Navigator.pushNamed(
+              final result = await Navigator.pushNamed(
                 context,
-                '${AppRoutes.requestView}/${service.id}',
+                AppRoutes.requestViewWithId(service.id),
               );
 
-              await _refreshServicesAndWallet();
+              if (result == true) {
+                await _refreshServicesAndWallet();
+              }
             },
             onCardEdited: (edited) async {
               if (edited) {
@@ -565,13 +804,47 @@ class _MainPageState extends State<MainPage> {
             },
           ),
         );
-      }
-      );
+      },
+    );
+  }
+
+  Widget _buildLoadMoreButton() {
+    if (isLoading ||
+        errorMessage.isNotEmpty ||
+        services.isEmpty ||
+        !_hasMorePages ||
+        _isFilterMode) {
+      return const SizedBox.shrink();
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _isLoadingMore ? null : () => _fetchServices(),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.branco,
+          foregroundColor: AppColors.preto,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+        child: _isLoadingMore
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text(
+                'Carregar mais',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+      ),
+    );
   }
 
   @override
   void dispose() {
-    _searchController.dispose();
+    _searchController
+      ..removeListener(_handleSearchChanged)
+      ..dispose();
     super.dispose();
   }
 }

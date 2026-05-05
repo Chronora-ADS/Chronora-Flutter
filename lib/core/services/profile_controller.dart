@@ -1,10 +1,8 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
+import '../api/api_service.dart';
 import '../models/user_model.dart';
-import '../services/api_service.dart';
+import 'auth_session_service.dart';
 
 class ProfileController {
   User? user;
@@ -16,39 +14,28 @@ class ProfileController {
     errorMessage = '';
 
     try {
-      final token = await _getToken();
+      final token = await AuthSessionService.getValidAccessToken();
       if (token == null) {
-        errorMessage = 'Token nÃ£o encontrado';
-        isLoading = false;
+        errorMessage = 'Usuario nao autenticado.';
         return;
       }
 
-      if (kDebugMode) {
-        debugPrint('[ProfileController] Carregando perfil do usuÃ¡rio...');
-      }
-
       final response = await ApiService.get('/user/get', token: token);
-
-      if (kDebugMode) {
-        debugPrint('[ProfileController] Status: ${response.statusCode}');
-        debugPrint('[ProfileController] Resposta: ${response.body}');
+      if (response.statusCode != 200) {
+        errorMessage = ApiService.extractErrorMessage(
+          response.body,
+          fallback: 'Nao foi possivel carregar o perfil.',
+        );
+        return;
       }
 
-      if (response.statusCode == 200) {
-        final userData = jsonDecode(response.body);
-        user = User.fromJson(_extractUserMap(userData));
-        errorMessage = '';
-      } else {
-        _handleErrorResponse(response);
-      }
+      final decoded = jsonDecode(response.body);
+      user = User.fromJson(_extractUserMap(decoded));
     } catch (e) {
       errorMessage = 'Erro ao carregar perfil: $e';
-      if (kDebugMode) {
-        debugPrint('[ProfileController] Erro: $e');
-      }
+    } finally {
+      isLoading = false;
     }
-
-    isLoading = false;
   }
 
   Future<bool> updateUserProfile({
@@ -63,52 +50,54 @@ class ProfileController {
     errorMessage = '';
 
     try {
-      final token = await _getToken();
+      final token = await AuthSessionService.getValidAccessToken();
       if (token == null) {
-        errorMessage = 'Token nÃ£o encontrado';
-        isLoading = false;
+        errorMessage = 'Usuario nao autenticado.';
         return false;
       }
 
       final parsedId = int.tryParse(id);
       if (parsedId == null) {
-        errorMessage = 'ID do usuÃ¡rio invÃ¡lido';
-        isLoading = false;
+        errorMessage = 'ID do usuario invalido.';
         return false;
       }
 
       final normalizedPhoneNumber = phoneNumber.replaceAll(RegExp(r'\D'), '');
-      final parsedPhoneNumber = int.tryParse(normalizedPhoneNumber);
-      if (parsedPhoneNumber == null) {
-        errorMessage = 'Telefone invÃ¡lido';
-        isLoading = false;
+      final parsedPhoneNumber = normalizedPhoneNumber.isEmpty
+          ? null
+          : int.tryParse(normalizedPhoneNumber);
+
+      final body = <String, dynamic>{
+        'id': parsedId,
+        'name': name.trim(),
+        'email': email.trim(),
+        if (parsedPhoneNumber != null) 'phoneNumber': parsedPhoneNumber,
+        if (document != null) 'document': document,
+        if (password != null && password.trim().isNotEmpty)
+          'password': password.trim(),
+      };
+
+      final response = await ApiService.put('/user/put', body, token: token);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        if (response.statusCode == 401 || response.statusCode == 403) {
+          await AuthSessionService.clearSession();
+        }
+        errorMessage = ApiService.extractErrorMessage(
+          response.body,
+          fallback: 'Nao foi possivel atualizar o perfil.',
+        );
         return false;
       }
 
-      final body = {
-        'id': parsedId,
-        'name': name,
-        'email': email,
-        'phoneNumber': parsedPhoneNumber,
-        if (document != null) 'document': document,
-        if (password != null && password.isNotEmpty) 'password': password,
-      };
-
-      if (kDebugMode) {
-        debugPrint('[ProfileController] Atualizando perfil: $body');
+      final trimmedBody = response.body.trim();
+      if (trimmedBody.isNotEmpty) {
+        final decoded = jsonDecode(trimmedBody);
+        user = User.fromJson(_extractUserMap(decoded));
+      } else {
+        await loadUserProfile();
       }
 
-      final response = await ApiService.put('/user/put', body, token: token);
-
-      if (response.statusCode == 200) {
-        final userData = jsonDecode(response.body);
-        user = User.fromJson(_extractUserMap(userData));
-        errorMessage = '';
-        return true;
-      }
-
-      _handleErrorResponse(response);
-      return false;
+      return true;
     } catch (e) {
       errorMessage = 'Erro ao atualizar perfil: $e';
       return false;
@@ -122,26 +111,27 @@ class ProfileController {
     errorMessage = '';
 
     try {
-      final token = await _getToken();
+      final token = await AuthSessionService.getValidAccessToken();
       if (token == null) {
-        errorMessage = 'Token nÃ£o encontrado';
-        isLoading = false;
+        errorMessage = 'Usuario nao autenticado.';
         return false;
       }
 
       final response = await ApiService.delete('/user/delete', token: token);
-
-      if (response.statusCode == 200 || response.statusCode == 204) {
-        await _clearSession();
-        errorMessage = '';
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        await AuthSessionService.clearSession();
+        user = null;
         return true;
       }
 
       if (response.statusCode == 401 || response.statusCode == 403) {
-        await _clearSession();
+        await AuthSessionService.clearSession();
       }
 
-      _handleErrorResponse(response);
+      errorMessage = ApiService.extractErrorMessage(
+        response.body,
+        fallback: 'Nao foi possivel deletar a conta.',
+      );
       return false;
     } catch (e) {
       errorMessage = 'Erro ao deletar conta: $e';
@@ -151,46 +141,17 @@ class ProfileController {
     }
   }
 
-  Future<void> _clearSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('auth_token');
-    user = null;
-  }
-
-  void _handleErrorResponse(dynamic response) {
-    try {
-      final errorData = jsonDecode(response.body);
-      errorMessage = errorData['message'] ?? 'Erro: ${response.statusCode}';
-    } catch (_) {
-      errorMessage = 'Erro: ${response.statusCode}';
-    }
-  }
-
   Map<String, dynamic> _extractUserMap(dynamic userData) {
-    if (userData is Map && userData.containsKey('data')) {
-      return (userData['data'] as Map).cast<String, dynamic>();
-    }
-
-    if (userData is Map && userData.containsKey('user')) {
-      return (userData['user'] as Map).cast<String, dynamic>();
-    }
-
-    if (userData is Map) {
-      return userData.cast<String, dynamic>();
-    }
-
-    throw const FormatException('Formato de resposta invÃ¡lido');
-  }
-
-  Future<String?> _getToken() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getString('auth_token');
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[ProfileController] Erro ao obter token: $e');
+    if (userData is Map<String, dynamic>) {
+      if (userData['data'] is Map<String, dynamic>) {
+        return userData['data'] as Map<String, dynamic>;
       }
-      return null;
+      if (userData['user'] is Map<String, dynamic>) {
+        return userData['user'] as Map<String, dynamic>;
+      }
+      return userData;
     }
+
+    throw const FormatException('Formato de resposta invalido.');
   }
 }

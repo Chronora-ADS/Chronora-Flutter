@@ -48,7 +48,8 @@ class ServiceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: enableNavigation || onView != null ? () => _handleTap(context) : null,
+      onTap:
+          enableNavigation || onView != null ? () => _handleTap(context) : null,
       child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFFB5BFAE),

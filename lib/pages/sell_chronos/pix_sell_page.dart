@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/services/api_service.dart';
+import '../../core/api/api_service.dart';
+import '../../core/services/auth_session_service.dart';
 import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
@@ -41,8 +41,7 @@ class _PixSellPageState extends State<PixSellPage> {
   }
 
   Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
+    return AuthSessionService.getValidAccessToken();
   }
 
   /// Faz a requisição PUT para vender Chronos
@@ -188,9 +187,6 @@ class _PixSellPageState extends State<PixSellPage> {
             ),
           ),
         ),
-        onChanged: (value) {
-          print('Texto da busca: $value');
-        },
       ),
     );
   }

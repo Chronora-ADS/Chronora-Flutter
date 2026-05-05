@@ -1,21 +1,28 @@
 import 'dart:convert';
-import 'package:chronora/core/constants/app_routes.dart';
+
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_routes.dart';
 import '../../core/models/main_page_requests_model.dart';
 import '../../core/models/service_detail_model.dart';
-import '../../core/services/api_service.dart';
-import '../../widgets/service_image.dart';
+import '../../core/services/auth_session_service.dart';
+import '../../widgets/backgrounds/background_default_widget.dart';
 import '../../widgets/header.dart';
+import '../../widgets/service_image.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
 
 class RequestView extends StatefulWidget {
-  final int? serviceId; // Recebe o ID pela URL
-  final Service? service; // Mantido para compatibilidade (opcional)
+  final int? serviceId;
+  final Service? service;
 
-  const RequestView({super.key, this.serviceId, this.service});
+  const RequestView({
+    super.key,
+    this.serviceId,
+    this.service,
+  });
 
   @override
   State<RequestView> createState() => _RequestViewState();
@@ -27,113 +34,208 @@ class _RequestViewState extends State<RequestView> {
   String? _errorMessage;
   bool _isOwner = false;
   bool _showAcceptAction = true;
-  int? _currentUserId;
-  int _walletRefreshVersion = 0;
-
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
+  int _walletRefreshVersion = 0;
+  bool _resolvedRouteArguments = false;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    final serviceId = widget.serviceId ?? widget.service?.id;
+    if (serviceId != null) {
+      _loadData(serviceId);
+    }
   }
 
-  Future<void> _getCurrentUserFromApi() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-      if (token == null) throw Exception('Usuário não autenticado');
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_resolvedRouteArguments) {
+      return;
+    }
 
-      final response = await ApiService.get('/user/get', token: token);
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> userData = json.decode(response.body);
-        setState(() {
-          _currentUserId = userData['id'];
-        });
-      } else {
-        throw Exception('Falha ao obter dados do usuário');
-      }
-    } catch (e) {
+    _resolvedRouteArguments = true;
+    final arguments = ModalRoute.of(context)?.settings.arguments;
+    _applyRouteOptions(arguments);
+
+    if (widget.serviceId != null || widget.service != null) {
+      return;
+    }
+
+    final serviceId = _resolveServiceIdFromArguments(arguments);
+
+    if (serviceId == null) {
       setState(() {
-        _currentUserId = null;
+        _errorMessage = 'ID do servico nao informado.';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    _loadData(serviceId);
+  }
+
+  int? _resolveServiceIdFromArguments(dynamic arguments) {
+    if (arguments is int) return arguments;
+    if (arguments is Service) return arguments.id;
+    if (arguments is Map) {
+      if (arguments['serviceId'] is int) {
+        return arguments['serviceId'] as int;
+      }
+      if (arguments['service'] is Service) {
+        return (arguments['service'] as Service).id;
+      }
+    }
+    return null;
+  }
+
+  void _applyRouteOptions(dynamic arguments) {
+    if (arguments is Map && arguments['showAcceptAction'] is bool) {
+      _showAcceptAction = arguments['showAcceptAction'] as bool;
+    }
+  }
+
+  Future<void> _loadData(int serviceId) async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
       });
     }
-  }
 
-  Future<void> _loadData() async {
-    await _getCurrentUserFromApi();
-
-    final args = ModalRoute.of(context)?.settings.arguments;
-    if (args is Map) {
-      final showAcceptAction = args['showAcceptAction'];
-      if (showAcceptAction is bool) {
-        _showAcceptAction = showAcceptAction;
+    try {
+      final token = await AuthSessionService.getValidAccessToken();
+      if (token == null) {
+        throw Exception('Usuario nao autenticado.');
       }
-    }
 
-    int? serviceId;
-
-    if (widget.serviceId != null) {
-      serviceId = widget.serviceId;
-    } else if (widget.service != null) {
-      serviceId = widget.service!.id;
-    } else {
-      // Tenta pegar dos argumentos da rota
-      if (args is Service) {
-        serviceId = args.id;
-      } else if (args is Map && args['service'] is Service) {
-        serviceId = (args['service'] as Service).id;
+      final currentUserId = await _fetchCurrentUserId(token);
+      final response =
+          await ApiService.get('/service/get/$serviceId', token: token);
+      if (response.statusCode != 200) {
+        throw Exception(
+          ApiService.extractErrorMessage(
+            response.body,
+            fallback: 'Nao foi possivel carregar o pedido.',
+          ),
+        );
       }
-    }
-    
-    if (serviceId != null) {
-      await _fetchServiceDetail(serviceId);
-    } else {
+
+      final detail = ServiceDetailModel.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
+
+      if (!mounted) return;
       setState(() {
-        _errorMessage = 'ID do serviço não informado na URL.';
+        _serviceDetail = detail;
+        _isOwner = detail.userCreator.id == currentUserId;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
         _isLoading = false;
       });
     }
-
   }
 
-  Future<void> _fetchServiceDetail(int? serviceId) async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  Future<int?> _fetchCurrentUserId(String token) async {
+    try {
+      final response = await ApiService.get('/user/get', token: token);
+      if (response.statusCode != 200) {
+        return null;
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        final value = decoded['id'] ?? decoded['data']?['id'];
+        if (value is int) return value;
+        if (value is num) return value.toInt();
+        if (value is String) return int.tryParse(value);
+      }
+    } catch (_) {
+      // Ignore owner lookup errors and keep the page usable.
+    }
+
+    return null;
+  }
+
+  Future<void> _cancelRequest() async {
+    final detail = _serviceDetail;
+    if (detail?.id == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Cancelar pedido'),
+          content: const Text('Deseja cancelar este pedido?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Nao'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Sim'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-      if (token == null) throw Exception('Usuário não autenticado');
+      final token = await AuthSessionService.getValidAccessToken();
+      if (token == null) {
+        throw Exception('Usuario nao autenticado.');
+      }
 
-      final response = await ApiService.get(
-        '/service/get/$serviceId',
+      final response = await ApiService.delete(
+        '/service/cancelService/${detail!.id}',
         token: token,
       );
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        final detail = ServiceDetailModel.fromJson(data);
-
-        final isOwner = detail.userCreator.id.toString() == _currentUserId?.toString();
-
-        setState(() {
-          _serviceDetail = detail;
-          _isOwner = isOwner;
-          _isLoading = false;
-        });
-      } else {
-        throw Exception('Erro ${response.statusCode}: ${response.body}');
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+          ApiService.extractErrorMessage(
+            response.body,
+            fallback: 'Nao foi possivel cancelar o pedido.',
+          ),
+        );
       }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pedido cancelado com sucesso.')),
+      );
+      Navigator.pop(context, true);
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Falha ao carregar detalhes: $e';
-        _isLoading = false;
-      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
     }
+  }
+
+  void _editRequest() {
+    final detail = _serviceDetail;
+    if (detail?.id == null) return;
+
+    Navigator.pushNamed(
+      context,
+      AppRoutes.requestEditingWithId(detail!.id!),
+    ).then((edited) {
+      if (edited == true && mounted) {
+        setState(() {
+          _walletRefreshVersion++;
+        });
+        _loadData(detail.id!);
+      }
+    });
   }
 
   void _toggleDrawer() {
@@ -155,130 +257,14 @@ class _RequestViewState extends State<RequestView> {
     });
   }
 
-  Future<void> _cancelRequest() async {
-    // Confirmação
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Cancelar pedido'),
-        content: const Text('Tem certeza que deseja cancelar este pedido?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Não'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sim'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-      if (token == null) throw Exception('Usuário não autenticado');
-
-      final response = await ApiService.delete(
-        '/service/cancelService/${_serviceDetail!.id}',
-        token: token,
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 204) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pedido cancelado com sucesso'),
-            backgroundColor: AppColors.amareloClaro,
-          ),
-        );
-        Navigator.pop(context, true); // Retorna true para atualizar a lista
-      } else {
-        throw Exception('Erro ao cancelar');
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro: $e'),
-          backgroundColor: AppColors.vermelho,
-        ),
-      );
-      setState(() => _isLoading = false);
-    }
-  }
-
-  void _editRequest() {
-    // Navega para a página de edição usando o ID na URL
-    Navigator.pushNamed(
-      context,
-      '${AppRoutes.requestEditing}/${_serviceDetail!.id}',
-    ).then((edited) {
-      if (edited == true) {
-        if (mounted) {
-          setState(() {
-            _walletRefreshVersion++;
-          });
-        }
-        // Se editado, recarrega os detalhes
-        _fetchServiceDetail(_serviceDetail!.id);
-      }
-    });
-  }
-
-  void _acceptRequest() {
-    // TODO: Implementar lógica de aceitar pedido
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Funcionalidade de aceitar pedido em desenvolvimento'),
-        backgroundColor: AppColors.amareloUmPoucoEscuro,
-      ),
-    );
-  }
-
-  Widget _buildBackgroundImages() {
-    return Stack(
-      children: [
-        Positioned(
-          left: 0,
-          top: 135,
-          child: Image.asset(
-            'assets/img/Comb2.png',
-            errorBuilder: (context, error, stackTrace) => const SizedBox(),
-          ),
-        ),
-        Positioned(
-          left: 0,
-          bottom: 0,
-          child: Image.asset(
-            'assets/img/BarAscending.png',
-            width: 210.47,
-            height: 178.9,
-            errorBuilder: (context, error, stackTrace) => const SizedBox(),
-          ),
-        ),
-        Positioned(
-          right: 0,
-          bottom: 60,
-          child: Image.asset(
-            'assets/img/Comb3.png',
-            errorBuilder: (context, error, stackTrace) => const SizedBox(),
-          ),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
       backgroundColor: AppColors.preto,
       body: Stack(
         children: [
-          _buildBackgroundImages(),
           Column(
             children: [
               Header(
@@ -286,26 +272,32 @@ class _RequestViewState extends State<RequestView> {
                 onMenuPressed: _toggleDrawer,
               ),
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: _buildContent(),
+                child: BackgroundDefaultWidget(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    child: _buildContent(),
+                  ),
                 ),
               ),
             ],
           ),
           if (_isDrawerOpen)
             Positioned(
-              top: kToolbarHeight * 1.5,
+              top: 0,
               left: 0,
               right: 0,
               bottom: 0,
               child: Container(
-                color: AppColors.preto.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: Row(
                   children: [
                     SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(onWalletPressed: _openWallet),
+                      width: screenWidth * 0.6,
+                      child: SafeArea(
+                        top: true,
+                        bottom: false,
+                        child: SideMenu(onWalletPressed: _openWallet),
+                      ),
                     ),
                     Expanded(
                       child: GestureDetector(
@@ -324,7 +316,7 @@ class _RequestViewState extends State<RequestView> {
               right: 0,
               bottom: 0,
               child: Container(
-                color: AppColors.preto.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
@@ -340,9 +332,12 @@ class _RequestViewState extends State<RequestView> {
 
   Widget _buildContent() {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppColors.amareloClaro),
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.amareloClaro),
+          ),
         ),
       );
     }
@@ -351,333 +346,229 @@ class _RequestViewState extends State<RequestView> {
       return Center(
         child: Text(
           _errorMessage!,
-          style: const TextStyle(color: AppColors.branco),
           textAlign: TextAlign.center,
+          style: const TextStyle(color: AppColors.branco, fontSize: 16),
         ),
       );
     }
 
-    if (_serviceDetail == null) {
+    final detail = _serviceDetail;
+    if (detail == null) {
       return const Center(
         child: Text(
-          'Detalhes não disponíveis',
-          style: TextStyle(color: AppColors.branco),
+          'Detalhes do pedido indisponiveis.',
+          style: TextStyle(color: AppColors.branco, fontSize: 16),
         ),
       );
     }
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: _buildServiceImage(detail),
+        ),
+        const SizedBox(height: 16),
         Container(
-          padding: const EdgeInsets.all(10),
-          decoration: const BoxDecoration(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
             color: AppColors.branco,
-            borderRadius: BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
+            borderRadius: BorderRadius.circular(24),
           ),
-          width: double.infinity,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Título
               Text(
-                _serviceDetail!.title,
+                detail.title,
                 style: const TextStyle(
+                  color: AppColors.preto,
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-            ]
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          decoration: const BoxDecoration(
-            color: AppColors.preto,
-            border: Border(
-              bottom: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
-              top: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
-              left: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3),
-              right: BorderSide(color: AppColors.amareloUmPoucoMaisEscuro, width: 3)
-            ),
-            borderRadius: BorderRadius.only(bottomLeft: Radius.circular(12), bottomRight: Radius.circular(12)),
-          ),
-          child: Column(
-            children: [
-              // Linha com imagem à esquerda e informações à direita
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  // Imagem
-                  ClipRRect(
-                    child: Container(
-                      width: 200,
-                      height: 113,
-                      decoration: BoxDecoration(
-                        color: AppColors.cinza,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: _serviceDetail!.serviceImageUrl != null &&
-                              _serviceDetail!.serviceImageUrl!.isNotEmpty
-                          ? ServiceImage(
-                              imageSource: _serviceDetail!.serviceImageUrl,
-                              width: 160,
-                              height: 90,
-                              fit: BoxFit.cover,
-                              borderRadius: BorderRadius.circular(12),
-                              placeholderColor: AppColors.cinza,
-                              iconColor: Colors.black45,
-                            )
-                          : Container(
-                              color: AppColors.cinza,
-                              child: const Icon(Icons.image,
-                                  size: 40, color: Colors.black45),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  // Informações à direita
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        // Prazo
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.amareloUmPoucoEscuro,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            'Prazo: ${_formatDate(_serviceDetail!.deadline)}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: AppColors.branco,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        // Modalidade
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.amareloUmPoucoEscuro,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            _serviceDetail!.modality,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: AppColors.branco,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        // Chronos com ícone alinhado à direita
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Image.asset(
-                                'assets/img/CoinYellow.png',
-                                width: 20,
-                                height: 20,
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    const Icon(Icons.currency_bitcoin, color: AppColors.amareloClaro, size: 20),
-                              ),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                child: Text(
-                                  '${_serviceDetail!.timeChronos} Chronos',
-                                  style: const TextStyle(
-                                    color: AppColors.amareloClaro,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 20,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  _buildInfoChip('Prazo: ${_formatDate(detail.deadline)}'),
+                  _buildInfoChip(detail.modality),
+                  _buildInfoChip('${detail.timeChronos} Chronos'),
                 ],
               ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: Text(
-                  _serviceDetail!.description,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: AppColors.branco
-                  ),
+              const SizedBox(height: 16),
+              Text(
+                detail.description,
+                style: const TextStyle(
+                  color: AppColors.preto,
+                  fontSize: 16,
+                  height: 1.4,
                 ),
-              )
+              ),
             ],
           ),
         ),
-    
-        const SizedBox(height: 5),
-        if (_serviceDetail!.categoryEntities.isNotEmpty) ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _serviceDetail!.categoryEntities.map((cat) {
-                return Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.amareloClaro,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Text(
-                    cat.name,
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                );
-              }).toList(),
-            ),
+        if (detail.categoryEntities.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: detail.categoryEntities
+                .map((category) => _buildCategoryChip(category.name))
+                .toList(),
           ),
-          const SizedBox(height: 20),
         ],
-
-        // Informações do criador em container separado
-        ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.branco,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Postado às ${_formatTime(_serviceDetail!.postedAt)} por:',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.branco,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: AppColors.amareloClaro,
+                child: Text(
+                  detail.userCreator.name.isEmpty
+                      ? '?'
+                      : detail.userCreator.name[0].toUpperCase(),
+                  style: const TextStyle(color: AppColors.preto),
                 ),
-                const SizedBox(height: 8),
-                Row(
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircleAvatar(
-                      backgroundColor: AppColors.amareloClaro,
-                      child: Text(
-                        _serviceDetail!.userCreator.name[0].toUpperCase(),
-                        style: const TextStyle(color: AppColors.branco),
+                    const Text(
+                      'Publicado por',
+                      style: TextStyle(
+                        color: Colors.black54,
+                        fontSize: 12,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _serviceDetail!.userCreator.name,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 4),
-                          const Row(
-                            children: [
-                              Text(
-                                "5.0",
-                                style: TextStyle(fontSize: 14),
-                              ),
-                              SizedBox(width: 4),
-                              Icon(Icons.star, color: AppColors.amareloClaro, size: 16),
-                            ],
-                          ),
-                        ],
+                    const SizedBox(height: 4),
+                    Text(
+                      detail.userCreator.name,
+                      style: const TextStyle(
+                        color: AppColors.preto,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(height: 20),
-        ],
-
-        // Botões de ação
-        _buildActionButtons(),
+        ),
+        const SizedBox(height: 20),
+        _buildActionButtons(detail),
       ],
     );
   }
 
-  Widget _buildActionButtons() {
-    if (_isOwner) {
-      // Botões para o criador: Editar e Cancelar (empilhados)
+  Widget _buildServiceImage(ServiceDetailModel detail) {
+    return ServiceImage(
+      imageSource: detail.serviceImageUrl,
+      height: 240,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      placeholderColor: const Color(0xFFD8DBD2),
+      iconColor: Colors.grey,
+    );
+  }
+
+  Widget _buildInfoChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.amareloClaro,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppColors.preto,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.branco,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppColors.preto,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(ServiceDetailModel detail) {
+    if (_isOwner && detail.id != null) {
       return Column(
         children: [
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton(
+            child: ElevatedButton(
               onPressed: _editRequest,
-              style: OutlinedButton.styleFrom(
+              style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.amareloUmPoucoEscuro,
-                side: const BorderSide(color: AppColors.amareloUmPoucoEscuro),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                foregroundColor: AppColors.branco,
+                padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               child: const Text(
                 'Editar pedido',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.branco,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton(
+            child: OutlinedButton(
               onPressed: _cancelRequest,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.preto,
-                foregroundColor: AppColors.branco,
-                side: const BorderSide(color: AppColors.amareloUmPoucoEscuro, width: 4),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 8),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.red, width: 2),
+                padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               child: const Text(
                 'Cancelar pedido',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
         ],
       );
-    } else if (_showAcceptAction) {
-      // Botão para outros usuários: Aceitar
+    }
+
+    if (!_showAcceptAction) {
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton(
-          onPressed: _acceptRequest,
+          onPressed: () => Navigator.pop(context),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.amareloUmPoucoEscuro,
             foregroundColor: AppColors.branco,
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
+            padding: const EdgeInsets.symmetric(vertical: 16),
           ),
           child: const Text(
-            'Aceitar pedido',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            'Voltar',
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
       );
@@ -686,41 +577,36 @@ class _RequestViewState extends State<RequestView> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: () => Navigator.pop(context),
+        onPressed: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('Fluxo de aceitacao ainda nao foi ligado nesta branch.'),
+            ),
+          );
+        },
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.amareloUmPoucoEscuro,
           foregroundColor: AppColors.branco,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 16),
         ),
         child: const Text(
-          'Voltar',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          'Aceitar pedido',
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
     );
   }
 
-  String _formatDate(String date) {
-    try {
-      final parts = date.split('-');
-      if (parts.length == 3) {
-        return '${parts[2]}/${parts[1]}/${parts[0]}';
-      }
-    } catch (_) {}
-    return date;
-  }
+  String _formatDate(String value) {
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) {
+      return value;
+    }
 
-  String _formatTime(String? dateTime) {
-    if (dateTime == null) return '--:--';
-    try {
-      final parts = dateTime.split('T');
-      if (parts.length > 1) {
-        return parts[1].substring(0, 5); // HH:MM
-      }
-    } catch (_) {}
-    return '--:--';
+    final day = parsed.day.toString().padLeft(2, '0');
+    final month = parsed.month.toString().padLeft(2, '0');
+    final year = parsed.year.toString();
+    return '$day/$month/$year';
   }
 }

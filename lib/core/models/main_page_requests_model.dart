@@ -8,7 +8,7 @@ class Service {
   final int id;
   final String title;
   final String description;
-  final String serviceImageUrl;
+  final String serviceImage;
   final int timeChronos;
   final UserCreator userCreator;
   final UserCreator? userAccepted;
@@ -21,28 +21,35 @@ class Service {
     required this.id,
     required this.title,
     required this.description,
-    required this.serviceImageUrl,
+    required this.serviceImage,
     required this.timeChronos,
     required this.userCreator,
-    required this.userAccepted,
+    this.userAccepted,
     required this.categoryEntities,
     required this.deadline,
     required this.modality,
     required this.status,
   });
 
+  String get serviceImageUrl => serviceImage;
+
   factory Service.fromJson(Map<String, dynamic> json) {
+    final userCreator = _parseUser(
+          json['userCreator'],
+          fallbackRating:
+              json['rating'] ?? json['userRating'] ?? json['avaliacao'],
+        ) ??
+        UserCreator(name: 'Usuario desconhecido');
+
     return Service(
       id: _toInt(json['id']) ?? 0,
       title: (json['title'] ?? 'Titulo nao disponivel').toString(),
-      description: (json['description'] ?? 'Descricao nao disponivel').toString(),
-      serviceImageUrl: _parseServiceImage(json),
+      description:
+          (json['description'] ?? 'Descricao nao disponivel').toString(),
+      serviceImage: _parseServiceImage(json),
       timeChronos: _toInt(json['timeChronos']) ?? 0,
-      userCreator:
-          _parseUser(json['userCreator']) ??
-          UserCreator(name: 'Usuario desconhecido'),
-      userAccepted:
-          _parseUser(json['userAccepted']) ??
+      userCreator: userCreator,
+      userAccepted: _parseUser(json['userAccepted']) ??
           _parseUser(json['acceptedBy']) ??
           _parseUser(json['userExecutor']),
       categoryEntities: _parseCategories(
@@ -54,14 +61,16 @@ class Service {
     );
   }
 
-  static UserCreator? _parseUser(dynamic value) {
+  static UserCreator? _parseUser(dynamic value, {dynamic fallbackRating}) {
     if (value is Map<String, dynamic>) {
-      return UserCreator.fromJson(value);
+      final data = Map<String, dynamic>.from(value);
+      data.putIfAbsent('rating', () => fallbackRating);
+      return UserCreator.fromJson(data);
     }
 
     if (value is List) {
       for (final item in value) {
-        final parsed = _parseUser(item);
+        final parsed = _parseUser(item, fallbackRating: fallbackRating);
         if (parsed != null) {
           return parsed;
         }
@@ -73,7 +82,7 @@ class Service {
 
   static List<CategoryEntity> _parseCategories(dynamic value) {
     if (value is List) {
-      return value.map((item) => CategoryEntity.fromJson(item)).toList();
+      return value.map(CategoryEntity.fromJson).toList();
     }
 
     return [];
@@ -89,6 +98,10 @@ class Service {
 
     if (value is int) {
       return DateTime.fromMillisecondsSinceEpoch(value);
+    }
+
+    if (value is num) {
+      return DateTime.fromMillisecondsSinceEpoch(value.toInt());
     }
 
     return DateTime.now().add(const Duration(days: 30));
@@ -109,18 +122,9 @@ class Service {
   }
 
   static int? _toInt(dynamic value) {
-    if (value is int) {
-      return value;
-    }
-
-    if (value is num) {
-      return value.toInt();
-    }
-
-    if (value is String) {
-      return int.tryParse(value);
-    }
-
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
     return null;
   }
 }

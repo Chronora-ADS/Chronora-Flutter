@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:universal_html/html.dart' as html;
 import 'dart:typed_data';
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 
 // Importe os widgets da main_page
 import '../../../widgets/header.dart';
 import '../../../widgets/side_menu.dart';
 import '../../../widgets/wallet_modal.dart';
-import '../../../core/services/api_service.dart';
+import '../../../core/api/api_service.dart';
+import '../../../core/constants/modality_options.dart';
 import '../../../core/models/create_request_model.dart';
+import '../../../core/services/auth_session_service.dart';
 
 class RequestCreationPage extends StatefulWidget {
   const RequestCreationPage({super.key});
   @override
-  _RequestCreationPageState createState() => _RequestCreationPageState();
+  State<RequestCreationPage> createState() => _RequestCreationPageState();
 }
 
 class _RequestCreationPageState extends State<RequestCreationPage> {
@@ -28,10 +29,10 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   final TextEditingController _categoriesController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   String? _selectedModality;
-  
+
   late List<String> _categoriesTags;
-  
-  XFile? _selectedImage;
+
+  dynamic _selectedImage;
   String? _imageFileName;
   Uint8List? _imageBytes;
 
@@ -72,14 +73,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   }
 
   Future<void> _pickImage() async {
-    if (kIsWeb) {
-      _pickImageWeb();
-    } else {
-      _pickImageMobile();
-    }
-  }
-
-  Future<void> _pickImageMobile() async {
     final ImagePicker picker = ImagePicker();
     try {
       final XFile? image = await picker.pickImage(
@@ -89,16 +82,20 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         maxHeight: 1024,
       );
 
-      if (image != null) {
-        final bytes = await image.readAsBytes();
-        setState(() {
-          _selectedImage = image;
-          _imageBytes = bytes;
-          _imageFileName = image.name;
-        });
+      if (image == null) {
+        return;
       }
+
+      final imageBytes = await image.readAsBytes();
+      if (!mounted) return;
+
+      setState(() {
+        _imageBytes = imageBytes;
+        _selectedImage = kIsWeb ? imageBytes : File(image.path);
+        _imageFileName = image.name;
+      });
     } catch (e) {
-      print('Error picking image: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Erro ao selecionar imagem'),
@@ -108,29 +105,24 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     }
   }
 
-  void _pickImageWeb() {
-    final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
-    uploadInput.accept = 'image/png,image/jpeg,image/jpg,image/webp,image/bmp';
-    
-    uploadInput.onChange.listen((e) {
-      final files = uploadInput.files;
-      if (files != null && files.isNotEmpty) {
-        final file = files[0];
-        final reader = html.FileReader();
-        
-        reader.onLoadEnd.listen((e) {
-          setState(() {
-            _imageBytes = reader.result as Uint8List?;
-            _imageFileName = file.name;
-            _selectedImage = null;
-          });
-        });
-        
-        reader.readAsArrayBuffer(file);
-      }
+  void _showFeedback(
+    String message, {
+    Color backgroundColor = Colors.red,
+  }) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: backgroundColor,
+      ),
+    );
+  }
+
+  void _stopLoading() {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
     });
-    
-    uploadInput.click();
   }
 
   String _getDisplayFileName(String fileName, double maxWidth) {
@@ -153,14 +145,21 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     }
 
     final extension = fileName.split('.').last;
-    final nameWithoutExtension = fileName.substring(0, fileName.lastIndexOf('.'));
-    final maxNameLength = (maxWidth * maxPercentage / textPainter.width * nameWithoutExtension.length * 0.6).floor();
+    final nameWithoutExtension =
+        fileName.substring(0, fileName.lastIndexOf('.'));
+    final maxNameLength = (maxWidth *
+            maxPercentage /
+            textPainter.width *
+            nameWithoutExtension.length *
+            0.6)
+        .floor();
 
     if (maxNameLength <= 3) {
       return '...$extension';
     }
 
-    final truncatedName = '${nameWithoutExtension.substring(0, maxNameLength)}...$extension';
+    final truncatedName =
+        '${nameWithoutExtension.substring(0, maxNameLength)}...$extension';
     return truncatedName;
   }
 
@@ -171,13 +170,12 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         return base64Encode(_imageBytes!);
       }
 
-      if (_selectedImage != null) {
-        return base64Encode(await _selectedImage!.readAsBytes());
+      if (_selectedImage != null && _selectedImage is File) {
+        final List<int> fileBytes = await _selectedImage.readAsBytes();
+        return base64Encode(fileBytes);
       }
-
       return null;
     } catch (e) {
-      print('Erro ao converter imagem: $e');
       return null;
     }
   }
@@ -190,6 +188,16 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Adicione pelo menos uma categoria'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_selectedImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecione uma imagem para o pedido'),
           backgroundColor: Colors.red,
         ),
       );
@@ -212,9 +220,8 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
 
     try {
       // Recuperar o token salvo
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-      
+      final token = await AuthSessionService.getValidAccessToken();
+
       if (token == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -222,14 +229,28 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             backgroundColor: Colors.red,
           ),
         );
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
       // Converter imagem para base64 se existir
       String? base64Image;
-      if (_selectedImage != null || _imageBytes != null) {
+      if (_selectedImage != null) {
         base64Image = await _convertImageToBase64();
+      }
+      if (base64Image == null || base64Image.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Nao foi possivel processar a imagem do pedido'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+        return;
       }
 
       // VALIDAÇÃO E FORMATAÇÃO CORRETA DA DATA
@@ -241,7 +262,9 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             backgroundColor: Colors.red,
           ),
         );
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
@@ -254,7 +277,9 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             backgroundColor: Colors.red,
           ),
         );
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
@@ -263,7 +288,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         final day = deadlineParts[0].padLeft(2, '0');
         final month = deadlineParts[1].padLeft(2, '0');
         final year = deadlineParts[2];
-        
+
         // Validar se é uma data válida
         final date = DateTime.parse('$year-$month-$day');
         if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
@@ -273,10 +298,12 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
               backgroundColor: Colors.red,
             ),
           );
-          setState(() { _isLoading = false; });
+          setState(() {
+            _isLoading = false;
+          });
           return;
         }
-        
+
         formattedDeadline = '$year-$month-$day';
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -285,7 +312,9 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             backgroundColor: Colors.red,
           ),
         );
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
@@ -298,7 +327,9 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             backgroundColor: Colors.red,
           ),
         );
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
@@ -312,7 +343,21 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
               backgroundColor: Colors.red,
             ),
           );
-          setState(() { _isLoading = false; });
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+        }
+        if (timeChronos > 100) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Tempo em Chronos deve ser no maximo 100'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() {
+            _isLoading = false;
+          });
           return;
         }
       } catch (e) {
@@ -322,7 +367,9 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             backgroundColor: Colors.red,
           ),
         );
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
@@ -333,27 +380,23 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         timeChronos: timeChronos,
         deadline: formattedDeadline,
         categories: _categoriesTags,
-        modality: _selectedModality!,
+        modality: ModalityOptions.toBackendValue(_selectedModality!),
         serviceImage: base64Image,
       );
-
-      print('Enviando payload para criação de pedido...');
-      print('Payload: ${requestModel.toJson()}');
 
       final response = await ApiService.post(
         '/service/post',
         requestModel.toJson(),
         token: token,
       );
+      if (!mounted) return;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pedido criado com sucesso!'),
-            backgroundColor: Colors.green,
-          ),
+        _showFeedback(
+          'Pedido criado com sucesso!',
+          backgroundColor: Colors.green,
         );
-        
+
         // Limpar formulário após sucesso
         _formKey.currentState!.reset();
         setState(() {
@@ -365,44 +408,39 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         });
 
         Navigator.pop(context, true);
-        
       } else {
-        final error = response.body;
-        print('Erro do servidor: ${response.statusCode} - $error');
+        String errorMessage = ApiService.extractErrorMessage(
+          response.body,
+          fallback: 'Erro ao criar pedido.',
+        );
+        _showFeedback(
+          '$errorMessage (${response.statusCode})',
+          backgroundColor: Colors.red,
+        );
+        /*
         
-        String errorMessage = 'Erro ao criar pedido';
-        if (response.statusCode == 400) {
           errorMessage = 'Dados inválidos. Verifique as informações preenchidas.';
         } else if (response.statusCode == 401) {
           errorMessage = 'Não autorizado. Faça login novamente.';
         } else if (response.statusCode == 500) {
           errorMessage = 'Erro interno do servidor. Tente novamente.';
         }
-        errorMessage = _buildCreateRequestErrorMessage(
-          statusCode: response.statusCode,
-          responseBody: error,
-          fallbackMessage: errorMessage,
-        );
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage),
+            content: Text('$errorMessage (${response.statusCode})'),
             backgroundColor: Colors.red,
           ),
         );
+        */
       }
     } catch (e) {
-      print('Erro na criação do pedido: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
+      _showFeedback(
+        'Erro: ${e.toString()}',
+        backgroundColor: Colors.red,
       );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      _stopLoading();
     }
   }
 
@@ -432,7 +470,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       body: Stack(
         children: [
           _buildBackgroundImages(),
-          
           Column(
             children: [
               Header(
@@ -457,10 +494,9 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
               ),
             ],
           ),
-
           if (_isDrawerOpen)
             Positioned(
-              top: kToolbarHeight * 1.5,
+              top: kToolbarHeight,
               left: 0,
               right: 0,
               bottom: 0,
@@ -486,7 +522,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
                 ),
               ),
             ),
-
           if (_isWalletOpen)
             Positioned(
               top: 0,
@@ -570,14 +605,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
               'assets/img/Search.png',
               width: 20,
               height: 20,
-              errorBuilder: (context, error, stackTrace) => 
-                const Icon(Icons.search, size: 20),
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.search, size: 20),
             ),
           ),
         ),
-        onChanged: (value) {
-          print('Texto da busca: $value');
-        },
       ),
     );
   }
@@ -604,12 +636,13 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
               ),
             ),
             const SizedBox(height: 25),
-
-            _buildFormField('Título', _titleController, validator: _requiredValidator),
+            _buildFormField('Título', _titleController,
+                validator: _requiredValidator),
             const SizedBox(height: 15),
             _buildDescriptionField(),
             const SizedBox(height: 15),
-            _buildFormField('Tempo em Chronos', _chronosController, validator: _chronosValidator),
+            _buildFormField('Tempo em Chronos', _chronosController,
+                validator: _chronosValidator),
             const SizedBox(height: 15),
             _buildDateField('Prazo'),
             const SizedBox(height: 15),
@@ -633,6 +666,22 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     return null;
   }
 
+  String? _descriptionValidator(String? value) {
+    final requiredMessage = _requiredValidator(value);
+    if (requiredMessage != null) return requiredMessage;
+
+    final wordCount = value!
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .length;
+
+    if (wordCount < 20) {
+      return 'A descricao deve ter pelo menos 20 palavras';
+    }
+    return null;
+  }
+
   String? _chronosValidator(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Este campo é obrigatório';
@@ -644,7 +693,8 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     return null;
   }
 
-  Widget _buildFormField(String placeholder, TextEditingController controller, {String? Function(String?)? validator}) {
+  Widget _buildFormField(String placeholder, TextEditingController controller,
+      {String? Function(String?)? validator}) {
     return Container(
       height: 46,
       decoration: BoxDecoration(
@@ -694,7 +744,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       ),
       child: TextFormField(
         controller: _descriptionController,
-        validator: _requiredValidator,
+        validator: _descriptionValidator,
         maxLines: null,
         minLines: 3,
         keyboardType: TextInputType.multiline,
@@ -704,7 +754,8 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           hintStyle: TextStyle(
             color: Colors.black.withOpacity(0.7),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide.none,
@@ -754,8 +805,8 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
               'assets/img/calendar.png',
               width: 24,
               height: 24,
-              errorBuilder: (context, error, stackTrace) => 
-                const Icon(Icons.calendar_today, size: 20),
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.calendar_today, size: 20),
             ),
           ),
           errorStyle: const TextStyle(fontSize: 12, height: 0.1),
@@ -769,7 +820,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           );
           if (picked != null) {
             setState(() {
-              _deadlineController.text = 
+              _deadlineController.text =
                   "${picked.day.toString().padLeft(2, '0')}/"
                   "${picked.month.toString().padLeft(2, '0')}/"
                   "${picked.year}";
@@ -784,18 +835,18 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     if (value == null || value.trim().isEmpty) {
       return 'Data é obrigatória';
     }
-    
+
     // Validar formato DD/MM/YYYY
     final parts = value.split('/');
     if (parts.length != 3) {
       return 'Use o formato DD/MM/YYYY';
     }
-    
+
     try {
       final day = int.parse(parts[0]);
       final month = int.parse(parts[1]);
       final year = int.parse(parts[2]);
-      
+
       final date = DateTime(year, month, day);
       if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
         return 'Data não pode ser no passado';
@@ -803,52 +854,8 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     } catch (e) {
       return 'Data inválida';
     }
-    
+
     return null;
-  }
-
-  String _buildCreateRequestErrorMessage({
-    required int statusCode,
-    required String responseBody,
-    required String fallbackMessage,
-  }) {
-    final serverMessage = _extractServerMessage(responseBody);
-
-    if (serverMessage.isEmpty || serverMessage == fallbackMessage) {
-      return '$fallbackMessage ($statusCode)';
-    }
-
-    return '$fallbackMessage ($statusCode): $serverMessage';
-  }
-
-  String _extractServerMessage(String responseBody) {
-    final trimmedBody = responseBody.trim();
-    if (trimmedBody.isEmpty) {
-      return '';
-    }
-
-    try {
-      final decoded = json.decode(trimmedBody);
-      if (decoded is Map<String, dynamic>) {
-        final candidates = [
-          decoded['message'],
-          decoded['error'],
-          decoded['details'],
-          decoded['trace'],
-        ];
-
-        for (final candidate in candidates) {
-          final text = candidate?.toString().trim() ?? '';
-          if (text.isNotEmpty) {
-            return text;
-          }
-        }
-      }
-    } catch (_) {
-      // Mantem o corpo bruto quando a resposta nao for JSON.
-    }
-
-    return trimmedBody;
   }
 
   Widget _buildCategoriesField() {
@@ -886,7 +893,6 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             onFieldSubmitted: _addCategory,
           ),
         ),
-        
         if (_categoriesTags.isNotEmpty) ...[
           const SizedBox(height: 12),
           Wrap(
@@ -983,13 +989,13 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
               'assets/img/down-arrow.png',
               width: 24,
               height: 24,
-              errorBuilder: (context, error, stackTrace) => 
-                const Icon(Icons.arrow_drop_down, size: 24),
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.arrow_drop_down, size: 24),
             ),
           ),
           errorStyle: const TextStyle(fontSize: 12, height: 0.1),
         ),
-        items: ['Presencial', 'Remoto', 'Híbrido']
+        items: ModalityOptions.labels
             .map((modality) => DropdownMenuItem(
                   value: modality,
                   child: Text(modality),
@@ -1008,7 +1014,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final buttonWidth = constraints.maxWidth;
-        final displayText = _imageFileName != null 
+        final displayText = _imageFileName != null
             ? _getDisplayFileName(_imageFileName!, buttonWidth)
             : 'Imagem do pedido';
 
@@ -1052,8 +1058,9 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
                           'assets/img/AddImage.png',
                           width: 24,
                           height: 24,
-                          errorBuilder: (context, error, stackTrace) => 
-                            const Icon(Icons.add_photo_alternate, color: Color(0xFFC29503)),
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.add_photo_alternate,
+                                  color: Color(0xFFC29503)),
                         ),
                 ),
               ],

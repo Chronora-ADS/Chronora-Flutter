@@ -1,15 +1,16 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:chronora/core/constants/app_colors.dart';
-import 'package:chronora/core/constants/app_routes.dart';
-import 'package:chronora/core/services/profile_controller.dart';
-import 'package:chronora/widgets/backgrounds/background_default_widget.dart';
-import 'package:chronora/widgets/header.dart';
-import 'package:chronora/widgets/side_menu.dart';
-import 'package:chronora/widgets/wallet_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+
+import '../core/constants/app_colors.dart';
+import '../core/constants/app_routes.dart';
+import '../core/services/profile_controller.dart';
+import '../widgets/backgrounds/background_default_widget.dart';
+import '../widgets/header.dart';
+import '../widgets/side_menu.dart';
+import '../widgets/wallet_modal.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -21,8 +22,6 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final ProfileController _controller = ProfileController();
   final ImagePicker _imagePicker = ImagePicker();
-  final TextEditingController _searchController = TextEditingController();
-
   late final TextEditingController _nameController;
   late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
@@ -53,7 +52,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _loadUserProfile() async {
     await _controller.loadUserProfile();
-
     if (!mounted) return;
 
     final user = _controller.user;
@@ -70,7 +68,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final file = await _imagePicker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 80,
+        imageQuality: 85,
       );
 
       if (file == null || !mounted) return;
@@ -81,10 +79,30 @@ class _ProfilePageState extends State<ProfilePage> {
         _documentFileName = file.name;
       });
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao selecionar arquivo: $e')),
       );
     }
+  }
+
+  Future<Map<String, String>?> _buildDocumentPayload() async {
+    if (_documentFile == null) {
+      return null;
+    }
+
+    final bytes = _documentBytes ?? await _documentFile!.readAsBytes();
+    _documentBytes = bytes;
+
+    final extension = _documentFileName.contains('.')
+        ? _documentFileName.split('.').last
+        : 'jpg';
+
+    return {
+      'name': _documentFileName,
+      'type': extension,
+      'data': base64Encode(bytes),
+    };
   }
 
   void _toggleDrawer() {
@@ -130,64 +148,43 @@ class _ProfilePageState extends State<ProfilePage> {
     });
   }
 
-  Future<Map<String, String>?> _buildDocumentPayload() async {
-    if (_documentFile == null) {
-      return null;
-    }
-
-    final bytes = _documentBytes ?? await _documentFile!.readAsBytes();
-    _documentBytes = bytes;
-
-    final extension = _documentFileName.contains('.')
-        ? _documentFileName.split('.').last
-        : 'jpg';
-
-    return {
-      'name': _documentFileName,
-      'type': extension,
-      'data': base64Encode(bytes),
-    };
-  }
-
   Future<void> _updateProfile() async {
     if (_nameController.text.trim().isEmpty ||
         _emailController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preencha nome e e-mail.')),
+        const SnackBar(content: Text('Preencha nome e email.')),
       );
       return;
     }
 
-    if (_newPasswordController.text.isNotEmpty) {
-      if (_newPasswordController.text != _confirmPasswordController.text) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('As senhas não coincidem.')),
-        );
-        return;
-      }
+    if (_newPasswordController.text.isNotEmpty &&
+        _newPasswordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('As senhas nao coincidem.')),
+      );
+      return;
+    }
 
-      if (_currentPasswordController.text.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Digite sua senha atual para alterar a senha.'),
-          ),
-        );
-        return;
-      }
+    if (_newPasswordController.text.isNotEmpty &&
+        _currentPasswordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Digite a senha atual para trocar a senha.'),
+        ),
+      );
+      return;
     }
 
     setState(() {
       _isSubmitting = true;
     });
 
-    final document = await _buildDocumentPayload();
-
     final success = await _controller.updateUserProfile(
       id: _controller.user?.id ?? '',
       name: _nameController.text.trim(),
       email: _emailController.text.trim(),
       phoneNumber: _phoneController.text.trim(),
-      document: document,
+      document: await _buildDocumentPayload(),
       password: _newPasswordController.text.trim().isEmpty
           ? null
           : _newPasswordController.text.trim(),
@@ -247,7 +244,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ],
               ),
               const Text(
-                'Você deseja mesmo\ndeletar a sua conta?',
+                'Deseja mesmo deletar sua conta?',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 20,
@@ -257,12 +254,9 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Você perderá todos os seus Chronos e os seus pedidos abertos serão cancelados.',
+                'Voce perdera seus Chronos e pedidos em aberto.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: AppColors.preto,
-                ),
+                style: TextStyle(fontSize: 16, color: AppColors.preto),
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -270,43 +264,14 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context, true),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFC90B0B),
+                    backgroundColor: Colors.red,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(2),
-                    ),
                   ),
                   child: const Text(
-                    'Deletar Conta',
+                    'Deletar conta',
                     style: TextStyle(
                       color: AppColors.branco,
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(
-                      color: Color(0xFF353B42),
-                      width: 2,
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  child: const Text(
-                    'Voltar',
-                    style: TextStyle(
-                      color: Color(0xFF353B42),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
                     ),
                   ),
                 ),
@@ -338,10 +303,6 @@ class _ProfilePageState extends State<ProfilePage> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Conta deletada com sucesso.')),
-    );
-
     Navigator.pushNamedAndRemoveUntil(
       context,
       AppRoutes.login,
@@ -351,6 +312,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
     final hasError = !_controller.isLoading && _controller.user == null;
 
     return Scaffold(
@@ -364,13 +326,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: BackgroundDefaultWidget(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                    child: Column(
-                      children: [
-                        _buildSearchField(),
-                        const SizedBox(height: 24),
-                        _buildProfileCard(hasError: hasError),
-                      ],
-                    ),
+                    child: _buildProfileCard(hasError),
                   ),
                 ),
               ),
@@ -378,17 +334,24 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           if (_isDrawerOpen)
             Positioned(
-              top: kToolbarHeight * 1.5,
+              top: 0,
               left: 0,
               right: 0,
               bottom: 0,
               child: Container(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: Row(
                   children: [
                     SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(onWalletPressed: _openWallet),
+                      width: screenWidth * 0.6,
+                      child: SafeArea(
+                        top: true,
+                        bottom: false,
+                        child: SideMenu(
+                          onWalletPressed: _openWallet,
+                          userName: _controller.user?.name ?? 'Usuario',
+                        ),
+                      ),
                     ),
                     Expanded(
                       child: GestureDetector(
@@ -407,7 +370,7 @@ class _ProfilePageState extends State<ProfilePage> {
               right: 0,
               bottom: 0,
               child: Container(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
@@ -421,81 +384,20 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildSearchField() {
-    return TextField(
-      controller: _searchController,
-      decoration: InputDecoration(
-        hintText: 'Pintura de parede, aula de inglês...',
-        hintStyle: const TextStyle(color: AppColors.textoPlaceholder),
-        filled: true,
-        fillColor: AppColors.branco,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
-        prefixIcon: const Icon(
-          Icons.search,
-          color: AppColors.textoPlaceholder,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfileCard({required bool hasError}) {
+  Widget _buildProfileCard(bool hasError) {
     if (_controller.isLoading) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 60),
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppColors.amareloClaro),
+        child: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.amareloClaro),
+          ),
         ),
       );
     }
 
     if (hasError) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: AppColors.branco,
-          borderRadius: BorderRadius.circular(36),
-        ),
-        child: Column(
-          children: [
-            const Text(
-              'Erro ao carregar perfil',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
-                color: Colors.red,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              _controller.errorMessage,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 16,
-                color: AppColors.preto,
-              ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _loadUserProfile,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.amareloClaro,
-              ),
-              child: const Text(
-                'Tentar novamente',
-                style: TextStyle(color: AppColors.preto),
-              ),
-            ),
-          ],
-        ),
-      );
+      return _buildErrorCard();
     }
 
     return Container(
@@ -508,14 +410,13 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Center(
-            child: Text(
-              'Perfil',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w500,
-                color: AppColors.preto,
-              ),
+          const Text(
+            'Perfil',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              color: AppColors.preto,
             ),
           ),
           const SizedBox(height: 20),
@@ -537,8 +438,8 @@ class _ProfilePageState extends State<ProfilePage> {
             enabled: _isEditing,
             keyboardType: TextInputType.phone,
           ),
-          const SizedBox(height: 14),
           if (_isEditing) ...[
+            const SizedBox(height: 14),
             _buildInputField(
               controller: _currentPasswordController,
               hintText: 'Senha atual',
@@ -558,8 +459,8 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 14),
             _buildDocumentField(),
-            const SizedBox(height: 20),
           ],
+          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
@@ -578,16 +479,12 @@ class _ProfilePageState extends State<ProfilePage> {
                       width: 2,
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(2),
-                    ),
                   ),
                   child: const Text(
                     'Cancelar',
                     style: TextStyle(
                       color: AppColors.amareloUmPoucoEscuro,
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
                     ),
                   ),
                 ),
@@ -601,14 +498,11 @@ class _ProfilePageState extends State<ProfilePage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.amareloUmPoucoEscuro,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(2),
-                    ),
                   ),
                   child: _isSubmitting
                       ? const SizedBox(
-                          height: 18,
                           width: 18,
+                          height: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(
@@ -621,7 +515,6 @@ class _ProfilePageState extends State<ProfilePage> {
                           style: const TextStyle(
                             color: AppColors.branco,
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
                           ),
                         ),
                 ),
@@ -634,18 +527,52 @@ class _ProfilePageState extends State<ProfilePage> {
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: Colors.red, width: 2),
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(2),
-              ),
             ),
             child: const Text(
               'Deletar conta',
               style: TextStyle(
                 color: Colors.red,
                 fontWeight: FontWeight.bold,
-                fontSize: 16,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.branco,
+        borderRadius: BorderRadius.circular(36),
+      ),
+      child: Column(
+        children: [
+          const Text(
+            'Erro ao carregar perfil',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              color: Colors.red,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _controller.errorMessage,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.preto),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: _loadUserProfile,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.amareloClaro,
+              foregroundColor: AppColors.preto,
+            ),
+            child: const Text('Tentar novamente'),
           ),
         ],
       ),
@@ -664,33 +591,23 @@ class _ProfilePageState extends State<ProfilePage> {
       enabled: enabled,
       obscureText: obscureText,
       keyboardType: keyboardType,
-      style: const TextStyle(
-        color: AppColors.preto,
-        fontSize: 16,
-      ),
+      style: const TextStyle(color: AppColors.preto),
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: const TextStyle(
-          color: AppColors.textoPlaceholder,
-          fontSize: 16,
-        ),
+        hintStyle: const TextStyle(color: AppColors.textoPlaceholder),
         filled: true,
         fillColor: const Color(0xFFF3F3F3),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(2),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.brancoBorda),
         ),
-        disabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(2),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.brancoBorda),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(2),
+          borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.amareloUmPoucoEscuro),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 16,
         ),
       ),
     );
@@ -706,19 +623,19 @@ class _ProfilePageState extends State<ProfilePage> {
             color: AppColors.amareloUmPoucoEscuro,
             width: 2,
           ),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           children: [
             Expanded(
               child: Text(
                 _documentFileName.isEmpty
-                    ? 'documento_com_foto_atual'
+                    ? 'Selecionar documento com foto'
                     : _documentFileName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.preto,
-                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -734,18 +651,12 @@ class _ProfilePageState extends State<ProfilePage> {
                 },
                 child: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 8),
-                  child: Icon(Icons.close, color: AppColors.preto, size: 20),
+                  child: Icon(Icons.close, color: AppColors.preto, size: 18),
                 ),
               ),
-            Container(
-              width: 28,
-              height: 28,
+            const Icon(
+              Icons.upload_file,
               color: AppColors.amareloUmPoucoEscuro,
-              child: const Icon(
-                Icons.subdirectory_arrow_left,
-                color: AppColors.branco,
-                size: 18,
-              ),
             ),
           ],
         ),
@@ -755,7 +666,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   void dispose() {
-    _searchController.dispose();
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
