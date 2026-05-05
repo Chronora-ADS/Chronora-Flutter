@@ -1329,7 +1329,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           // Menu lateral
           if (_isDrawerOpen)
             Positioned(
-              top: kToolbarHeight,
+              top: 0,
               left: 0,
               right: 0,
               bottom: 0,
@@ -1339,8 +1339,12 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
                   children: [
                     SizedBox(
                       width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(
-                        onWalletPressed: _openWallet,
+                      child: SafeArea(
+                        top: true,
+                        bottom: false,
+                        child: SideMenu(
+                          onWalletPressed: _openWallet,
+                        ),
                       ),
                     ),
                     Expanded(
