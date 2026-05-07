@@ -448,7 +448,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
           ),
           if (_isDrawerOpen)
             Positioned(
-              top: kToolbarHeight * 1.5,
+              top: 0,
               left: 0,
               right: 0,
               bottom: 0,
@@ -458,7 +458,11 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
                   children: [
                     SizedBox(
                       width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(onWalletPressed: _openWallet),
+                      child: SafeArea(
+                        top: true,
+                        bottom: false,
+                        child: SideMenu(onWalletPressed: _openWallet),
+                      ),
                     ),
                     Expanded(
                       child: GestureDetector(
