@@ -308,10 +308,11 @@ class _MainPageState extends State<MainPage> {
         _activeFilters.avaliacaoValue == ServiceFilters.allRatings
             ? null
             : double.tryParse(_activeFilters.avaliacaoValue);
+    final createdServices = source.where((service) => service.isCreated);
     final hasRatingData =
-        source.any((service) => service.userCreator.rating != null);
+        createdServices.any((service) => service.userCreator.rating != null);
 
-    final filtered = source.where((service) {
+    final filtered = createdServices.where((service) {
       if (normalizedQuery.isNotEmpty &&
           !_matchesSearch(service, normalizedQuery)) {
         return false;

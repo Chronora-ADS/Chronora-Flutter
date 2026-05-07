@@ -32,6 +32,7 @@ class Service {
   });
 
   String get serviceImageUrl => serviceImage;
+  bool get isCreated => status.trim().toUpperCase() == 'CRIADO';
 
   factory Service.fromJson(Map<String, dynamic> json) {
     final userCreator = _parseUser(
