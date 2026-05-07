@@ -138,8 +138,8 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
               'assets/img/Search.png',
               width: 20,
               height: 20,
-              errorBuilder: (context, error, stackTrace) => 
-                const Icon(Icons.search, size: 20),
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.search, size: 20),
             ),
           ),
         ),
@@ -151,12 +151,13 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
     // Preço por Chronos (deve ser o mesmo da página de compra)
     const double chronosPrice = 2.50;
     const double taxPercentage = 0.10; // 10%
-    
+
     // Cálculos corretos:
-    final subtotal = widget.chronosAmount * chronosPrice; // Quantidade × Preço unitário
+    final subtotal =
+        widget.chronosAmount * chronosPrice; // Quantidade × Preço unitário
     final taxa = subtotal * taxPercentage; // 10% do subtotal
     final total = subtotal + taxa; // Este deve ser igual ao widget.totalAmount
-    
+
     return Container(
       padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
@@ -180,9 +181,9 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
               size: 40,
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Título de sucesso
           const Text(
             'Compra realizada com sucesso!',
@@ -193,9 +194,9 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
             ),
             textAlign: TextAlign.center,
           ),
-          
+
           const SizedBox(height: 30),
-          
+
           // Detalhes da transação
           Container(
             width: double.infinity,
@@ -214,7 +215,7 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
                   Icons.schedule,
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Preço unitário (OPCIONAL - pode remover se não quiser mostrar)
                 _buildDetailRow(
                   'Preço por Chronos:',
@@ -222,7 +223,7 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
                   Icons.monetization_on,
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Subtotal
                 _buildDetailRow(
                   'Subtotal:',
@@ -230,7 +231,7 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
                   Icons.calculate,
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Taxa
                 _buildDetailRow(
                   'Taxa (10%):',
@@ -238,7 +239,7 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
                   Icons.percent,
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Total (CORRIGIDO - usa o cálculo local)
                 _buildDetailRow(
                   'Total pago:',
@@ -246,7 +247,7 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
                   Icons.attach_money,
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Método de pagamento
                 _buildDetailRow(
                   'Método de pagamento:',
@@ -256,9 +257,9 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 30),
-          
+
           // Mensagem de confirmação
           Text(
             'Os Chronos foram creditados instantaneamente em sua conta.',
@@ -268,9 +269,9 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
             ),
             textAlign: TextAlign.center,
           ),
-          
+
           const SizedBox(height: 30),
-          
+
           // Botão Voltar ao Início
           SizedBox(
             width: double.infinity,
@@ -278,10 +279,7 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
             child: ElevatedButton(
               onPressed: () {
                 Navigator.pushNamedAndRemoveUntil(
-                  context, 
-                  '/main', 
-                  (route) => false
-                );
+                    context, '/main', (route) => false);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFC29503),
@@ -299,9 +297,9 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
               ),
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Botão Nova Compra
           SizedBox(
             width: double.infinity,
@@ -339,29 +337,43 @@ class _BuySuccessPageState extends State<BuySuccessPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: Header(onMenuPressed: _toggleDrawer),
       backgroundColor: const Color(0xFF0B0C0C),
       body: Stack(
         children: [
-          // Background images
-          _buildBackgroundImages(),
-          
-          // Main content
           Column(
             children: [
-              // Barra de pesquisa no topo
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: _buildSearchBar(),
-              ),
-              
-              // Card centralizado verticalmente no meio da tela
+              Header(onMenuPressed: _toggleDrawer),
               Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _buildSuccessContent(),
-                  ),
+                child: Stack(
+                  children: [
+                    // Background images
+                    _buildBackgroundImages(),
+
+                    // Main content
+                    Column(
+                      children: [
+                        // Barra de pesquisa no topo
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
+                          child: _buildSearchBar(),
+                        ),
+
+                        // Card centralizado verticalmente no meio da tela
+                        Expanded(
+                          child: Center(
+                            child: SingleChildScrollView(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              child: _buildSuccessContent(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
