@@ -1,6 +1,7 @@
 import 'package:chronora/pages/auth/account_creation_page.dart';
 import 'package:chronora/pages/auth/forgot_password_page.dart';
 import 'package:chronora/pages/auth/login_page.dart';
+import 'package:chronora/pages/auth/reset_password_page.dart';
 import 'package:chronora/pages/buy_chronos/buy_chronos_page.dart';
 import 'package:chronora/pages/main_page.dart';
 import 'package:chronora/pages/notification/notification_page.dart';
@@ -23,6 +24,7 @@ class AppRoutes {
   static const String buyChronos = '/buy-chronos';
   static const String sellChronos = '/sell-chronos';
   static const String forgotPassword = '/forgot-password';
+  static const String resetPassword = '/reset-password';
   static const String myOrders = '/my-orders';
   static const String notifications = '/notification';
   static const String profile = '/profile';
@@ -39,6 +41,7 @@ class AppRoutes {
       buyChronos: (context) => const BuyChronosPage(),
       sellChronos: (context) => const SellChronosPage(),
       forgotPassword: (context) => const ForgotPasswordPage(),
+      resetPassword: (context) => const ResetPasswordPage(),
       requestCreation: (context) => const RequestCreationPage(),
       requestView: (context) => const RequestView(),
       requestEditing: (context) => const RequestEditingPage(),
@@ -68,6 +71,13 @@ class AppRoutes {
       final serviceId = _extractTrailingId(routeName, requestEditing);
       return MaterialPageRoute(
         builder: (context) => RequestEditingPage(serviceId: serviceId),
+        settings: settings,
+      );
+    }
+
+    if (routeName.startsWith(resetPassword)) {
+      return MaterialPageRoute(
+        builder: (context) => const ResetPasswordPage(),
         settings: settings,
       );
     }

@@ -39,14 +39,17 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       final email = _emailController.text.trim();
       final response = await ApiService.post('/auth/forgot-password', {
         'email': email,
+        'redirectTo': _buildResetRedirectUrl(),
       });
 
       if (response.statusCode == 200 ||
           response.statusCode == 202 ||
           response.statusCode == 204) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Se o e-mail existir, enviaremos instruções de recuperação.'),
+            content: Text(
+                'Se o e-mail existir, enviaremos instruções de recuperação.'),
           ),
         );
         Navigator.pop(context);
@@ -61,16 +64,23 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         }
       } catch (_) {}
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao enviar recuperação: $e')),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  String _buildResetRedirectUrl() {
+    final baseUri = Uri.base;
+    return '${baseUri.scheme}://${baseUri.authority}';
   }
 
   @override
