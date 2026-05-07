@@ -1,17 +1,51 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../api/api_service.dart';
+import '../constants/app_config.dart';
+import '../constants/app_routes.dart';
 
 class AuthSessionService {
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+  static bool _isRedirectingToLogin = false;
+  static const String _defaultLocalBaseUrl = 'http://localhost:8085';
+  static const String _androidEmulatorBaseUrl = 'http://10.0.2.2:8085';
+  static const String _configuredBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: '',
+  );
   static const String _accessTokenKey = 'auth_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _expiresAtKey = 'auth_expires_at';
   static const Duration _refreshLeeway = Duration(minutes: 1);
+  static final RegExp _bearerPrefixPattern = RegExp(
+    r'^Bearer\s+',
+    caseSensitive: false,
+  );
 
   static Future<String?>? _refreshInFlight;
+  static Future<void>? _unauthorizedHandlingInFlight;
+
+  static String get baseUrl {
+    final configuredBaseUrl = _configuredBaseUrl.trim();
+    if (configuredBaseUrl.isNotEmpty) {
+      return configuredBaseUrl;
+    }
+
+    if (kIsWeb || kReleaseMode) {
+      return AppConfig.apiBaseUrl;
+    }
+
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return _androidEmulatorBaseUrl;
+    }
+
+    return _defaultLocalBaseUrl;
+  }
 
   static Future<void> saveSessionFromResponse(
     Map<String, dynamic> responseData, {
@@ -22,24 +56,28 @@ class AuthSessionService {
       const ['access_token', 'accessToken', 'token'],
     );
 
-    if (accessToken == null || accessToken.isEmpty) {
-      throw const FormatException('Token de acesso nao encontrado na resposta.');
+    final normalizedAccessToken = _normalizeToken(accessToken);
+    if (normalizedAccessToken == null || normalizedAccessToken.isEmpty) {
+      throw const FormatException(
+          'Token de acesso nao encontrado na resposta.');
     }
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_accessTokenKey, accessToken);
+    await prefs.setString(_accessTokenKey, normalizedAccessToken);
 
     final refreshToken = _readString(
       responseData,
       const ['refresh_token', 'refreshToken'],
     );
-    if (refreshToken != null && refreshToken.isNotEmpty) {
-      await prefs.setString(_refreshTokenKey, refreshToken);
+    final normalizedRefreshToken = _normalizeToken(refreshToken);
+    if (normalizedRefreshToken != null && normalizedRefreshToken.isNotEmpty) {
+      await prefs.setString(_refreshTokenKey, normalizedRefreshToken);
     } else if (!preserveExistingRefreshToken) {
       await prefs.remove(_refreshTokenKey);
     }
 
-    final expiresAt = _extractExpiresAt(responseData);
+    final expiresAt = _extractExpiresAt(responseData) ??
+        _extractJwtExpiration(normalizedAccessToken);
     if (expiresAt != null) {
       await prefs.setInt(_expiresAtKey, expiresAt.millisecondsSinceEpoch);
     } else {
@@ -49,17 +87,24 @@ class AuthSessionService {
 
   static Future<String?> getValidAccessToken() async {
     final prefs = await SharedPreferences.getInstance();
-    final accessToken = prefs.getString(_accessTokenKey);
+    final persistedAccessToken = prefs.getString(_accessTokenKey);
+    final accessToken = _normalizeToken(persistedAccessToken);
     if (accessToken == null || accessToken.isEmpty) {
       return null;
     }
 
-    final expiresAtMillis = prefs.getInt(_expiresAtKey);
-    if (expiresAtMillis == null) {
+    if (persistedAccessToken != accessToken) {
+      await prefs.setString(_accessTokenKey, accessToken);
+    }
+
+    final expiresAt = await _resolveTokenExpiration(
+      prefs: prefs,
+      accessToken: accessToken,
+    );
+    if (expiresAt == null) {
       return accessToken;
     }
 
-    final expiresAt = DateTime.fromMillisecondsSinceEpoch(expiresAtMillis);
     final now = DateTime.now();
 
     if (now.isBefore(expiresAt.subtract(_refreshLeeway))) {
@@ -75,6 +120,7 @@ class AuthSessionService {
       return accessToken;
     }
 
+    await clearSession();
     return null;
   }
 
@@ -98,14 +144,34 @@ class AuthSessionService {
     await prefs.remove(_expiresAtKey);
   }
 
+  static Future<void> handleUnauthorizedResponse() async {
+    if (_unauthorizedHandlingInFlight != null) {
+      return _unauthorizedHandlingInFlight!;
+    }
+
+    _unauthorizedHandlingInFlight = _handleUnauthorizedResponseImpl();
+    try {
+      await _unauthorizedHandlingInFlight!;
+    } finally {
+      _unauthorizedHandlingInFlight = null;
+    }
+  }
+
   static Future<String?> _refreshSessionImpl() async {
     final prefs = await SharedPreferences.getInstance();
-    final refreshToken = prefs.getString(_refreshTokenKey);
+    final persistedRefreshToken = prefs.getString(_refreshTokenKey);
+    final refreshToken = _normalizeToken(persistedRefreshToken);
     if (refreshToken == null || refreshToken.isEmpty) {
       return null;
     }
 
-    final endpoint = Uri.parse(ApiService.baseUrl).resolve('auth/refresh');
+    if (persistedRefreshToken != refreshToken) {
+      await prefs.setString(_refreshTokenKey, refreshToken);
+    }
+
+    final endpoint = Uri.parse(baseUrl).resolve(
+      'auth/refresh',
+    );
     final payloads = <Map<String, dynamic>>[
       {'refresh_token': refreshToken},
       {'refreshToken': refreshToken},
@@ -135,9 +201,11 @@ class AuthSessionService {
           decoded,
           preserveExistingRefreshToken: true,
         );
-        return _readString(
-          decoded,
-          const ['access_token', 'accessToken', 'token'],
+        return _normalizeToken(
+          _readString(
+            decoded,
+            const ['access_token', 'accessToken', 'token'],
+          ),
         );
       }
 
@@ -161,6 +229,32 @@ class AuthSessionService {
       }
     }
     return null;
+  }
+
+  static String? _normalizeToken(String? value) {
+    final trimmedValue = value?.trim();
+    if (trimmedValue == null || trimmedValue.isEmpty) {
+      return null;
+    }
+
+    final unquotedValue = trimmedValue.replaceAll('"', '');
+    return unquotedValue.replaceFirst(_bearerPrefixPattern, '').trim();
+  }
+
+  static Future<DateTime?> _resolveTokenExpiration({
+    required SharedPreferences prefs,
+    required String accessToken,
+  }) async {
+    final expiresAtMillis = prefs.getInt(_expiresAtKey);
+    if (expiresAtMillis != null) {
+      return DateTime.fromMillisecondsSinceEpoch(expiresAtMillis);
+    }
+
+    final jwtExpiration = _extractJwtExpiration(accessToken);
+    if (jwtExpiration != null) {
+      await prefs.setInt(_expiresAtKey, jwtExpiration.millisecondsSinceEpoch);
+    }
+    return jwtExpiration;
   }
 
   static DateTime? _extractExpiresAt(Map<String, dynamic> data) {
@@ -194,5 +288,67 @@ class AuthSessionService {
     }
 
     return null;
+  }
+
+  static DateTime? _extractJwtExpiration(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length < 2) {
+        return null;
+      }
+
+      final normalizedPayload = base64Url.normalize(parts[1]);
+      final payload = utf8.decode(base64Url.decode(normalizedPayload));
+      final decoded = jsonDecode(payload);
+      if (decoded is! Map<String, dynamic>) {
+        return null;
+      }
+
+      final exp = decoded['exp'];
+      if (exp is int) {
+        return DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+      }
+      if (exp is num) {
+        return DateTime.fromMillisecondsSinceEpoch(exp.toInt() * 1000);
+      }
+      if (exp is String) {
+        final parsedExp = int.tryParse(exp);
+        if (parsedExp != null) {
+          return DateTime.fromMillisecondsSinceEpoch(parsedExp * 1000);
+        }
+      }
+    } catch (_) {
+      // Ignore malformed JWTs and fall back to explicit expiration metadata.
+    }
+
+    return null;
+  }
+
+  static Future<void> _handleUnauthorizedResponseImpl() async {
+    await clearSession();
+    _redirectToLogin();
+  }
+
+  static void _redirectToLogin() {
+    final navigator = navigatorKey.currentState;
+    if (navigator == null || _isRedirectingToLogin) {
+      return;
+    }
+
+    _isRedirectingToLogin = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final currentNavigator = navigatorKey.currentState;
+      if (currentNavigator == null) {
+        _isRedirectingToLogin = false;
+        return;
+      }
+
+      currentNavigator.pushNamedAndRemoveUntil(
+        AppRoutes.login,
+        (route) => false,
+      );
+      _isRedirectingToLogin = false;
+    });
   }
 }

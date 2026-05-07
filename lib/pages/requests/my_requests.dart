@@ -10,7 +10,8 @@ import 'package:chronora/widgets/service_card.dart';
 import 'package:chronora/widgets/side_menu.dart';
 import 'package:chronora/widgets/wallet_modal.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../core/services/auth_session_service.dart';
 
 class UserIdentity {
   final int? id;
@@ -70,8 +71,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
   }
 
   Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
+    return AuthSessionService.getValidAccessToken();
   }
 
   Future<void> _loadMyRequests() async {
@@ -863,6 +863,3 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     super.dispose();
   }
 }
-
-
-

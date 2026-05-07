@@ -1,16 +1,13 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-import '../constants/app_config.dart';
+import '../services/auth_session_service.dart';
 
 class ApiService {
-  static const String _defaultLocalBaseUrl = 'http://localhost:8085';
-  static const String _androidEmulatorBaseUrl = 'http://10.0.2.2:8085';
-  static const String _configuredBaseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: '',
+  static final RegExp _bearerPrefixPattern = RegExp(
+    r'^Bearer\s+',
+    caseSensitive: false,
   );
   static http.Client? _clientForTesting;
 
@@ -20,22 +17,7 @@ class ApiService {
     _clientForTesting = client;
   }
 
-  static String get baseUrl {
-    final configuredBaseUrl = _configuredBaseUrl.trim();
-    if (configuredBaseUrl.isNotEmpty) {
-      return configuredBaseUrl;
-    }
-
-    if (kIsWeb || kReleaseMode) {
-      return AppConfig.apiBaseUrl;
-    }
-
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return _androidEmulatorBaseUrl;
-    }
-
-    return _defaultLocalBaseUrl;
-  }
+  static String get baseUrl => AuthSessionService.baseUrl;
 
   static Map<String, String> _buildHeaders({
     String? token,
@@ -46,6 +28,15 @@ class ApiService {
       if (token != null) 'Authorization': 'Bearer $token',
       if (extra != null) ...extra,
     };
+  }
+
+  static String? _normalizeToken(String? token) {
+    final trimmedToken = token?.trim();
+    if (trimmedToken == null || trimmedToken.isEmpty) {
+      return null;
+    }
+
+    return trimmedToken.replaceFirst(_bearerPrefixPattern, '').trim();
   }
 
   static Uri _buildUri(String endpoint) {
@@ -66,8 +57,9 @@ class ApiService {
     try {
       final decoded = jsonDecode(trimmedBody);
       if (decoded is Map<String, dynamic>) {
-        final message =
-            decoded['message'] ?? decoded['error_description'] ?? decoded['error'];
+        final message = decoded['message'] ??
+            decoded['error_description'] ??
+            decoded['error'];
         if (message is String && message.trim().isNotEmpty) {
           return message.trim();
         }
@@ -84,30 +76,23 @@ class ApiService {
     Map<String, dynamic> data, {
     String? token,
   }) async {
-    try {
-      final headers = _buildHeaders(token: token);
-
-      return await _client.post(
-        _buildUri(endpoint),
+    return _sendRequest(
+      endpoint,
+      token: token,
+      send: (uri, headers) => _client.post(
+        uri,
         headers: headers,
         body: jsonEncode(data),
-      );
-    } catch (e) {
-      throw Exception('Erro de conexao: $e');
-    }
+      ),
+    );
   }
 
   static Future<http.Response> get(String endpoint, {String? token}) async {
-    try {
-      final headers = _buildHeaders(token: token);
-
-      return await _client.get(
-        _buildUri(endpoint),
-        headers: headers,
-      );
-    } catch (e) {
-      throw Exception('Erro de conexao: $e');
-    }
+    return _sendRequest(
+      endpoint,
+      token: token,
+      send: (uri, headers) => _client.get(uri, headers: headers),
+    );
   }
 
   static Future<http.Response> put(
@@ -115,30 +100,23 @@ class ApiService {
     Map<String, dynamic> data, {
     String? token,
   }) async {
-    try {
-      final headers = _buildHeaders(token: token);
-
-      return await _client.put(
-        _buildUri(endpoint),
+    return _sendRequest(
+      endpoint,
+      token: token,
+      send: (uri, headers) => _client.put(
+        uri,
         headers: headers,
         body: jsonEncode(data),
-      );
-    } catch (e) {
-      throw Exception('Erro de conexao: $e');
-    }
+      ),
+    );
   }
 
   static Future<http.Response> delete(String endpoint, {String? token}) async {
-    try {
-      final headers = _buildHeaders(token: token);
-
-      return await _client.delete(
-        _buildUri(endpoint),
-        headers: headers,
-      );
-    } catch (e) {
-      throw Exception('Erro de conexao: $e');
-    }
+    return _sendRequest(
+      endpoint,
+      token: token,
+      send: (uri, headers) => _client.delete(uri, headers: headers),
+    );
   }
 
   static Future<http.Response> putWithHeaders(
@@ -155,5 +133,54 @@ class ApiService {
     } catch (e) {
       throw Exception('Erro de conexao: $e');
     }
+  }
+
+  static Future<http.Response> _sendRequest(
+    String endpoint, {
+    String? token,
+    required Future<http.Response> Function(
+      Uri uri,
+      Map<String, String> headers,
+    ) send,
+  }) async {
+    try {
+      final uri = _buildUri(endpoint);
+      var normalizedToken = _normalizeToken(token);
+      var response = await send(uri, _buildHeaders(token: normalizedToken));
+
+      if (_shouldAttemptSessionRecovery(response, normalizedToken)) {
+        final refreshedToken = await AuthSessionService.refreshSession();
+        if (refreshedToken != null && refreshedToken.isNotEmpty) {
+          normalizedToken = _normalizeToken(refreshedToken);
+          response = await send(
+            uri,
+            _buildHeaders(token: normalizedToken),
+          );
+        }
+
+        if (_isUnauthorized(response.statusCode)) {
+          await AuthSessionService.handleUnauthorizedResponse();
+        }
+      }
+
+      return response;
+    } catch (e) {
+      throw Exception('Erro de conexao: $e');
+    }
+  }
+
+  static bool _shouldAttemptSessionRecovery(
+    http.Response response,
+    String? token,
+  ) {
+    if (token == null || token.isEmpty) {
+      return false;
+    }
+
+    return _isUnauthorized(response.statusCode);
+  }
+
+  static bool _isUnauthorized(int statusCode) {
+    return statusCode == 401 || statusCode == 403;
   }
 }

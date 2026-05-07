@@ -32,6 +32,7 @@ class ChronoraFlutter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: AuthSessionService.navigatorKey,
       title: 'Chronora',
       theme: ThemeData(
         primarySwatch: Colors.amber,
