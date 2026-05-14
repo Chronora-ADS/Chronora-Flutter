@@ -45,16 +45,6 @@ class AppRoutes {
       sellChronos: (context) => _protected(const SellChronosPage()),
       forgotPassword: (context) => const ForgotPasswordPage(),
       resetPassword: (context) => const ResetPasswordPage(),
-<<<<<<< HEAD
-      requestCreation: (context) => const RequestCreationPage(),
-      requestView: (context) => const RequestView(),
-      requestAcceptedView: (context) => const RequestAcceptedView(),
-      requestEditing: (context) => const RequestEditingPage(),
-      notifications: (context) => const NotificationPage(),
-      profile: (context) => const ProfilePage(),
-      myOrders: (context) => const MeusPedidosPage(),
-      settings: (context) => const ComingSoonPage(
-=======
       requestCreation: (context) => _protected(const RequestCreationPage()),
       requestView: (context) => _protected(const RequestView()),
       requestEditing: (context) => _protected(const RequestEditingPage()),
@@ -62,7 +52,6 @@ class AppRoutes {
       profile: (context) => _protected(const ProfilePage()),
       myOrders: (context) => _protected(const MeusPedidosPage()),
       settings: (context) => _protected(const ComingSoonPage(
->>>>>>> 75d60a10d92c5aa20e06e5b1359ee3e6b2e1c8cf
             title: 'Configuracoes',
             description:
                 'As configuracoes ainda nao foram implementadas nesta versao do app.',
