@@ -33,6 +33,7 @@ class _RequestViewState extends State<RequestView> {
   bool _isLoading = true;
   String? _errorMessage;
   bool _isOwner = false;
+  bool _isReadOnly = false;
   bool _showAcceptAction = true;
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
@@ -93,6 +94,9 @@ class _RequestViewState extends State<RequestView> {
   void _applyRouteOptions(dynamic arguments) {
     if (arguments is Map && arguments['showAcceptAction'] is bool) {
       _showAcceptAction = arguments['showAcceptAction'] as bool;
+    }
+    if (arguments is Map && arguments['readOnly'] is bool) {
+      _isReadOnly = arguments['readOnly'] as bool;
     }
   }
 
@@ -516,7 +520,7 @@ class _RequestViewState extends State<RequestView> {
   }
 
   Widget _buildActionButtons(ServiceDetailModel detail) {
-    if (_isOwner && detail.id != null) {
+    if (_isOwner && detail.id != null && !_isReadOnly) {
       return Column(
         children: [
           SizedBox(
@@ -556,7 +560,7 @@ class _RequestViewState extends State<RequestView> {
       );
     }
 
-    if (!_showAcceptAction) {
+    if (!_showAcceptAction || _isReadOnly) {
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton(
