@@ -13,6 +13,7 @@ import 'package:chronora/pages/requests/request-creator-editor/request_edit.dart
 import 'package:chronora/pages/requests/request_accepted_view.dart';
 import 'package:chronora/pages/requests/request_view.dart';
 import 'package:chronora/pages/sell_chronos/sell_chronos_page.dart';
+import 'package:chronora/widgets/auth_guard.dart';
 import 'package:flutter/material.dart';
 
 class AppRoutes {
@@ -39,11 +40,12 @@ class AppRoutes {
     return {
       login: (context) => const LoginPage(),
       accountCreation: (context) => const AccountCreationPage(),
-      main: (context) => const MainPage(),
-      buyChronos: (context) => const BuyChronosPage(),
-      sellChronos: (context) => const SellChronosPage(),
+      main: (context) => _protected(const MainPage()),
+      buyChronos: (context) => _protected(const BuyChronosPage()),
+      sellChronos: (context) => _protected(const SellChronosPage()),
       forgotPassword: (context) => const ForgotPasswordPage(),
       resetPassword: (context) => const ResetPasswordPage(),
+<<<<<<< HEAD
       requestCreation: (context) => const RequestCreationPage(),
       requestView: (context) => const RequestView(),
       requestAcceptedView: (context) => const RequestAcceptedView(),
@@ -52,10 +54,19 @@ class AppRoutes {
       profile: (context) => const ProfilePage(),
       myOrders: (context) => const MeusPedidosPage(),
       settings: (context) => const ComingSoonPage(
+=======
+      requestCreation: (context) => _protected(const RequestCreationPage()),
+      requestView: (context) => _protected(const RequestView()),
+      requestEditing: (context) => _protected(const RequestEditingPage()),
+      notifications: (context) => _protected(const NotificationPage()),
+      profile: (context) => _protected(const ProfilePage()),
+      myOrders: (context) => _protected(const MeusPedidosPage()),
+      settings: (context) => _protected(const ComingSoonPage(
+>>>>>>> 75d60a10d92c5aa20e06e5b1359ee3e6b2e1c8cf
             title: 'Configuracoes',
             description:
                 'As configuracoes ainda nao foram implementadas nesta versao do app.',
-          ),
+          )),
     };
   }
 
@@ -65,7 +76,7 @@ class AppRoutes {
     if (routeName.startsWith('$requestView/')) {
       final serviceId = _extractTrailingId(routeName, requestView);
       return MaterialPageRoute(
-        builder: (context) => RequestView(serviceId: serviceId),
+        builder: (context) => _protected(RequestView(serviceId: serviceId)),
         settings: settings,
       );
     }
@@ -73,7 +84,8 @@ class AppRoutes {
     if (routeName.startsWith('$requestEditing/')) {
       final serviceId = _extractTrailingId(routeName, requestEditing);
       return MaterialPageRoute(
-        builder: (context) => RequestEditingPage(serviceId: serviceId),
+        builder: (context) =>
+            _protected(RequestEditingPage(serviceId: serviceId)),
         settings: settings,
       );
     }
@@ -94,5 +106,9 @@ class AppRoutes {
       return null;
     }
     return int.tryParse(segments.last);
+  }
+
+  static Widget _protected(Widget child) {
+    return AuthGuard(child: child);
   }
 }
