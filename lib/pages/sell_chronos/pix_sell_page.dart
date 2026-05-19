@@ -515,12 +515,8 @@ class _PixSellPageState extends State<PixSellPage> {
                   children: [
                     SizedBox(
                       width: MediaQuery.of(context).size.width * 0.6,
-                      child: SafeArea(
-                        top: true,
-                        bottom: false,
-                        child: SideMenu(
-                          onWalletPressed: _openWallet,
-                        ),
+                      child: SideMenu(
+                        onWalletPressed: _openWallet,
                       ),
                     ),
                     Expanded(

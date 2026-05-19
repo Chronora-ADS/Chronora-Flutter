@@ -145,10 +145,7 @@ class _NotificationPageState extends State<NotificationPage> {
               Header(onMenuPressed: _toggleDrawer),
               Expanded(
                 child: BackgroundDefaultWidget(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                    child: _buildContent(),
-                  ),
+                  child: _buildContent(),
                 ),
               ),
             ],
@@ -165,11 +162,7 @@ class _NotificationPageState extends State<NotificationPage> {
                   children: [
                     SizedBox(
                       width: screenWidth * 0.6,
-                      child: SafeArea(
-                        top: true,
-                        bottom: false,
-                        child: SideMenu(onWalletPressed: _openWallet),
-                      ),
+                      child: SideMenu(onWalletPressed: _openWallet),
                     ),
                     Expanded(
                       child: GestureDetector(
@@ -220,51 +213,54 @@ class _NotificationPageState extends State<NotificationPage> {
       );
     }
 
-    return ListView.builder(
-      itemCount: _notifications.length,
-      itemBuilder: (context, index) {
-        final notification = _notifications[index];
-        return GestureDetector(
-          onTap: () => _openNotification(notification),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.branco,
-              borderRadius: BorderRadius.circular(16),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final notification in _notifications)
+            GestureDetector(
+              onTap: () => _openNotification(notification),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.branco,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      notification.message,
+                      style: const TextStyle(
+                        color: AppColors.preto,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Pedido: ${notification.service.title}',
+                      style: const TextStyle(
+                        color: AppColors.amareloUmPoucoEscuro,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _formatDateTime(notification.notificationTime),
+                      style: const TextStyle(
+                        color: Colors.black54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  notification.message,
-                  style: const TextStyle(
-                    color: AppColors.preto,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Pedido: ${notification.service.title}',
-                  style: const TextStyle(
-                    color: AppColors.amareloUmPoucoEscuro,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _formatDateTime(notification.notificationTime),
-                  style: const TextStyle(
-                    color: Colors.black54,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+        ],
+      ),
     );
   }
 

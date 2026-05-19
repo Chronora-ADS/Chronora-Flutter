@@ -344,13 +344,9 @@ class _ProfilePageState extends State<ProfilePage> {
                   children: [
                     SizedBox(
                       width: screenWidth * 0.6,
-                      child: SafeArea(
-                        top: true,
-                        bottom: false,
-                        child: SideMenu(
-                          onWalletPressed: _openWallet,
-                          userName: _controller.user?.name ?? 'Usuario',
-                        ),
+                      child: SideMenu(
+                        onWalletPressed: _openWallet,
+                        userName: _controller.user?.name ?? 'Usuario',
                       ),
                     ),
                     Expanded(
