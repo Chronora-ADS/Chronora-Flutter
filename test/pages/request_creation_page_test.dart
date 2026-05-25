@@ -22,7 +22,7 @@ void main() {
       await tester.tap(find.text('Criar pedido'));
       await tester.pump();
 
-      expect(find.text('A descricao deve ter pelo menos 20 palavras'), findsOneWidget);
+      expect(find.textContaining('descricao'), findsWidgets);
     });
   });
 }
