@@ -44,6 +44,7 @@ class ProfileController {
     required String email,
     required String phoneNumber,
     Map<String, String>? document,
+    Map<String, String>? profileImage,
     String? password,
   }) async {
     isLoading = true;
@@ -73,6 +74,7 @@ class ProfileController {
         'email': email.trim(),
         if (parsedPhoneNumber != null) 'phoneNumber': parsedPhoneNumber,
         if (document != null) 'document': document,
+        if (profileImage != null) 'profileImage': profileImage,
         if (password != null && password.trim().isNotEmpty)
           'password': password.trim(),
       };

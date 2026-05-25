@@ -5,6 +5,8 @@ class User {
   final String phoneNumber;
   final int? timeChronos;
   final String? description;
+  final double? rating;
+  final String? profileImage;
 
   User({
     required this.id,
@@ -13,6 +15,8 @@ class User {
     required this.phoneNumber,
     this.timeChronos,
     this.description,
+    this.rating,
+    this.profileImage,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -22,7 +26,13 @@ class User {
       email: _readString(json['email']),
       phoneNumber: _readString(json['phoneNumber']),
       timeChronos: _readInt(json['timeChronos']),
-      description: _readNullableString(json['description'] ?? json['descricao']),
+      description:
+          _readNullableString(json['description'] ?? json['descricao']),
+      rating: _readDouble(
+          json['rating'] ?? json['userRating'] ?? json['avaliacao']),
+      profileImage: _readNullableString(
+        json['profileImage'] ?? json['profileImageUrl'] ?? json['photoUrl'],
+      ),
     );
   }
 
@@ -41,5 +51,12 @@ class User {
     if (value is int) return value;
     if (value is num) return value.toInt();
     return int.tryParse(value.toString());
+  }
+
+  static double? _readDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString().replaceAll(',', '.'));
   }
 }
