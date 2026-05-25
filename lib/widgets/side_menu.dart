@@ -244,23 +244,26 @@ class SideMenu extends StatelessWidget {
     required String title,
     required VoidCallback onTap,
   }) {
-    return ListTile(
-      leading: Image.asset(
-        icon,
-        width: 24,
-        height: 24,
-      ),
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 20,
-          color: AppColors.branco,
-          fontWeight: FontWeight.w700,
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        leading: Image.asset(
+          icon,
+          width: 24,
+          height: 24,
         ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 20,
+            color: AppColors.branco,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        onTap: onTap,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+        minLeadingWidth: 0,
       ),
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      minLeadingWidth: 0,
     );
   }
 
