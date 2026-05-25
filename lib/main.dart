@@ -7,6 +7,7 @@ import 'core/constants/app_routes.dart';
 import 'core/services/auth_session_service.dart';
 import 'core/services/client_log_service.dart';
 import 'pages/auth/login_page.dart';
+import 'pages/auth/reset_password_page.dart';
 import 'pages/main_page.dart';
 
 Future<void> main() async {
@@ -27,7 +28,9 @@ Future<void> main() async {
 }
 
 class ChronoraFlutter extends StatelessWidget {
-  const ChronoraFlutter({super.key});
+  final Uri? initialUri;
+
+  const ChronoraFlutter({super.key, this.initialUri});
 
   @override
   Widget build(BuildContext context) {
@@ -38,11 +41,23 @@ class ChronoraFlutter extends StatelessWidget {
         fontFamily: 'Roboto',
         scaffoldBackgroundColor: const Color(0xFF0B0C0C),
       ),
-      home: const _AuthGate(),
+      home: _isPasswordRecoveryUrl(initialUri ?? Uri.base)
+          ? ResetPasswordPage(
+              accessToken:
+                  ResetPasswordPage.extractAccessToken(initialUri ?? Uri.base),
+            )
+          : const _AuthGate(),
       routes: AppRoutes.routes,
       onGenerateRoute: AppRoutes.onGenerateRoute,
       debugShowCheckedModeBanner: false,
     );
+  }
+
+  bool _isPasswordRecoveryUrl(Uri uri) {
+    final location = uri.toString();
+    return location.contains('/reset-password') ||
+        location.contains('type=recovery') ||
+        location.contains('access_token=');
   }
 }
 

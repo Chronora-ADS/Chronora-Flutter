@@ -101,8 +101,8 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
               'assets/img/Search.png',
               width: 20,
               height: 20,
-              errorBuilder: (context, error, stackTrace) => 
-                const Icon(Icons.search, size: 20),
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.search, size: 20),
             ),
           ),
         ),
@@ -134,9 +134,9 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
               size: 40,
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Título de sucesso
           const Text(
             'Venda realizada com sucesso!',
@@ -147,9 +147,9 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
             ),
             textAlign: TextAlign.center,
           ),
-          
+
           const SizedBox(height: 30),
-          
+
           // Detalhes da transação
           Container(
             width: double.infinity,
@@ -168,7 +168,7 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
                   Icons.schedule,
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Valor recebido
                 _buildDetailRow(
                   'Valor recebido:',
@@ -176,7 +176,7 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
                   Icons.attach_money,
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Chave PIX
                 _buildDetailRow(
                   'Chave PIX:',
@@ -184,7 +184,7 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
                   Icons.qr_code,
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Taxa
                 _buildDetailRow(
                   'Taxa (10%):',
@@ -194,9 +194,9 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 30),
-          
+
           // Mensagem de confirmação
           Text(
             'O valor será creditado em sua conta em até 2 dias úteis.',
@@ -206,9 +206,9 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
             ),
             textAlign: TextAlign.center,
           ),
-          
+
           const SizedBox(height: 30),
-          
+
           // Botão Voltar ao Início
           SizedBox(
             width: double.infinity,
@@ -217,10 +217,7 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
               onPressed: () {
                 // Navega para a tela principal limpando o stack
                 Navigator.pushNamedAndRemoveUntil(
-                  context, 
-                  '/main', 
-                  (route) => false
-                );
+                    context, '/main', (route) => false);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFC29503),
@@ -238,9 +235,9 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
               ),
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Botão Nova Venda
           SizedBox(
             width: double.infinity,
@@ -313,7 +310,7 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
 
   String _formatPixKey(String pixKey) {
     if (pixKey.length <= 8) return pixKey;
-    
+
     // Formatação para mostrar apenas os primeiros e últimos caracteres
     final firstPart = pixKey.substring(0, 4);
     final lastPart = pixKey.substring(pixKey.length - 4);
@@ -323,31 +320,41 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: Header(onMenuPressed: _toggleDrawer),
       backgroundColor: const Color(0xFF0B0C0C),
       body: Stack(
         children: [
-          // Background images
-          _buildBackgroundImages(),
-          
-          // Main content
           Column(
             children: [
-              const SizedBox(height: 16),
+              Header(onMenuPressed: _toggleDrawer),
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: [
-                      _buildSearchBar(),
-                      const SizedBox(height: 40),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: _buildSuccessContent(),
+                child: Stack(
+                  children: [
+                    // Background images
+                    _buildBackgroundImages(),
+
+                    // Main content
+                    Column(
+                      children: [
+                        const SizedBox(height: 16),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Column(
+                              children: [
+                                _buildSearchBar(),
+                                const SizedBox(height: 40),
+                                Expanded(
+                                  child: SingleChildScrollView(
+                                    child: _buildSuccessContent(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],

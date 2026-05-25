@@ -1,6 +1,7 @@
 import 'package:chronora/pages/auth/account_creation_page.dart';
 import 'package:chronora/pages/auth/forgot_password_page.dart';
 import 'package:chronora/pages/auth/login_page.dart';
+import 'package:chronora/pages/auth/reset_password_page.dart';
 import 'package:chronora/pages/buy_chronos/buy_chronos_page.dart';
 import 'package:chronora/pages/main_page.dart';
 import 'package:chronora/pages/notification/notification_page.dart';
@@ -11,6 +12,7 @@ import 'package:chronora/pages/requests/request-creator-editor/request_creation.
 import 'package:chronora/pages/requests/request-creator-editor/request_edit.dart';
 import 'package:chronora/pages/requests/request_view.dart';
 import 'package:chronora/pages/sell_chronos/sell_chronos_page.dart';
+import 'package:chronora/widgets/auth_guard.dart';
 import 'package:flutter/material.dart';
 
 class AppRoutes {
@@ -19,10 +21,12 @@ class AppRoutes {
   static const String main = '/main';
   static const String requestCreation = '/request-creation';
   static const String requestView = '/request-view';
+  static const String requestAcceptedView = '/request-accepted-view';
   static const String requestEditing = '/request-editing';
   static const String buyChronos = '/buy-chronos';
   static const String sellChronos = '/sell-chronos';
   static const String forgotPassword = '/forgot-password';
+  static const String resetPassword = '/reset-password';
   static const String myOrders = '/my-orders';
   static const String notifications = '/notification';
   static const String profile = '/profile';
@@ -35,21 +39,22 @@ class AppRoutes {
     return {
       login: (context) => const LoginPage(),
       accountCreation: (context) => const AccountCreationPage(),
-      main: (context) => const MainPage(),
-      buyChronos: (context) => const BuyChronosPage(),
-      sellChronos: (context) => const SellChronosPage(),
+      main: (context) => _protected(const MainPage()),
+      buyChronos: (context) => _protected(const BuyChronosPage()),
+      sellChronos: (context) => _protected(const SellChronosPage()),
       forgotPassword: (context) => const ForgotPasswordPage(),
-      requestCreation: (context) => const RequestCreationPage(),
-      requestView: (context) => const RequestView(),
-      requestEditing: (context) => const RequestEditingPage(),
-      notifications: (context) => const NotificationPage(),
-      profile: (context) => const ProfilePage(),
-      myOrders: (context) => const MeusPedidosPage(),
-      settings: (context) => const ComingSoonPage(
+      resetPassword: (context) => const ResetPasswordPage(),
+      requestCreation: (context) => _protected(const RequestCreationPage()),
+      requestView: (context) => _protected(const RequestView()),
+      requestEditing: (context) => _protected(const RequestEditingPage()),
+      notifications: (context) => _protected(const NotificationPage()),
+      profile: (context) => _protected(const ProfilePage()),
+      myOrders: (context) => _protected(const MeusPedidosPage()),
+      settings: (context) => _protected(const ComingSoonPage(
             title: 'Configuracoes',
             description:
                 'As configuracoes ainda nao foram implementadas nesta versao do app.',
-          ),
+          )),
     };
   }
 
@@ -59,7 +64,7 @@ class AppRoutes {
     if (routeName.startsWith('$requestView/')) {
       final serviceId = _extractTrailingId(routeName, requestView);
       return MaterialPageRoute(
-        builder: (context) => RequestView(serviceId: serviceId),
+        builder: (context) => _protected(RequestView(serviceId: serviceId)),
         settings: settings,
       );
     }
@@ -67,7 +72,15 @@ class AppRoutes {
     if (routeName.startsWith('$requestEditing/')) {
       final serviceId = _extractTrailingId(routeName, requestEditing);
       return MaterialPageRoute(
-        builder: (context) => RequestEditingPage(serviceId: serviceId),
+        builder: (context) =>
+            _protected(RequestEditingPage(serviceId: serviceId)),
+        settings: settings,
+      );
+    }
+
+    if (routeName.startsWith(resetPassword)) {
+      return MaterialPageRoute(
+        builder: (context) => const ResetPasswordPage(),
         settings: settings,
       );
     }
@@ -81,5 +94,9 @@ class AppRoutes {
       return null;
     }
     return int.tryParse(segments.last);
+  }
+
+  static Widget _protected(Widget child) {
+    return AuthGuard(child: child);
   }
 }

@@ -44,6 +44,25 @@ void main() {
       );
     });
 
+    test('identifica somente pedidos com status criado', () {
+      Service serviceWithStatus(String status) {
+        return Service.fromJson({
+          'id': 1,
+          'title': 'Aula de ingles',
+          'description': 'Conversacao para iniciantes',
+          'timeChronos': 2,
+          'status': status,
+          'userCreator': {'name': 'Ana'},
+        });
+      }
+
+      expect(serviceWithStatus('CRIADO').isCreated, isTrue);
+      expect(serviceWithStatus(' criado ').isCreated, isTrue);
+      expect(serviceWithStatus('ACEITO').isCreated, isFalse);
+      expect(serviceWithStatus('CONCLUIDO').isCreated, isFalse);
+      expect(serviceWithStatus('CANCELADO').isCreated, isFalse);
+    });
+
     test('resolve imagem em data URI, URL absoluta e caminho relativo da API',
         () {
       final bytes = utf8.encode('imagem fake');
