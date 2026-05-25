@@ -8,11 +8,11 @@ import '../../core/constants/app_routes.dart';
 import '../../core/models/main_page_requests_model.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/services/auth_session_service.dart';
-import '../../widgets/backgrounds/background_default_widget.dart';
 import '../../widgets/header.dart';
 import '../../widgets/service_image.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
+import 'request_accepted_view.dart';
 
 class RequestView extends StatefulWidget {
   final int? serviceId;
@@ -33,6 +33,10 @@ class _RequestViewState extends State<RequestView> {
   bool _isLoading = true;
   String? _errorMessage;
   bool _isOwner = false;
+  int? _currentUserId;
+  String? _currentUserName;
+  int? _currentUserPhone;
+  AcceptedRequestInfo? _acceptedRequestInfo;
   bool _showAcceptAction = true;
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
@@ -110,7 +114,7 @@ class _RequestViewState extends State<RequestView> {
         throw Exception('Usuario nao autenticado.');
       }
 
-      final currentUserId = await _fetchCurrentUserId(token);
+      final currentUser = await _fetchCurrentUser(token);
       final response =
           await ApiService.get('/service/get/$serviceId', token: token);
       if (response.statusCode != 200) {
@@ -127,11 +131,20 @@ class _RequestViewState extends State<RequestView> {
       );
 
       if (!mounted) return;
+      final acceptedInfo = detail.acceptedRequestInfo?.hasAcceptedUser == true
+          ? detail.acceptedRequestInfo
+          : null;
+      final isOwner = detail.userCreator.id == currentUser?.id;
       setState(() {
+        _currentUserId = currentUser?.id;
+        _currentUserName = currentUser?.name;
+        _currentUserPhone = currentUser?.phoneNumber;
         _serviceDetail = detail;
-        _isOwner = detail.userCreator.id == currentUserId;
+        _isOwner = isOwner;
+        _acceptedRequestInfo = acceptedInfo;
         _isLoading = false;
       });
+      _routeToAcceptedRequestIfNeeded(detail, acceptedInfo, isOwner: isOwner);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -141,7 +154,7 @@ class _RequestViewState extends State<RequestView> {
     }
   }
 
-  Future<int?> _fetchCurrentUserId(String token) async {
+  Future<_CurrentUser?> _fetchCurrentUser(String token) async {
     try {
       final response = await ApiService.get('/user/get', token: token);
       if (response.statusCode != 200) {
@@ -150,10 +163,12 @@ class _RequestViewState extends State<RequestView> {
 
       final decoded = jsonDecode(response.body);
       if (decoded is Map<String, dynamic>) {
-        final value = decoded['id'] ?? decoded['data']?['id'];
-        if (value is int) return value;
-        if (value is num) return value.toInt();
-        if (value is String) return int.tryParse(value);
+        final data = decoded['user'] is Map<String, dynamic>
+            ? decoded['user'] as Map<String, dynamic>
+            : decoded['data'] is Map<String, dynamic>
+                ? decoded['data'] as Map<String, dynamic>
+                : decoded;
+        return _CurrentUser.fromJson(data);
       }
     } catch (_) {
       // Ignore owner lookup errors and keep the page usable.
@@ -238,6 +253,256 @@ class _RequestViewState extends State<RequestView> {
     });
   }
 
+  Future<void> _acceptRequest() async {
+    final detail = _serviceDetail;
+    if (detail?.id == null) return;
+    final serviceId = detail!.id!;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final token = await AuthSessionService.getValidAccessToken();
+      if (token == null) {
+        throw Exception('Usuario nao autenticado.');
+      }
+
+      final latestDetail = await _fetchServiceDetailSnapshot(serviceId, token);
+      final latestAcceptedInfo = latestDetail?.acceptedRequestInfo;
+      if (_isAcceptedByAnotherProvider(latestAcceptedInfo)) {
+        throw Exception('O pedido ja foi aceito por outro usuario.');
+      }
+
+      final response = await ApiService.put(
+        '/service/acceptService/$serviceId',
+        const {},
+        token: token,
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw Exception(
+          ApiService.extractErrorMessage(
+            response.body,
+            fallback: 'Nao foi possivel aceitar o pedido.',
+          ),
+        );
+      }
+
+      final acceptedDetail = _parseServiceDetailFromBody(response.body) ??
+          await _fetchServiceDetailSnapshot(serviceId, token) ??
+          latestDetail ??
+          detail;
+      final acceptedInfo = _resolveAcceptedRequestInfo(acceptedDetail);
+
+      if (!mounted) return;
+      setState(() {
+        _serviceDetail = acceptedDetail;
+        _acceptedRequestInfo = acceptedInfo;
+        _isOwner = false;
+        _isLoading = false;
+      });
+
+      _openAcceptedRequest(
+        detail: acceptedDetail,
+        acceptedInfo: acceptedInfo,
+        audience: RequestAcceptedAudience.provider,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      _showSnackBar(
+        _buildAcceptRequestErrorMessage(e),
+        backgroundColor: AppColors.vermelho,
+      );
+    }
+  }
+
+  Future<ServiceDetailModel?> _fetchServiceDetailSnapshot(
+    int serviceId,
+    String token,
+  ) async {
+    final response =
+        await ApiService.get('/service/get/$serviceId', token: token);
+    if (response.statusCode != 200) {
+      return null;
+    }
+
+    return _parseServiceDetailFromBody(response.body);
+  }
+
+  ServiceDetailModel? _parseServiceDetailFromBody(String body) {
+    final trimmedBody = body.trim();
+    if (trimmedBody.isEmpty) {
+      return null;
+    }
+
+    final decoded = jsonDecode(trimmedBody);
+    if (decoded is Map<String, dynamic>) {
+      return ServiceDetailModel.fromJson(decoded);
+    }
+
+    return null;
+  }
+
+  AcceptedRequestInfo _resolveAcceptedRequestInfo(ServiceDetailModel detail) {
+    final backendInfo = detail.acceptedRequestInfo;
+    if (backendInfo != null && backendInfo.hasAcceptedUser) {
+      return backendInfo;
+    }
+
+    return AcceptedRequestInfo(
+      acceptedUser: UserCreator(
+        id: _currentUserId,
+        name: (_currentUserName?.trim().isNotEmpty ?? false)
+            ? _currentUserName!.trim()
+            : 'Prestador',
+        phoneNumber: _currentUserPhone,
+      ),
+      acceptedAt: DateTime.now().toIso8601String(),
+      authenticationCode: backendInfo?.authenticationCode,
+      expiresAt: backendInfo?.expiresAt,
+    );
+  }
+
+  void _openRequesterAcceptedPreview() {
+    final detail = _serviceDetail;
+    final acceptedInfo = _acceptedRequestInfo ?? detail?.acceptedRequestInfo;
+
+    if (detail == null || acceptedInfo?.hasAcceptedUser != true) {
+      _showSnackBar(
+        'O pedido ainda nao foi aceito.',
+        backgroundColor: AppColors.vermelho,
+      );
+      return;
+    }
+
+    _openAcceptedRequest(
+      detail: detail,
+      acceptedInfo: acceptedInfo!,
+      audience: RequestAcceptedAudience.requester,
+    );
+  }
+
+  void _openAcceptedRequest({
+    required ServiceDetailModel detail,
+    required AcceptedRequestInfo acceptedInfo,
+    required RequestAcceptedAudience audience,
+    bool replace = false,
+  }) {
+    final arguments = {
+      'serviceId': detail.id,
+      'serviceDetail': detail,
+      'audience': audience,
+      'acceptedUserName': acceptedInfo.acceptedUser?.name,
+      'acceptedUserPhone': acceptedInfo.acceptedUser?.phoneNumber,
+      'acceptedAt': acceptedInfo.acceptedAt,
+      'authenticationCode': acceptedInfo.authenticationCode,
+      'authenticationCodeExpiresAt': acceptedInfo.expiresAt,
+    };
+
+    if (replace) {
+      Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.requestAcceptedView,
+        arguments: arguments,
+      );
+      return;
+    }
+
+    Navigator.pushNamed(
+      context,
+      AppRoutes.requestAcceptedView,
+      arguments: arguments,
+    );
+  }
+
+  void _routeToAcceptedRequestIfNeeded(
+    ServiceDetailModel detail,
+    AcceptedRequestInfo? acceptedInfo, {
+    required bool isOwner,
+  }) {
+    if (isOwner || !_isAcceptedByCurrentProvider(acceptedInfo)) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _openAcceptedRequest(
+        detail: detail,
+        acceptedInfo: acceptedInfo!,
+        audience: RequestAcceptedAudience.provider,
+        replace: true,
+      );
+    });
+  }
+
+  bool _isAcceptedByCurrentProvider(AcceptedRequestInfo? acceptedInfo) {
+    final acceptedUserId = acceptedInfo?.acceptedUser?.id;
+    if (acceptedUserId == null || _currentUserId == null) {
+      return false;
+    }
+
+    return acceptedUserId.toString() == _currentUserId.toString();
+  }
+
+  bool _isAcceptedByAnotherProvider(AcceptedRequestInfo? acceptedInfo) {
+    if (acceptedInfo?.hasAcceptedUser != true) {
+      return false;
+    }
+
+    return !_isAcceptedByCurrentProvider(acceptedInfo);
+  }
+
+  bool _canOpenAcceptedRequest(AcceptedRequestInfo? acceptedInfo) {
+    if (acceptedInfo?.hasAcceptedUser != true) {
+      return false;
+    }
+
+    final code = acceptedInfo?.authenticationCode?.trim();
+    final expiresAt = acceptedInfo?.expiresAt?.trim();
+    if (code == null ||
+        !RegExp(r'^\d{4}$').hasMatch(code) ||
+        expiresAt == null ||
+        expiresAt.isEmpty) {
+      return false;
+    }
+
+    final parsedExpiresAt = DateTime.tryParse(expiresAt);
+    return parsedExpiresAt == null || parsedExpiresAt.isAfter(DateTime.now());
+  }
+
+  String _buildAcceptRequestErrorMessage(Object error) {
+    final rawMessage = error.toString().toLowerCase();
+
+    if (rawMessage.contains('ja foi aceito')) {
+      return 'Erro, o pedido ja foi aceito por outro usuario.';
+    }
+
+    if (rawMessage.contains('mais de um pedido')) {
+      return 'Erro, voce nao pode aceitar mais de um pedido ao mesmo tempo.';
+    }
+
+    if (rawMessage.contains('proprio pedido')) {
+      return 'Erro, voce nao pode aceitar o proprio pedido.';
+    }
+
+    return error.toString().replaceFirst('Exception: ', '');
+  }
+
+  void _showSnackBar(String message, {required Color backgroundColor}) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: backgroundColor),
+      );
+  }
+
   void _toggleDrawer() {
     setState(() {
       _isDrawerOpen = !_isDrawerOpen;
@@ -265,6 +530,7 @@ class _RequestViewState extends State<RequestView> {
       backgroundColor: AppColors.preto,
       body: Stack(
         children: [
+          _buildBackgroundImages(),
           Column(
             children: [
               Header(
@@ -272,32 +538,26 @@ class _RequestViewState extends State<RequestView> {
                 onMenuPressed: _toggleDrawer,
               ),
               Expanded(
-                child: BackgroundDefaultWidget(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                    child: _buildContent(),
-                  ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                  child: _buildContent(),
                 ),
               ),
             ],
           ),
           if (_isDrawerOpen)
             Positioned(
-              top: 0,
+              top: kToolbarHeight * 1.5,
               left: 0,
               right: 0,
               bottom: 0,
               child: Container(
-                color: Colors.black.withValues(alpha: 0.5),
+                color: AppColors.preto.withValues(alpha: 0.5),
                 child: Row(
                   children: [
                     SizedBox(
                       width: screenWidth * 0.6,
-                      child: SafeArea(
-                        top: true,
-                        bottom: false,
-                        child: SideMenu(onWalletPressed: _openWallet),
-                      ),
+                      child: SideMenu(onWalletPressed: _openWallet),
                     ),
                     Expanded(
                       child: GestureDetector(
@@ -316,7 +576,7 @@ class _RequestViewState extends State<RequestView> {
               right: 0,
               bottom: 0,
               child: Container(
-                color: Colors.black.withValues(alpha: 0.5),
+                color: AppColors.preto.withValues(alpha: 0.5),
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
@@ -327,6 +587,40 @@ class _RequestViewState extends State<RequestView> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildBackgroundImages() {
+    return Stack(
+      children: [
+        Positioned(
+          left: 0,
+          top: 135,
+          child: Image.asset(
+            'assets/img/Comb2.png',
+            errorBuilder: (_, __, ___) => const SizedBox(),
+          ),
+        ),
+        Positioned(
+          left: 0,
+          bottom: 0,
+          child: Image.asset(
+            'assets/img/BarAscending.png',
+            width: 210,
+            height: 179,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const SizedBox(),
+          ),
+        ),
+        Positioned(
+          right: 0,
+          bottom: 60,
+          child: Image.asset(
+            'assets/img/Comb3.png',
+            errorBuilder: (_, __, ___) => const SizedBox(),
+          ),
+        ),
+      ],
     );
   }
 
@@ -365,68 +659,192 @@ class _RequestViewState extends State<RequestView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: _buildServiceImage(detail),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: AppColors.branco,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                detail.title,
-                style: const TextStyle(
-                  color: AppColors.preto,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _buildInfoChip('Prazo: ${_formatDate(detail.deadline)}'),
-                  _buildInfoChip(detail.modality),
-                  _buildInfoChip('${detail.timeChronos} Chronos'),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                detail.description,
-                style: const TextStyle(
-                  color: AppColors.preto,
-                  fontSize: 16,
-                  height: 1.4,
-                ),
-              ),
-            ],
-          ),
-        ),
+        _buildRequestCard(detail),
         if (detail.categoryEntities.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: detail.categoryEntities
-                .map((category) => _buildCategoryChip(category.name))
-                .toList(),
+          const SizedBox(height: 5),
+          _buildCategoryList(detail),
+        ],
+        const SizedBox(height: 20),
+        _buildPosterCard(detail),
+        const SizedBox(height: 20),
+        _buildActionButtons(detail),
+      ],
+    );
+  }
+
+  Widget _buildRequestCard(ServiceDetailModel detail) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10,
+            offset: Offset(0, 4),
           ),
         ],
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: AppColors.branco,
-            borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: const BoxDecoration(
+              color: AppColors.branco,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+            ),
+            child: Text(
+              detail.title,
+              style: const TextStyle(
+                color: AppColors.preto,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
-          child: Row(
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: const BoxDecoration(
+              color: AppColors.preto,
+              border: Border(
+                top: BorderSide(
+                  color: AppColors.amareloUmPoucoMaisEscuro,
+                  width: 3,
+                ),
+                bottom: BorderSide(
+                  color: AppColors.amareloUmPoucoMaisEscuro,
+                  width: 3,
+                ),
+                left: BorderSide(
+                  color: AppColors.amareloUmPoucoMaisEscuro,
+                  width: 3,
+                ),
+                right: BorderSide(
+                  color: AppColors.amareloUmPoucoMaisEscuro,
+                  width: 3,
+                ),
+              ),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(12),
+                bottomRight: Radius.circular(12),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final imageWidth = constraints.maxWidth < 340
+                        ? 128.0
+                        : constraints.maxWidth < 420
+                            ? 150.0
+                            : 200.0;
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            width: imageWidth,
+                            height: imageWidth * 0.565,
+                            color: AppColors.cinza,
+                            child: _buildServiceImage(detail),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _RequestSummary(
+                            deadline: _formatDate(detail.deadline),
+                            modality: _formatModality(detail.modality),
+                            timeChronos: detail.timeChronos,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  detail.description,
+                  style: const TextStyle(
+                    color: AppColors.branco,
+                    fontSize: 16,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildServiceImage(ServiceDetailModel detail) {
+    return ServiceImage(
+      imageSource: detail.serviceImageUrl,
+      fit: BoxFit.cover,
+      placeholderColor: AppColors.cinza,
+      iconColor: AppColors.branco,
+    );
+  }
+
+  Widget _buildCategoryList(ServiceDetailModel detail) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: detail.categoryEntities
+            .map((category) => _buildCategoryChip(category.name))
+            .toList(),
+      ),
+    );
+  }
+
+  Widget _buildCategoryChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.amareloClaro,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppColors.preto,
+          fontSize: 16,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPosterCard(ServiceDetailModel detail) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.branco,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Postado as ${_formatTime(detail.postedAt)} por:',
+            style: const TextStyle(
+              color: AppColors.preto,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
             children: [
               CircleAvatar(
                 backgroundColor: AppColors.amareloClaro,
@@ -434,7 +852,7 @@ class _RequestViewState extends State<RequestView> {
                   detail.userCreator.name.isEmpty
                       ? '?'
                       : detail.userCreator.name[0].toUpperCase(),
-                  style: const TextStyle(color: AppColors.preto),
+                  style: const TextStyle(color: AppColors.branco),
                 ),
               ),
               const SizedBox(width: 12),
@@ -442,111 +860,128 @@ class _RequestViewState extends State<RequestView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Publicado por',
-                      style: TextStyle(
-                        color: Colors.black54,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
                     Text(
-                      detail.userCreator.name,
+                      detail.userCreator.name.isEmpty
+                          ? 'Solicitante'
+                          : detail.userCreator.name,
                       style: const TextStyle(
                         color: AppColors.preto,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    const Row(
+                      children: [
+                        Text(
+                          '5.0',
+                          style: TextStyle(
+                            color: AppColors.preto,
+                            fontSize: 14,
+                          ),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(
+                          Icons.star,
+                          color: AppColors.amareloClaro,
+                          size: 16,
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 20),
-        _buildActionButtons(detail),
-      ],
-    );
-  }
-
-  Widget _buildServiceImage(ServiceDetailModel detail) {
-    return ServiceImage(
-      imageSource: detail.serviceImageUrl,
-      height: 240,
-      width: double.infinity,
-      fit: BoxFit.cover,
-      placeholderColor: const Color(0xFFD8DBD2),
-      iconColor: Colors.grey,
-    );
-  }
-
-  Widget _buildInfoChip(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.amareloClaro,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: AppColors.preto,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCategoryChip(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.branco,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: AppColors.preto,
-          fontWeight: FontWeight.w600,
-        ),
+        ],
       ),
     );
   }
 
   Widget _buildActionButtons(ServiceDetailModel detail) {
+    final acceptedInfo = _acceptedRequestInfo ?? detail.acceptedRequestInfo;
+    final canOpenAcceptedRequest = _canOpenAcceptedRequest(acceptedInfo);
+
     if (_isOwner && detail.id != null) {
       return Column(
         children: [
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton(
+            child: OutlinedButton(
               onPressed: _editRequest,
-              style: ElevatedButton.styleFrom(
+              style: OutlinedButton.styleFrom(
                 backgroundColor: AppColors.amareloUmPoucoEscuro,
                 foregroundColor: AppColors.branco,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                side: const BorderSide(color: AppColors.amareloUmPoucoEscuro),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 8),
               ),
               child: const Text(
                 'Editar pedido',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: AppColors.branco,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton(
+            child: ElevatedButton(
               onPressed: _cancelRequest,
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.red, width: 2),
-                padding: const EdgeInsets.symmetric(vertical: 16),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.preto,
+                foregroundColor: AppColors.branco,
+                side: const BorderSide(
+                  color: AppColors.amareloUmPoucoEscuro,
+                  width: 4,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 8),
               ),
               child: const Text(
                 'Cancelar pedido',
                 style: TextStyle(
-                  color: Colors.red,
+                  color: AppColors.branco,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed:
+                  canOpenAcceptedRequest ? _openRequesterAcceptedPreview : null,
+              style: OutlinedButton.styleFrom(
+                backgroundColor: canOpenAcceptedRequest
+                    ? AppColors.amareloClaro
+                    : AppColors.cinza,
+                foregroundColor: AppColors.preto,
+                disabledForegroundColor: Colors.black45,
+                side: BorderSide(
+                  color: canOpenAcceptedRequest
+                      ? AppColors.amareloUmPoucoEscuro
+                      : AppColors.cinza,
+                  width: 2,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+              ),
+              child: const Text(
+                'Ver pedido aceito',
+                style: TextStyle(
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -564,11 +999,58 @@ class _RequestViewState extends State<RequestView> {
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.amareloUmPoucoEscuro,
             foregroundColor: AppColors.branco,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
           ),
           child: const Text(
             'Voltar',
-            style: TextStyle(fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+    }
+
+    if (_isAcceptedByCurrentProvider(acceptedInfo)) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: () => _openAcceptedRequest(
+            detail: detail,
+            acceptedInfo: acceptedInfo!,
+            audience: RequestAcceptedAudience.provider,
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.amareloUmPoucoEscuro,
+            foregroundColor: AppColors.branco,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          child: const Text(
+            'Ver pedido aceito',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+    }
+
+    if (_isAcceptedByAnotherProvider(acceptedInfo)) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: null,
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          child: const Text(
+            'Pedido ja aceito',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
         ),
       );
@@ -577,25 +1059,37 @@ class _RequestViewState extends State<RequestView> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content:
-                  Text('Fluxo de aceitacao ainda nao foi ligado nesta branch.'),
-            ),
-          );
-        },
+        onPressed: _acceptRequest,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.amareloUmPoucoEscuro,
           foregroundColor: AppColors.branco,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
         ),
         child: const Text(
           'Aceitar pedido',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
       ),
     );
+  }
+
+  String _formatModality(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized == 'remote' ||
+        normalized == 'remoto' ||
+        normalized == 'a distancia') {
+      return 'Remoto';
+    }
+    if (normalized == 'presential' || normalized == 'presencial') {
+      return 'Presencial';
+    }
+    if (normalized == 'hybrid' || normalized == 'hibrido') {
+      return 'Hibrido';
+    }
+    return value;
   }
 
   String _formatDate(String value) {
@@ -608,5 +1102,128 @@ class _RequestViewState extends State<RequestView> {
     final month = parsed.month.toString().padLeft(2, '0');
     final year = parsed.year.toString();
     return '$day/$month/$year';
+  }
+
+  String _formatTime(String? value) {
+    if (value == null || value.isEmpty) {
+      return '--:--';
+    }
+
+    final parsed = DateTime.tryParse(value);
+    if (parsed != null) {
+      final hour = parsed.hour.toString().padLeft(2, '0');
+      final minute = parsed.minute.toString().padLeft(2, '0');
+      return '$hour:$minute';
+    }
+
+    if (value.contains('T') && value.length >= 16) {
+      return value.split('T')[1].substring(0, 5);
+    }
+
+    return '--:--';
+  }
+}
+
+class _RequestSummary extends StatelessWidget {
+  final String deadline;
+  final String modality;
+  final int timeChronos;
+
+  const _RequestSummary({
+    required this.deadline,
+    required this.modality,
+    required this.timeChronos,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        _buildChip('Prazo: $deadline'),
+        const SizedBox(height: 8),
+        _buildChip(modality),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/img/CoinYellow.png',
+                width: 20,
+                height: 20,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.monetization_on,
+                  color: AppColors.amareloClaro,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  '$timeChronos Chronos',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.amareloClaro,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.amareloUmPoucoEscuro,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        overflow: TextOverflow.ellipsis,
+        maxLines: 2,
+        style: const TextStyle(
+          color: AppColors.branco,
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+        ),
+      ),
+    );
+  }
+}
+
+class _CurrentUser {
+  final int? id;
+  final String? name;
+  final int? phoneNumber;
+
+  const _CurrentUser({
+    this.id,
+    this.name,
+    this.phoneNumber,
+  });
+
+  factory _CurrentUser.fromJson(Map<String, dynamic> json) {
+    return _CurrentUser(
+      id: _toInt(json['id']),
+      name: json['name']?.toString(),
+      phoneNumber: _toInt(json['phoneNumber']),
+    );
+  }
+
+  static int? _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 }

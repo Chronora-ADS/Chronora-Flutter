@@ -166,17 +166,37 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   // Método para converter imagem para base64
   Future<String?> _convertImageToBase64() async {
     try {
+      late final String encodedImage;
       if (_imageBytes != null) {
-        return base64Encode(_imageBytes!);
+        encodedImage = base64Encode(_imageBytes!);
+      } else if (_selectedImage != null && _selectedImage is File) {
+        final List<int> fileBytes = await _selectedImage.readAsBytes();
+        encodedImage = base64Encode(fileBytes);
+      } else {
+        return null;
       }
 
-      if (_selectedImage != null && _selectedImage is File) {
-        final List<int> fileBytes = await _selectedImage.readAsBytes();
-        return base64Encode(fileBytes);
-      }
-      return null;
+      return 'data:${_resolveSelectedImageMimeType()};base64,$encodedImage';
     } catch (e) {
       return null;
+    }
+  }
+
+  String _resolveSelectedImageMimeType() {
+    final extension =
+        (_imageFileName ?? '').split('.').last.trim().toLowerCase();
+
+    switch (extension) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'webp':
+        return 'image/webp';
+      case 'bmp':
+        return 'image/bmp';
+      case 'png':
+      default:
+        return 'image/png';
     }
   }
 
