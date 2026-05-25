@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/api/api_service.dart';
 import '../core/constants/app_colors.dart';
@@ -279,6 +280,10 @@ class SideMenu extends StatelessWidget {
     }
 
     await AuthSessionService.clearSession();
+
+    // Limpar preferência "lembrar de mim"
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('remember_me');
 
     if (!context.mounted) return;
 

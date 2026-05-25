@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:chronora/core/constants/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
@@ -26,6 +27,21 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRememberMePreference();
+  }
+
+  Future<void> _loadRememberMePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final rememberMe = prefs.getBool('remember_me') ?? false;
+    setState(() {
+      _rememberMe = rememberMe;
+    });
+  }
 
   void _showSnackBar(String message) {
     if (!mounted) return;
@@ -57,6 +73,14 @@ class _LoginPageState extends State<LoginPage> {
         }
 
         await AuthSessionService.saveSessionFromResponse(responseData);
+
+        final prefs = await SharedPreferences.getInstance();
+        if (_rememberMe) {
+          await prefs.setBool('remember_me', true);
+        } else {
+          await prefs.remove('remember_me');
+        }
+
         if (!mounted) return;
 
         _showSnackBar('Login realizado com sucesso!');
@@ -249,9 +273,11 @@ class _LoginPageState extends State<LoginPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Checkbox(
-                value: false,
+                value: _rememberMe,
                 onChanged: (value) {
-                  // Implementar lembrar de mim.
+                  setState(() {
+                    _rememberMe = value ?? false;
+                  });
                 },
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity.compact,
