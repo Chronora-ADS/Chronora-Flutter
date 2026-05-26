@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'core/api/api_service.dart';
+import 'core/constants/app_colors.dart';
 import 'core/constants/app_routes.dart';
 import 'core/services/auth_session_service.dart';
 import 'core/services/client_log_service.dart';
@@ -40,6 +41,10 @@ class ChronoraFlutter extends StatelessWidget {
         primarySwatch: Colors.amber,
         fontFamily: 'Roboto',
         scaffoldBackgroundColor: const Color(0xFF0B0C0C),
+        scrollbarTheme: ScrollbarThemeData(
+          thumbColor: WidgetStateProperty.all(AppColors.branco),
+          trackColor: WidgetStateProperty.all(Colors.transparent),
+        ),
       ),
       home: _isPasswordRecoveryUrl(initialUri ?? Uri.base)
           ? ResetPasswordPage(
@@ -49,6 +54,9 @@ class ChronoraFlutter extends StatelessWidget {
           : const _AuthGate(),
       routes: AppRoutes.routes,
       onGenerateRoute: AppRoutes.onGenerateRoute,
+      scrollBehavior: const MaterialScrollBehavior().copyWith(
+        scrollbars: true,
+      ),
       debugShowCheckedModeBanner: false,
     );
   }

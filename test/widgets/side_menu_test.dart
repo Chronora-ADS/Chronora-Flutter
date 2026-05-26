@@ -1,4 +1,5 @@
 import 'package:chronora/core/api/api_service.dart';
+import 'package:chronora/core/constants/app_colors.dart';
 import 'package:chronora/core/constants/app_routes.dart';
 import 'package:chronora/widgets/side_menu.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,29 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   group('Funcionalidade: Menu e navegacao', () {
     testWidgets(
+        'Cenario: Dado menu lateral aberto, entao mantem visual original e itens legiveis',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SideMenu(
+              onWalletPressed: () {},
+              userName: 'Ana',
+              userRating: 4.5,
+            ),
+          ),
+        ),
+      );
+
+      final rootContainer =
+          tester.widget<Container>(find.byType(Container).first);
+      expect(rootContainer.color, AppColors.amareloUmPoucoEscuro);
+
+      final menuTitle = tester.widget<Text>(find.text('Pagina Inicial'));
+      expect(menuTitle.style?.color, AppColors.branco);
+    });
+
+    testWidgets(
         'Cenario: Dado menu lateral aberto, quando acessa carteira e meus pedidos, entao executa as rotas corretas',
         (tester) async {
       SharedPreferences.setMockInitialValues({});
@@ -18,7 +42,8 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           routes: {
-            AppRoutes.myOrders: (_) => const Scaffold(body: Text('Meus pedidos rota')),
+            AppRoutes.myOrders: (_) =>
+                const Scaffold(body: Text('Meus pedidos rota')),
             AppRoutes.login: (_) => const Scaffold(body: Text('Login rota')),
           },
           home: Scaffold(

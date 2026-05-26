@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
+import '../../core/utils/auth_error_messages.dart';
 import '../../widgets/auth_text_field.dart';
 import '../../widgets/backgrounds/background_auth_widget.dart';
 
@@ -30,6 +31,8 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
   String? _fileName;
   PlatformFile? _pickedFile;
   bool _isLoading = false;
+  String? _feedbackMessage;
+  bool _isFeedbackError = false;
 
   Future<void> _pickFile() async {
     try {
@@ -80,11 +83,28 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
     }
   }
 
-  void _showSnackBar(String message) {
+  void _showSnackBar(String message, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor:
+            isError ? AppColors.vermelho : AppColors.amareloUmPoucoEscuro,
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
+  }
+
+  void _setFeedback(String message, {required bool isError}) {
+    if (!mounted) return;
+    setState(() {
+      _feedbackMessage = message;
+      _isFeedbackError = isError;
+    });
+    _showSnackBar(message, isError: isError);
   }
 
   String? _validateName(String? value) {
@@ -145,12 +165,13 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_pickedFile == null) {
-      _showSnackBar('Selecione um documento com foto');
+      _setFeedback('Selecione um documento com foto', isError: true);
       return;
     }
 
     setState(() {
       _isLoading = true;
+      _feedbackMessage = null;
     });
 
     try {
@@ -173,20 +194,17 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
       if (!mounted) return;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        _showSnackBar('Cadastro realizado com sucesso!');
+        _setFeedback('Cadastro realizado com sucesso!', isError: false);
         Navigator.pushReplacementNamed(context, AppRoutes.login);
       } else {
-        var message = ApiService.extractErrorMessage(
+        final message = resolveRegistrationErrorMessage(
+          response.statusCode,
           response.body,
-          fallback: 'Nao foi possivel concluir o cadastro.',
         );
-        if (response.statusCode == 409) {
-          message = 'Telefone ou e-mail ja cadastrado.';
-        }
-        _showSnackBar('Erro no cadastro: $message');
+        _setFeedback('Erro no cadastro: $message', isError: true);
       }
     } catch (e) {
-      _showSnackBar('Erro: $e');
+      _setFeedback('Erro: $e', isError: true);
     } finally {
       if (mounted) {
         setState(() {
@@ -339,6 +357,13 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                       textAlign: TextAlign.center,
                     ),
                   },
+                  if (_feedbackMessage != null) ...{
+                    const SizedBox(height: 16),
+                    _FormFeedbackMessage(
+                      message: _feedbackMessage!,
+                      isError: _isFeedbackError,
+                    ),
+                  },
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
@@ -417,6 +442,40 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+}
+
+class _FormFeedbackMessage extends StatelessWidget {
+  final String message;
+  final bool isError;
+
+  const _FormFeedbackMessage({
+    required this.message,
+    required this.isError,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isError ? AppColors.vermelho : AppColors.amareloUmPoucoEscuro;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        border: Border.all(color: color),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        message,
+        style: TextStyle(
+          color: color,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
   }
 }
 

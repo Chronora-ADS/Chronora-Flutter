@@ -296,6 +296,10 @@ class _MainPageState extends State<MainPage> {
   }
 
   List<Service> _applyFiltersToList(List<Service> source) {
+    if (!_isFilterMode) {
+      return List<Service>.from(source);
+    }
+
     final normalizedQuery = _normalizeText(_searchController.text);
     final normalizedCategory = _normalizeText(_activeFilters.categoriaText);
     final normalizedModality =
@@ -685,15 +689,11 @@ class _MainPageState extends State<MainPage> {
                   children: [
                     SizedBox(
                       width: screenWidth * 0.6,
-                      child: SafeArea(
-                        top: true,
-                        bottom: false,
-                        child: SideMenu(
-                          onWalletPressed: _openWallet,
-                          userName: _userName,
-                          userRating: _userRating,
-                          userPhotoUrl: _userPhotoUrl,
-                        ),
+                      child: SideMenu(
+                        onWalletPressed: _openWallet,
+                        userName: _userName,
+                        userRating: _userRating,
+                        userPhotoUrl: _userPhotoUrl,
                       ),
                     ),
                     Expanded(
