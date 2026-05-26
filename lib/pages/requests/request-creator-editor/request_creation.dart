@@ -694,7 +694,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     final requiredMessage = _requiredValidator(value);
     if (requiredMessage != null) return requiredMessage;
 
-    final wordCount = value!
+    if (value!.length > 2500) {
+      return 'A descricao nao pode exceder 2500 caracteres';
+    }
+
+    final wordCount = value
         .trim()
         .split(RegExp(r'\s+'))
         .where((word) => word.isNotEmpty)
@@ -771,6 +775,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         validator: _descriptionValidator,
         maxLines: null,
         minLines: 3,
+        maxLength: 2500,
         keyboardType: TextInputType.multiline,
         textInputAction: TextInputAction.newline,
         decoration: InputDecoration(
@@ -901,6 +906,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           ),
           child: TextFormField(
             controller: _categoriesController,
+            maxLength: 50,
             decoration: InputDecoration(
               hintText: 'Categoria(s) - Pressione Enter para adicionar',
               hintStyle: TextStyle(

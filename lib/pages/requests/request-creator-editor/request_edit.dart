@@ -737,6 +737,16 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     return null;
   }
 
+  String? _descriptionValidator(String? value) {
+    final requiredMessage = _requiredValidator(value);
+    if (requiredMessage != null) return requiredMessage;
+
+    if (value!.length > 2500) {
+      return 'A descricao nao pode exceder 2500 caracteres';
+    }
+    return null;
+  }
+
   Widget _buildFormField(String placeholder, TextEditingController controller,
       {String? Function(String?)? validator}) {
     return Container(
@@ -788,9 +798,10 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       ),
       child: TextFormField(
         controller: _descriptionController,
-        validator: _requiredValidator,
+        validator: _descriptionValidator,
         maxLines: null,
         minLines: 3,
+        maxLength: 2500,
         keyboardType: TextInputType.multiline,
         textInputAction: TextInputAction.newline,
         decoration: InputDecoration(
@@ -969,6 +980,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           ),
           child: TextFormField(
             controller: _categoriesController,
+            maxLength: 50,
             decoration: InputDecoration(
               hintText: 'Categoria(s) - Pressione Enter para adicionar',
               hintStyle: TextStyle(

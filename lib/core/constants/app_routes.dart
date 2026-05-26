@@ -10,7 +10,6 @@ import 'package:chronora/pages/profile_page.dart';
 import 'package:chronora/pages/requests/my_requests.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_creation.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_edit.dart';
-import 'package:chronora/pages/requests/request_accepted_view.dart';
 import 'package:chronora/pages/requests/request_view.dart';
 import 'package:chronora/pages/sell_chronos/sell_chronos_page.dart';
 import 'package:chronora/widgets/auth_guard.dart';

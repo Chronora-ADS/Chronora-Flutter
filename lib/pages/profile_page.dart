@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../core/constants/app_colors.dart';
 import '../core/constants/app_routes.dart';
 import '../core/services/profile_controller.dart';
+import '../core/utils/service_image_resolver.dart';
 import '../widgets/backgrounds/background_default_widget.dart';
 import '../widgets/header.dart';
 import '../widgets/side_menu.dart';
@@ -37,6 +38,9 @@ class _ProfilePageState extends State<ProfilePage> {
   XFile? _documentFile;
   Uint8List? _documentBytes;
   String _documentFileName = '';
+  XFile? _profileImageFile;
+  Uint8List? _profileImageBytes;
+  String _profileImageFileName = '';
 
   @override
   void initState() {
@@ -86,6 +90,31 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _pickProfileImage() async {
+    try {
+      final file = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
+
+      if (file == null || !mounted) return;
+
+      final bytes = await file.readAsBytes();
+      if (!mounted) return;
+
+      setState(() {
+        _profileImageFile = file;
+        _profileImageBytes = bytes;
+        _profileImageFileName = file.name;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao selecionar foto de perfil: $e')),
+      );
+    }
+  }
+
   Future<Map<String, String>?> _buildDocumentPayload() async {
     if (_documentFile == null) {
       return null;
@@ -100,6 +129,25 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return {
       'name': _documentFileName,
+      'type': extension,
+      'data': base64Encode(bytes),
+    };
+  }
+
+  Future<Map<String, String>?> _buildProfileImagePayload() async {
+    if (_profileImageFile == null) {
+      return null;
+    }
+
+    final bytes = _profileImageBytes ?? await _profileImageFile!.readAsBytes();
+    _profileImageBytes = bytes;
+
+    final extension = _profileImageFileName.contains('.')
+        ? _profileImageFileName.split('.').last
+        : 'jpg';
+
+    return {
+      'name': _profileImageFileName,
       'type': extension,
       'data': base64Encode(bytes),
     };
@@ -145,6 +193,9 @@ class _ProfilePageState extends State<ProfilePage> {
       _documentFile = null;
       _documentBytes = null;
       _documentFileName = '';
+      _profileImageFile = null;
+      _profileImageBytes = null;
+      _profileImageFileName = '';
     });
   }
 
@@ -185,6 +236,7 @@ class _ProfilePageState extends State<ProfilePage> {
       email: _emailController.text.trim(),
       phoneNumber: _phoneController.text.trim(),
       document: await _buildDocumentPayload(),
+      profileImage: await _buildProfileImagePayload(),
       password: _newPasswordController.text.trim().isEmpty
           ? null
           : _newPasswordController.text.trim(),
@@ -213,6 +265,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
     setState(() {
       _isEditing = false;
+      _documentFile = null;
+      _documentBytes = null;
+      _documentFileName = '';
+      _profileImageFile = null;
+      _profileImageBytes = null;
+      _profileImageFileName = '';
     });
 
     await _loadUserProfile();
@@ -350,6 +408,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         child: SideMenu(
                           onWalletPressed: _openWallet,
                           userName: _controller.user?.name ?? 'Usuario',
+                          userRating: _controller.user?.rating ?? 0.0,
+                          userPhotoUrl: _controller.user?.profileImage,
                         ),
                       ),
                     ),
@@ -419,6 +479,8 @@ class _ProfilePageState extends State<ProfilePage> {
               color: AppColors.preto,
             ),
           ),
+          const SizedBox(height: 20),
+          _buildProfileSummary(),
           const SizedBox(height: 20),
           _buildInputField(
             controller: _nameController,
@@ -538,6 +600,118 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildProfileSummary() {
+    final user = _controller.user;
+    final rating = user?.rating ?? 0.0;
+
+    return Column(
+      children: [
+        _buildProfileAvatar(),
+        if (_isEditing) ...[
+          const SizedBox(height: 10),
+          TextButton.icon(
+            onPressed: _pickProfileImage,
+            icon: const Icon(
+              Icons.photo_camera,
+              color: AppColors.amareloUmPoucoEscuro,
+            ),
+            label: Text(
+              _profileImageFileName.isEmpty
+                  ? 'Selecionar foto de perfil'
+                  : _profileImageFileName,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.amareloUmPoucoEscuro,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3F3F3),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.brancoBorda),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.star,
+                color: AppColors.amareloUmPoucoEscuro,
+                size: 20,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                rating.toStringAsFixed(1),
+                style: const TextStyle(
+                  color: AppColors.preto,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Sua avaliacao',
+                style: TextStyle(
+                  color: AppColors.preto,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfileAvatar() {
+    final imageBytes = _profileImageBytes ??
+        ServiceImageResolver.tryDecodeBytes(_controller.user?.profileImage);
+    final networkUrl = ServiceImageResolver.resolveNetworkUrl(
+      _controller.user?.profileImage,
+    );
+
+    Widget child;
+    if (imageBytes != null) {
+      child = Image.memory(
+        imageBytes,
+        width: 96,
+        height: 96,
+        fit: BoxFit.cover,
+      );
+    } else if (networkUrl != null) {
+      child = Image.network(
+        networkUrl,
+        width: 96,
+        height: 96,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildAvatarPlaceholder(),
+      );
+    } else {
+      child = _buildAvatarPlaceholder();
+    }
+
+    return ClipOval(
+      child: Container(
+        width: 96,
+        height: 96,
+        color: const Color(0xFFF3F3F3),
+        child: child,
+      ),
+    );
+  }
+
+  Widget _buildAvatarPlaceholder() {
+    return const Icon(
+      Icons.person,
+      size: 46,
+      color: AppColors.amareloUmPoucoEscuro,
     );
   }
 
