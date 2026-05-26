@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:chronora/core/models/main_page_requests_model.dart';
@@ -32,13 +33,13 @@ class _MainPageState extends State<MainPage> {
   String _userName = 'Usuario';
   double _userRating = 0.0;
   String? _userPhotoUrl;
+  Timer? _searchDebounce;
 
   List<Service> services = [];
   List<Service> _visibleServices = [];
   bool isLoading = true;
   String errorMessage = '';
   bool _isFetching = false;
-  bool _isFetchingAllForFilters = false;
   bool _isLoadingMore = false;
   static const int _pageSize = 10;
   int _nextPage = 0;
@@ -93,7 +94,6 @@ class _MainPageState extends State<MainPage> {
 
   Future<void> _reloadServices() async {
     await _fetchServices(showLoading: true, reset: true);
-    _scheduleFetchRemainingServicesForFilters();
   }
 
   Future<void> _refreshServicesAndWallet() async {
@@ -132,9 +132,18 @@ class _MainPageState extends State<MainPage> {
     }
 
     try {
+      final tempoRange = _tempoRangeForFilter(_activeFilters.tempoValue);
       final result = await _serviceCatalogService.fetchServices(
         page: _nextPage,
         size: _pageSize,
+        status: 'CRIADO',
+        query: _searchController.text.trim(),
+        categories: _activeFilters.effectiveCategories,
+        modality: _backendModality(_activeFilters.modalidadeSelecionada),
+        deadline: _selectedDeadlineFilter,
+        minTimeChronos: tempoRange?[0],
+        maxTimeChronos: tempoRange?[1],
+        sort: _activeFilters.ordenacaoValue,
       );
 
       final updatedServices = reset || _nextPage == 0
@@ -150,7 +159,7 @@ class _MainPageState extends State<MainPage> {
       if (mounted) {
         setState(() {
           services = updatedServices;
-          _visibleServices = _applyFiltersToList(updatedServices);
+          _visibleServices = updatedServices;
           _nextPage = currentPage + 1;
           _hasMorePages = hasMore;
           isLoading = false;
@@ -176,230 +185,36 @@ class _MainPageState extends State<MainPage> {
       }
     } finally {
       _isFetching = false;
-      _scheduleFetchRemainingServicesForFilters();
     }
-  }
-
-  Future<void> _fetchRemainingServicesForFilters() async {
-    if (_isFetching ||
-        _isFetchingAllForFilters ||
-        !_isFilterMode ||
-        !_hasMorePages) {
-      return;
-    }
-
-    _isFetchingAllForFilters = true;
-
-    if (mounted) {
-      setState(() {
-        if (services.isEmpty) {
-          isLoading = true;
-        } else {
-          _isLoadingMore = true;
-        }
-        errorMessage = '';
-      });
-    }
-
-    var loadedServices = List<Service>.from(services);
-    var nextPage = _nextPage;
-    var hasMorePages = _hasMorePages;
-
-    try {
-      while (hasMorePages) {
-        final result = await _serviceCatalogService.fetchServices(
-          page: nextPage,
-          size: _pageSize,
-        );
-
-        loadedServices = _mergeServices(loadedServices, result.services);
-
-        final totalPages = result.totalPages;
-        final currentPage = result.page ?? nextPage;
-        nextPage = currentPage + 1;
-        hasMorePages = totalPages != null
-            ? currentPage + 1 < totalPages
-            : result.services.length >= _pageSize;
-      }
-
-      if (mounted) {
-        setState(() {
-          services = loadedServices;
-          _visibleServices = _applyFiltersToList(loadedServices);
-          _nextPage = nextPage;
-          _hasMorePages = hasMorePages;
-          isLoading = false;
-          _isLoadingMore = false;
-          errorMessage = '';
-        });
-      }
-    } on ServiceCatalogException catch (error) {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-          _isLoadingMore = false;
-          errorMessage = error.message;
-        });
-      }
-    } catch (error) {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-          _isLoadingMore = false;
-          errorMessage =
-              'Falha ao carregar os servicos restantes para os filtros: $error';
-        });
-      }
-    } finally {
-      _isFetchingAllForFilters = false;
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-          _isLoadingMore = false;
-        });
-      }
-    }
-  }
-
-  void _scheduleFetchRemainingServicesForFilters() {
-    if (!_isFilterMode ||
-        !_hasMorePages ||
-        _isFetching ||
-        _isFetchingAllForFilters) {
-      return;
-    }
-
-    Future.microtask(() {
-      if (mounted) {
-        _fetchRemainingServicesForFilters();
-      }
-    });
   }
 
   void _handleSearchChanged() {
-    if (!mounted) return;
-
-    setState(() {
-      _visibleServices = _applyFiltersToList(services);
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted) return;
+      _fetchServices(showLoading: true, reset: true);
     });
-
-    _scheduleFetchRemainingServicesForFilters();
   }
 
   void _handleFiltersApplied(ServiceFilters filters) {
     setState(() {
       _activeFilters = filters;
-      _visibleServices = _applyFiltersToList(services);
     });
-
-    _scheduleFetchRemainingServicesForFilters();
+    _fetchServices(showLoading: true, reset: true);
   }
 
-  List<Service> _applyFiltersToList(List<Service> source) {
-    if (!_isFilterMode) {
-      return List<Service>.from(source);
-    }
-
-    final normalizedQuery = _normalizeText(_searchController.text);
-    final normalizedCategory = _normalizeText(_activeFilters.categoriaText);
-    final normalizedModality =
-        _normalizeModality(_activeFilters.modalidadeSelecionada ?? '');
-    final selectedDeadline = _parseDate(_activeFilters.deadlineText);
-    final maxTime = _activeFilters.tempoValue >= ServiceFilters.maxTempoValue
-        ? null
-        : _activeFilters.tempoValue.toInt();
-    final ratingFloor =
-        _activeFilters.avaliacaoValue == ServiceFilters.allRatings
-            ? null
-            : double.tryParse(_activeFilters.avaliacaoValue);
-    final createdServices = source.where((service) => service.isCreated);
-    final hasRatingData =
-        createdServices.any((service) => service.userCreator.rating != null);
-
-    final filtered = createdServices.where((service) {
-      if (normalizedQuery.isNotEmpty &&
-          !_matchesSearch(service, normalizedQuery)) {
-        return false;
-      }
-
-      if (selectedDeadline != null &&
-          _dateOnly(service.deadline).isAfter(selectedDeadline)) {
-        return false;
-      }
-
-      if (normalizedCategory.isNotEmpty &&
-          !service.categoryEntities.any(
-            (category) =>
-                _normalizeText(category.name).contains(normalizedCategory),
-          )) {
-        return false;
-      }
-
-      if (normalizedModality.isNotEmpty &&
-          _normalizeModality(service.modality) != normalizedModality) {
-        return false;
-      }
-
-      if (maxTime != null && service.timeChronos > maxTime) {
-        return false;
-      }
-
-      if (ratingFloor != null && hasRatingData) {
-        final rating = service.userCreator.rating;
-        if (rating == null ||
-            rating < ratingFloor ||
-            rating >= ratingFloor + 1) {
-          return false;
-        }
-      }
-
-      return true;
-    }).toList();
-
-    filtered.sort(_compareServices);
-    return filtered;
+  DateTime? get _selectedDeadlineFilter {
+    final selectedDate = _activeFilters.selectedPrazoDate;
+    if (selectedDate != null) return _dateOnly(selectedDate);
+    return _parseDate(_activeFilters.deadlineText);
   }
 
-  int _compareServices(Service a, Service b) {
-    switch (_activeFilters.ordenacaoValue) {
-      case ServiceFilters.sortOldest:
-        return a.id.compareTo(b.id);
-      case ServiceFilters.sortBestRated:
-        final ratingComparison = _compareNullableDoubleDesc(
-            a.userCreator.rating, b.userCreator.rating);
-        if (ratingComparison != 0) return ratingComparison;
-        return b.id.compareTo(a.id);
-      case ServiceFilters.sortHighestTime:
-        final timeComparison = b.timeChronos.compareTo(a.timeChronos);
-        if (timeComparison != 0) return timeComparison;
-        return b.id.compareTo(a.id);
-      case ServiceFilters.sortLowestTime:
-        final timeComparison = a.timeChronos.compareTo(b.timeChronos);
-        if (timeComparison != 0) return timeComparison;
-        return b.id.compareTo(a.id);
-      case ServiceFilters.sortMostRecent:
-      default:
-        return b.id.compareTo(a.id);
-    }
-  }
+  List<int>? _tempoRangeForFilter(double value) {
+    if (value <= ServiceFilters.noTempoFilter) return null;
 
-  int _compareNullableDoubleDesc(double? left, double? right) {
-    if (left == null && right == null) return 0;
-    if (left == null) return 1;
-    if (right == null) return -1;
-    return right.compareTo(left);
-  }
-
-  bool _matchesSearch(Service service, String query) {
-    final searchableContent = [
-      service.title,
-      service.description,
-      service.userCreator.name,
-      service.modality,
-      ...service.categoryEntities.map((category) => category.name),
-    ].map(_normalizeText).join(' ');
-
-    return searchableContent.contains(query);
+    final maxTime = value.toInt();
+    final minTime = maxTime <= 5 ? 0 : maxTime - 5;
+    return [minTime, maxTime];
   }
 
   List<Service> _mergeServices(List<Service> current, List<Service> incoming) {
@@ -449,9 +264,21 @@ class _MainPageState extends State<MainPage> {
     final normalized = _normalizeText(value);
 
     if (normalized.contains('presencial')) return 'presencial';
-    if (normalized.contains('remoto')) return 'remoto';
+    if (normalized.contains('remoto') || normalized.contains('distancia')) {
+      return 'remoto';
+    }
 
     return normalized;
+  }
+
+  String? _backendModality(String? modality) {
+    if (modality == null || modality.trim().isEmpty) return null;
+
+    final normalized = _normalizeModality(modality);
+    if (normalized == 'remoto') return 'REMOTO';
+    if (normalized == 'presencial') return 'PRESENCIAL';
+
+    return modality;
   }
 
   DateTime? _parseDate(String value) {
@@ -809,18 +636,14 @@ class _MainPageState extends State<MainPage> {
   }
 
   Widget _buildLoadMoreButton() {
-    if (isLoading ||
-        errorMessage.isNotEmpty ||
-        services.isEmpty ||
-        !_hasMorePages ||
-        _isFilterMode) {
+    if (!_shouldShowLoadMoreButton) {
       return const SizedBox.shrink();
     }
 
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _isLoadingMore ? null : () => _fetchServices(),
+        onPressed: _isLoadingMore ? null : _loadMoreServices,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.branco,
           foregroundColor: AppColors.preto,
@@ -840,8 +663,19 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
+  bool get _shouldShowLoadMoreButton {
+    if (isLoading || errorMessage.isNotEmpty) return false;
+    return _hasMorePages;
+  }
+
+  Future<void> _loadMoreServices() async {
+    if (_isLoadingMore || _isFetching) return;
+    await _fetchServices();
+  }
+
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController
       ..removeListener(_handleSearchChanged)
       ..dispose();
