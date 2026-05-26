@@ -1,38 +1,13 @@
-import 'dart:convert';
-
 import 'package:chronora/core/constants/app_routes.dart';
 import 'package:chronora/core/constants/app_colors.dart';
-import 'package:chronora/core/models/main_page_requests_model.dart';
-import 'package:chronora/core/services/api_service.dart';
+import 'package:chronora/core/services/my_requests_service.dart';
 import 'package:chronora/widgets/backgrounds/background_default_widget.dart';
 import 'package:chronora/widgets/header.dart';
 import 'package:chronora/widgets/service_card.dart';
 import 'package:chronora/widgets/side_menu.dart';
 import 'package:chronora/widgets/wallet_modal.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-class UserIdentity {
-  final int? id;
-  final String name;
-  final String email;
-
-  const UserIdentity({
-    required this.id,
-    required this.name,
-    required this.email,
-  });
-}
-
-class ServiceEnvelope {
-  final Service service;
-  final Map<String, dynamic> raw;
-
-  const ServiceEnvelope({
-    required this.service,
-    required this.raw,
-  });
-}
 
 class MeusPedidosPage extends StatefulWidget {
   const MeusPedidosPage({super.key});
@@ -51,6 +26,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
   ];
 
   final TextEditingController _searchController = TextEditingController();
+  final MyRequestsService _myRequestsService = MyRequestsService();
 
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
@@ -59,19 +35,18 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
   String _searchQuery = '';
   String _errorMessage = '';
 
-  UserIdentity _currentUser = const UserIdentity(id: null, name: '', email: '');
-  String? _selectedStatus;
+  MyRequestsUserIdentity _currentUser = const MyRequestsUserIdentity(
+    id: null,
+    name: '',
+    email: '',
+  );
+  String? _selectedSectionKey;
   List<ServiceEnvelope> _services = [];
 
   @override
   void initState() {
     super.initState();
     _loadMyRequests();
-  }
-
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
   }
 
   Future<void> _loadMyRequests() async {
@@ -81,36 +56,18 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     });
 
     try {
-      final token = await _getToken();
-
-      if (token == null) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage =
-              'Você precisa estar logado para visualizar seus pedidos.';
-        });
-        return;
-      }
-
-      final decodedUser = _extractUserFromToken(token);
-      final servicesResponse = await ApiService.get(
-        '/service/get/all',
-        token: token,
-      );
-
-      if (servicesResponse.statusCode != 200) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage =
-              'Erro ${servicesResponse.statusCode} ao carregar seus pedidos.';
-        });
-        return;
-      }
+      final result = await _myRequestsService.loadMyRequests();
 
       setState(() {
-        _currentUser = decodedUser;
-        _services = _parseServicesResponse(servicesResponse.body);
+        _currentUser = result.currentUser;
+        _services = result.services;
         _isLoading = false;
+      });
+      _logLoadSummary(result.stats);
+    } on MyRequestsException catch (error) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = error.message;
       });
     } catch (error) {
       setState(() {
@@ -120,101 +77,104 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     }
   }
 
-  UserIdentity _extractUserFromToken(String token) {
-    try {
-      final parts = token.split('.');
-      if (parts.length < 2) {
-        return const UserIdentity(id: null, name: '', email: '');
-      }
-
-      final normalizedPayload = base64Url.normalize(parts[1]);
-      final payload = utf8.decode(base64Url.decode(normalizedPayload));
-      final data = json.decode(payload);
-
-      if (data is! Map<String, dynamic>) {
-        return const UserIdentity(id: null, name: '', email: '');
-      }
-
-      return UserIdentity(
-        id: _extractIdFromTokenClaims(data),
-        name: _extractStringFromMap(data, const [
-          'name',
-          'unique_name',
-          'preferred_username',
-          'user_name',
-        ]),
-        email: _extractStringFromMap(data, const [
-          'email',
-          'sub',
-          'upn',
-          'preferred_username',
-        ]),
-      );
-    } catch (_) {
-      return const UserIdentity(id: null, name: '', email: '');
-    }
-  }
-
-  int? _extractIdFromTokenClaims(Map<String, dynamic> data) {
-    for (final key in const ['id', 'userId', 'user_id']) {
-      final value = _toInt(data[key]);
-      if (value != null) {
-        return value;
-      }
+  void _logLoadSummary(MyRequestsLoadStats stats) {
+    if (!kDebugMode) {
+      return;
     }
 
-    return null;
-  }
+    final visibleCountsByStatus = <String, int>{
+      for (final status in _serviceStatuses) status: 0,
+    };
+    var visibleForUser = 0;
+    var createdByUser = 0;
+    var acceptedByUser = 0;
 
-  String _extractStringFromMap(Map<String, dynamic> data, List<String> keys) {
-    for (final key in keys) {
-      final value = data[key]?.toString().trim() ?? '';
-      if (value.isNotEmpty) {
-        return value;
+    for (final envelope in _services) {
+      final created = _isCreatedByCurrentUser(envelope);
+      final accepted = _isAcceptedByCurrentUser(envelope);
+      if (!created && !accepted) {
+        continue;
       }
+
+      visibleForUser++;
+      if (created) {
+        createdByUser++;
+      }
+      if (accepted) {
+        acceptedByUser++;
+      }
+
+      final status = _normalizeStatus(envelope.service.status);
+      visibleCountsByStatus[status] = (visibleCountsByStatus[status] ?? 0) + 1;
     }
 
-    return '';
+    debugPrint(
+      '[MeusPedidos] usuario='
+      'id:${_currentUser.id ?? 'null'} '
+      'nome:${_currentUser.name.isEmpty ? '<vazio>' : _currentUser.name} '
+      'email:${_currentUser.email.isEmpty ? '<vazio>' : _currentUser.email} '
+      'paginas:${stats.pagesFetched} '
+      'itensApi:${stats.rawItemsFetched} '
+      'unicosApi:${stats.uniqueServicesFetched} '
+      'totalElements:${stats.totalElements ?? 'n/a'} '
+      'visiveisUsuario:$visibleForUser '
+      'criados:$createdByUser '
+      'aceitos:$acceptedByUser '
+      'status:$visibleCountsByStatus',
+    );
   }
 
-  List<ServiceEnvelope> _parseServicesResponse(String responseBody) {
-    final responseData = json.decode(responseBody);
-    List<dynamic> items = [];
-
-    if (responseData is Map<String, dynamic>) {
-      if (responseData['services'] is List) {
-        items = responseData['services'] as List<dynamic>;
-      } else if (responseData['data'] is List) {
-        items = responseData['data'] as List<dynamic>;
-      } else if (responseData['content'] is List) {
-        items = responseData['content'] as List<dynamic>;
-      }
-    } else if (responseData is List<dynamic>) {
-      items = responseData;
-    }
-
-    return items
-        .whereType<Map<String, dynamic>>()
-        .map(
-          (item) => ServiceEnvelope(
-            service: Service.fromJson(item),
-            raw: item,
-          ),
-        )
-        .toList();
+  List<_RequestSectionGroup> get _requestGroups {
+    return [
+      _RequestSectionGroup(
+        key: 'created_by_me',
+        title: 'Pedidos Criados por Voce',
+        emptyMessage: _searchQuery.trim().isEmpty
+            ? 'Nenhum pedido criado por voce foi encontrado.'
+            : 'Nenhum pedido criado por voce combina com a busca.',
+        requestsByStatus: _groupServicesByStatus(
+          belongsToGroup: (envelope) =>
+              _isCreatedByCurrentUser(envelope) &&
+              _normalizeStatus(envelope.service.status) != 'ACEITO',
+        ),
+      ),
+      _RequestSectionGroup(
+        key: 'created_by_me_accepted',
+        title: 'Pedidos Criados por Voce e Aceitos',
+        emptyMessage: _searchQuery.trim().isEmpty
+            ? 'Nenhum pedido criado por voce com status aceito foi encontrado.'
+            : 'Nenhum pedido criado por voce com status aceito combina com a busca.',
+        requestsByStatus: _groupServicesByStatus(
+          belongsToGroup: (envelope) =>
+              _isCreatedByCurrentUser(envelope) &&
+              _normalizeStatus(envelope.service.status) == 'ACEITO',
+        ),
+      ),
+      _RequestSectionGroup(
+        key: 'accepted_by_me',
+        title: 'Pedidos Aceitos por Voce',
+        emptyMessage: _searchQuery.trim().isEmpty
+            ? 'Nenhum pedido aceito por voce foi encontrado.'
+            : 'Nenhum pedido aceito por voce combina com a busca.',
+        requestsByStatus: _groupServicesByStatus(
+          belongsToGroup: (envelope) =>
+              !_isCreatedByCurrentUser(envelope) &&
+              _isAcceptedByCurrentUser(envelope),
+        ),
+      ),
+    ];
   }
 
-  Map<String, List<ServiceEnvelope>> get _requestsByStatus {
+  Map<String, List<ServiceEnvelope>> _groupServicesByStatus({
+    required bool Function(ServiceEnvelope envelope) belongsToGroup,
+  }) {
     final grouped = <String, List<ServiceEnvelope>>{
       for (final status in _serviceStatuses) status: <ServiceEnvelope>[],
     };
     final merged = <int, ServiceEnvelope>{};
 
     for (final envelope in _services) {
-      final belongsToCurrentUser = _isCreatedByCurrentUser(envelope) ||
-          _isAcceptedByCurrentUser(envelope);
-
-      if (!belongsToCurrentUser || !_matchesSearch(envelope)) {
+      if (!belongsToGroup(envelope) || !_matchesSearch(envelope)) {
         continue;
       }
 
@@ -402,13 +362,13 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
   void _toggleStatusSelection(String status) {
     setState(() {
-      _selectedStatus = _selectedStatus == status ? null : status;
+      _selectedSectionKey = _selectedSectionKey == status ? null : status;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final requestsByStatus = _requestsByStatus;
+    final requestGroups = _requestGroups;
 
     return Scaffold(
       backgroundColor: AppColors.preto,
@@ -437,7 +397,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
                           const SizedBox(height: 24),
                           _buildSeparators(),
                           const SizedBox(height: 24),
-                          _buildContent(requestsByStatus: requestsByStatus),
+                          _buildContent(requestGroups: requestGroups),
                         ],
                       ),
                     ),
@@ -458,11 +418,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
                   children: [
                     SizedBox(
                       width: MediaQuery.of(context).size.width * 0.6,
-                      child: SafeArea(
-                        top: true,
-                        bottom: false,
-                        child: SideMenu(onWalletPressed: _openWallet),
-                      ),
+                      child: SideMenu(onWalletPressed: _openWallet),
                     ),
                     Expanded(
                       child: GestureDetector(
@@ -549,7 +505,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
   }
 
   Widget _buildContent({
-    required Map<String, List<ServiceEnvelope>> requestsByStatus,
+    required List<_RequestSectionGroup> requestGroups,
   }) {
     if (_isLoading) {
       return const Padding(
@@ -572,11 +528,24 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       );
     }
 
+    final hasAnyServices =
+        requestGroups.any((group) => group.totalServices > 0);
+    if (!hasAnyServices) {
+      return _buildFeedbackText(
+        _searchQuery.trim().isEmpty
+            ? 'Nenhum pedido relacionado ao seu login foi encontrado.'
+            : 'Nenhum pedido combina com a busca.',
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildStatusSelector(requestsByStatus: requestsByStatus),
-        if (_selectedStatus == null)
+        for (var index = 0; index < requestGroups.length; index++) ...[
+          _buildRequestGroup(group: requestGroups[index]),
+          if (index < requestGroups.length - 1) const SizedBox(height: 20),
+        ],
+        if (_selectedSectionKey == null)
           const Padding(
             padding: EdgeInsets.only(top: 20),
             child: Text(
@@ -592,30 +561,74 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     );
   }
 
-  Widget _buildStatusSelector({
-    required Map<String, List<ServiceEnvelope>> requestsByStatus,
+  Widget _buildRequestGroup({
+    required _RequestSectionGroup group,
   }) {
-    return Column(
-      children: [
-        for (var index = 0; index < _serviceStatuses.length; index++) ...[
-          _buildStatusSelectorItem(
-            status: _serviceStatuses[index],
-            title: _statusSectionTitle(_serviceStatuses[index]),
-            services: requestsByStatus[_serviceStatuses[index]] ??
-                const <ServiceEnvelope>[],
+    final availableStatuses = _availableStatuses(group.requestsByStatus);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.branco.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: AppColors.branco.withValues(alpha: 0.12),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            group.title,
+            style: const TextStyle(
+              color: AppColors.branco,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-          if (index < _serviceStatuses.length - 1) const SizedBox(height: 12),
+          const SizedBox(height: 6),
+          Text(
+            '${group.totalServices} pedido(s)',
+            style: TextStyle(
+              color: AppColors.branco.withValues(alpha: 0.72),
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (availableStatuses.isEmpty)
+            _buildFeedbackText(group.emptyMessage)
+          else
+            Column(
+              children: [
+                for (var index = 0;
+                    index < availableStatuses.length;
+                    index++) ...[
+                  _buildStatusSelectorItem(
+                    sectionKey:
+                        _buildSectionKey(group.key, availableStatuses[index]),
+                    status: availableStatuses[index],
+                    title: _statusSectionTitle(availableStatuses[index]),
+                    services:
+                        group.requestsByStatus[availableStatuses[index]] ??
+                            const <ServiceEnvelope>[],
+                  ),
+                  if (index < availableStatuses.length - 1)
+                    const SizedBox(height: 12),
+                ],
+              ],
+            ),
         ],
-      ],
+      ),
     );
   }
 
   Widget _buildStatusSelectorItem({
+    required String sectionKey,
     required String status,
     required String title,
     required List<ServiceEnvelope> services,
   }) {
-    final isSelected = _selectedStatus == status;
+    final isSelected = _selectedSectionKey == sectionKey;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
@@ -638,7 +651,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(20),
-              onTap: () => _toggleStatusSelection(status),
+              onTap: () => _toggleStatusSelection(sectionKey),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 18,
@@ -752,10 +765,9 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       itemCount: services.length,
       itemBuilder: (context, index) {
         final envelope = services[index];
-        final canEdit = _isCreatedByCurrentUser(envelope);
         final navigationArguments = {
           'service': envelope.service,
-          'readOnly': !canEdit,
+          'readOnly': true,
           'showAcceptAction': false,
         };
 
@@ -774,19 +786,6 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
                 await _loadMyRequests();
               }
             },
-            onEdit: canEdit
-                ? () async {
-                    final result = await Navigator.pushNamed(
-                      context,
-                      AppRoutes.requestEditing,
-                      arguments: navigationArguments,
-                    );
-
-                    if (result == true) {
-                      await _loadMyRequests();
-                    }
-                  }
-                : null,
           ),
         );
       },
@@ -857,6 +856,18 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     );
   }
 
+  List<String> _availableStatuses(
+    Map<String, List<ServiceEnvelope>> requestsByStatus,
+  ) {
+    return _serviceStatuses
+        .where((status) => (requestsByStatus[status] ?? const []).isNotEmpty)
+        .toList();
+  }
+
+  String _buildSectionKey(String groupKey, String status) {
+    return '$groupKey::$status';
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -864,5 +875,23 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
   }
 }
 
+class _RequestSectionGroup {
+  final String key;
+  final String title;
+  final String emptyMessage;
+  final Map<String, List<ServiceEnvelope>> requestsByStatus;
 
+  const _RequestSectionGroup({
+    required this.key,
+    required this.title,
+    required this.emptyMessage,
+    required this.requestsByStatus,
+  });
 
+  int get totalServices {
+    return requestsByStatus.values.fold(
+      0,
+      (total, services) => total + services.length,
+    );
+  }
+}

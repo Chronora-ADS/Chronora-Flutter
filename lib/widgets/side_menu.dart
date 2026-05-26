@@ -24,131 +24,138 @@ class SideMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: AppColors.amareloUmPoucoEscuro,
-      child: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
+      child: SafeArea(
+        top: true,
+        bottom: false,
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  _buildUserHeader(),
+                  _buildMenuSection(
+                    title: '',
+                    children: [
+                      _buildMenuItem(
+                        icon: 'assets/img/HomeWhite.png',
+                        title: 'Pagina Inicial',
+                        onTap: () {
+                          Navigator.pushReplacementNamed(
+                            context,
+                            AppRoutes.main,
+                          );
+                        },
+                      ),
+                      _buildMenuItem(
+                        icon: 'assets/img/PlusWhite.png',
+                        title: 'Crie um pedido',
+                        onTap: () {
+                          Navigator.pushNamed(
+                            context,
+                            AppRoutes.requestCreation,
+                          );
+                        },
+                      ),
+                      _buildMenuItem(
+                        icon: 'assets/img/SuitcaseWhite.png',
+                        title: 'Meus pedidos',
+                        onTap: () {
+                          Navigator.pushNamed(context, AppRoutes.myOrders);
+                        },
+                      ),
+                      _buildMenuItem(
+                        icon: 'assets/img/CoinWhite.png',
+                        title: 'Carteira',
+                        onTap: onWalletPressed,
+                      ),
+                      _buildMenuItem(
+                        icon: 'assets/img/NotificationsWhite.png',
+                        title: 'Notificacoes',
+                        onTap: () {
+                          Navigator.pushNamed(context, AppRoutes.notifications);
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Column(
               children: [
-                _buildUserHeader(),
+                Container(
+                  height: 3,
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  color: AppColors.branco,
+                ),
                 _buildMenuSection(
                   title: '',
                   children: [
                     _buildMenuItem(
-                      icon: 'assets/img/HomeWhite.png',
-                      title: 'Pagina Inicial',
+                      icon: 'assets/img/UserIconWhite.png',
+                      title: 'Perfil',
                       onTap: () {
-                        Navigator.pushReplacementNamed(context, AppRoutes.main);
+                        Navigator.pushNamed(context, AppRoutes.profile);
                       },
                     ),
                     _buildMenuItem(
-                      icon: 'assets/img/PlusWhite.png',
-                      title: 'Crie um pedido',
+                      icon: 'assets/img/SettingsWhite.png',
+                      title: 'Configuracoes',
                       onTap: () {
-                        Navigator.pushNamed(
-                          context,
-                          AppRoutes.requestCreation,
-                        );
+                        Navigator.pushNamed(context, AppRoutes.settings);
                       },
                     ),
-                    _buildMenuItem(
-                      icon: 'assets/img/SuitcaseWhite.png',
-                      title: 'Meus pedidos',
-                      onTap: () {
-                        Navigator.pushNamed(context, AppRoutes.myOrders);
-                      },
-                    ),
-                    _buildMenuItem(
-                      icon: 'assets/img/CoinWhite.png',
-                      title: 'Carteira',
-                      onTap: onWalletPressed,
-                    ),
-                    _buildMenuItem(
-                      icon: 'assets/img/NotificationsWhite.png',
-                      title: 'Notificacoes',
-                      onTap: () {
-                        Navigator.pushNamed(context, AppRoutes.notifications);
-                      },
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.branco,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: InkWell(
+                          onTap: () {
+                            _logout(context);
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Image.asset(
+                                  'assets/img/Logout.png',
+                                  width: 24,
+                                  height: 24,
+                                  color: Colors.red,
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Log out',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
-          ),
-          Column(
-            children: [
-              Container(
-                height: 3,
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                color: AppColors.branco,
-              ),
-              _buildMenuSection(
-                title: '',
-                children: [
-                  _buildMenuItem(
-                    icon: 'assets/img/UserIconWhite.png',
-                    title: 'Perfil',
-                    onTap: () {
-                      Navigator.pushNamed(context, AppRoutes.profile);
-                    },
-                  ),
-                  _buildMenuItem(
-                    icon: 'assets/img/SettingsWhite.png',
-                    title: 'Configuracoes',
-                    onTap: () {
-                      Navigator.pushNamed(context, AppRoutes.settings);
-                    },
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.branco,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: InkWell(
-                        onTap: () {
-                          _logout(context);
-                        },
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 8,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Image.asset(
-                                'assets/img/Logout.png',
-                                width: 24,
-                                height: 24,
-                                color: Colors.red,
-                              ),
-                              const SizedBox(width: 12),
-                              const Text(
-                                'Log out',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  color: Colors.red,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -186,7 +193,11 @@ class SideMenu extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.star, size: 18, color: AppColors.branco),
+                    const Icon(
+                      Icons.star,
+                      size: 18,
+                      color: AppColors.branco,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       userRating.toStringAsFixed(1),
