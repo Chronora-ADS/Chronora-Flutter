@@ -209,10 +209,20 @@ class _RequestViewState extends State<RequestView> {
         throw Exception('Usuario nao autenticado.');
       }
 
-      final response = await ApiService.delete(
-        '/service/cancelService/${detail!.id}',
-        token: token,
-      );
+      var response;
+
+      if (detail?.acceptedRequestInfo?.hasAcceptedUser != null) {
+        response = await ApiService.put(
+          '/service/cancelService/${detail!.id}',
+          {},
+          token: token,
+        );
+      } else {
+        response = await ApiService.delete(
+          '/service/delete/${detail!.id}',
+          token: token,
+        );
+      }
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw Exception(
