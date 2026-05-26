@@ -29,7 +29,7 @@ void main() {
           tester.widget<Container>(find.byType(Container).first);
       expect(rootContainer.color, AppColors.amareloUmPoucoEscuro);
 
-      final menuTitle = tester.widget<Text>(find.text('Pagina Inicial'));
+      final menuTitle = tester.widget<Text>(find.text('Página Inicial'));
       expect(menuTitle.style?.color, AppColors.branco);
     });
 
