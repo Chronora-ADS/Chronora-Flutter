@@ -171,7 +171,7 @@ class _MainPageState extends State<MainPage> {
         setState(() {
           isLoading = false;
           _isLoadingMore = false;
-          errorMessage = 'Falha ao carregar os servicos: $error';
+          errorMessage = 'Falha ao carregar os serviços: $error';
         });
       }
     } finally {
@@ -247,7 +247,7 @@ class _MainPageState extends State<MainPage> {
           isLoading = false;
           _isLoadingMore = false;
           errorMessage =
-              'Falha ao carregar os servicos restantes para os filtros: $error';
+              'Falha ao carregar os serviços restantes para os filtros: $error';
         });
       }
     } finally {
@@ -539,7 +539,7 @@ class _MainPageState extends State<MainPage> {
                           child: TextField(
                             controller: _searchController,
                             decoration: InputDecoration(
-                              hintText: 'Pintura de parede, aula de ingles...',
+                              hintText: 'Pintura de parede, aula de inglês...',
                               hintStyle: const TextStyle(
                                 color: AppColors.textoPlaceholder,
                               ),
@@ -563,7 +563,7 @@ class _MainPageState extends State<MainPage> {
                         Column(
                           children: [
                             const Text(
-                              'As horas acumuladas no seu banco representam oportunidades reais de acao.',
+                              'As horas acumuladas no seu banco representam oportunidades reais de ação.',
                               style: TextStyle(
                                 color: AppColors.branco,
                                 fontSize: 16,
@@ -611,7 +611,7 @@ class _MainPageState extends State<MainPage> {
                             ),
                             const SizedBox(height: 8),
                             const Text(
-                              'ou realize o de alguem',
+                              'ou realize o de alguém',
                               style: TextStyle(
                                 color: AppColors.branco,
                                 fontSize: 14,
@@ -766,8 +766,8 @@ class _MainPageState extends State<MainPage> {
         child: Center(
           child: Text(
             _isFilterMode
-                ? 'Nenhum servico corresponde a busca ou aos filtros.'
-                : 'Nenhum servico encontrado.',
+                ? 'Nenhum serviço corresponde à busca ou aos filtros.'
+                : 'Nenhum serviço encontrado.',
             style: const TextStyle(
               color: AppColors.branco,
               fontSize: 16,

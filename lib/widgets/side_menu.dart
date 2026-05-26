@@ -35,7 +35,7 @@ class SideMenu extends StatelessWidget {
                   children: [
                     _buildMenuItem(
                       icon: 'assets/img/HomeWhite.png',
-                      title: 'Pagina Inicial',
+                      title: 'Página Inicial',
                       onTap: () {
                         Navigator.pushReplacementNamed(context, AppRoutes.main);
                       },
@@ -64,7 +64,7 @@ class SideMenu extends StatelessWidget {
                     ),
                     _buildMenuItem(
                       icon: 'assets/img/NotificationsWhite.png',
-                      title: 'Notificacoes',
+                      title: 'Notificações',
                       onTap: () {
                         Navigator.pushNamed(context, AppRoutes.notifications);
                       },
@@ -93,7 +93,7 @@ class SideMenu extends StatelessWidget {
                   ),
                   _buildMenuItem(
                     icon: 'assets/img/SettingsWhite.png',
-                    title: 'Configuracoes',
+                    title: 'Configurações',
                     onTap: () {
                       Navigator.pushNamed(context, AppRoutes.settings);
                     },
@@ -198,7 +198,7 @@ class SideMenu extends StatelessWidget {
                     const SizedBox(width: 6),
                     const Flexible(
                       child: Text(
-                        'Sua avaliacao',
+                        'Sua avaliação',
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: AppColors.branco,
