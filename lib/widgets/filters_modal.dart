@@ -134,7 +134,7 @@ class _FiltersModalState extends State<FiltersModal> {
                   ),
                   const SizedBox(height: 20),
                   _buildFilterSection(
-                    'Tipo de servico',
+                    'Tipo de serviço',
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -160,7 +160,7 @@ class _FiltersModalState extends State<FiltersModal> {
                   ),
                   const SizedBox(height: 20),
                   _buildFilterSection(
-                    'Avaliacao de usuario',
+                    'Avaliação de usuário',
                     DropdownButtonFormField<String>(
                       initialValue: avaliacaoValue,
                       items: const [
@@ -226,7 +226,7 @@ class _FiltersModalState extends State<FiltersModal> {
                         Text(
                           tempoValue >= ServiceFilters.maxTempoValue
                               ? 'Todos os tempos'
-                              : 'Ate ${tempoValue.toInt()} horas',
+                              : 'Até ${tempoValue.toInt()} horas',
                           style: const TextStyle(fontSize: 14),
                         ),
                       ],
@@ -252,7 +252,7 @@ class _FiltersModalState extends State<FiltersModal> {
                   ),
                   const SizedBox(height: 20),
                   _buildFilterSection(
-                    'Ordenacao',
+                    'Ordenação',
                     DropdownButtonFormField<String>(
                       initialValue: ordenacaoValue,
                       items: const [

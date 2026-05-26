@@ -765,8 +765,8 @@ class _MainPageState extends State<MainPage> {
         child: Center(
           child: Text(
             _isFilterMode
-                ? 'Nenhum servico corresponde a busca ou aos filtros.'
-                : 'Nenhum servico encontrado.',
+                ? 'Nenhum serviço corresponde à busca ou aos filtros.'
+                : 'Nenhum serviço encontrado.',
             style: const TextStyle(
               color: AppColors.branco,
               fontSize: 16,

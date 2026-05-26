@@ -652,7 +652,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               const SizedBox(width: 8),
               const Text(
-                'Sua avaliacao',
+                'Sua avaliação',
                 style: TextStyle(
                   color: AppColors.preto,
                   fontSize: 14,
