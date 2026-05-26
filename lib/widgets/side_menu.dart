@@ -39,7 +39,7 @@ class SideMenu extends StatelessWidget {
                     children: [
                       _buildMenuItem(
                         icon: 'assets/img/HomeWhite.png',
-                        title: 'Pagina Inicial',
+                        title: 'Página Inicial',
                         onTap: () {
                           Navigator.pushReplacementNamed(
                             context,
@@ -71,7 +71,7 @@ class SideMenu extends StatelessWidget {
                       ),
                       _buildMenuItem(
                         icon: 'assets/img/NotificationsWhite.png',
-                        title: 'Notificacoes',
+                        title: 'Notificações',
                         onTap: () {
                           Navigator.pushNamed(context, AppRoutes.notifications);
                         },
@@ -100,7 +100,7 @@ class SideMenu extends StatelessWidget {
                     ),
                     _buildMenuItem(
                       icon: 'assets/img/SettingsWhite.png',
-                      title: 'Configuracoes',
+                      title: 'Configurações',
                       onTap: () {
                         Navigator.pushNamed(context, AppRoutes.settings);
                       },
