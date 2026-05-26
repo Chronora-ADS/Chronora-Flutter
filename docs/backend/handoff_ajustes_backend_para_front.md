@@ -140,13 +140,10 @@ Este arquivo resume **o que o backend precisa ajustar/garantir** para ficar 100%
 ## 4) Modalidade (padronização obrigatória)
 
 No front foi centralizado:
-- UI: `Presencial`, `Remoto`, `Híbrido`
+- UI: `Presencial`, `Remoto`
 - Backend esperado:
   - `PRESENCIAL`
   - `REMOTO`
-  - `HIBRIDO` (sem acento)
-
-Também há tolerância no parse para retorno `HÍBRIDO` (com acento), mas o recomendado é padronizar para `HIBRIDO`.
 
 ---
 
@@ -201,7 +198,7 @@ O app já tolera:
 - [ ] `POST /auth/forgot-password` ativo (`200/202/204`).
 - [ ] `GET /service/get/all` suporta `page` e `size`.
 - [ ] `PUT /service/put` aplica corretamente alteração de categorias.
-- [ ] Contrato de modalidade padronizado (`PRESENCIAL|REMOTO|HIBRIDO`).
+- [ ] Contrato de modalidade padronizado (`PRESENCIAL|REMOTO`).
 - [ ] Campos de imagem de serviço padronizados.
 - [ ] `GET /health` publicado no ambiente de deploy.
 - [ ] `POST /monitoring/client-logs` publicado e relaying para Better Stack.

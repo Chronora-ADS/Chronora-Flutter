@@ -43,10 +43,6 @@ class CreateRequestModel {
       return 'REMOTO';
     }
 
-    if (normalized.contains('HIBRID')) {
-      return 'HIBRIDO';
-    }
-
     return normalized;
   }
 

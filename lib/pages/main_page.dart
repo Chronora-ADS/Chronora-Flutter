@@ -446,7 +446,6 @@ class _MainPageState extends State<MainPage> {
 
     if (normalized.contains('presencial')) return 'presencial';
     if (normalized.contains('remoto')) return 'remoto';
-    if (normalized.contains('hibrido')) return 'hibrido';
 
     return normalized;
   }

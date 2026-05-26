@@ -1086,9 +1086,6 @@ class _RequestViewState extends State<RequestView> {
     if (normalized == 'presential' || normalized == 'presencial') {
       return 'Presencial';
     }
-    if (normalized == 'hybrid' || normalized == 'hibrido') {
-      return 'Hibrido';
-    }
     return value;
   }
 
