@@ -26,6 +26,8 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
   bool _isLoading = false;
   bool _rememberMe = false;
 
@@ -165,8 +167,9 @@ class _LoginPageState extends State<LoginPage> {
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
+                          focusNode: _emailFocus,
                           onFieldSubmitted: (_) {
-                            FocusScope.of(context).nextFocus();
+                            FocusScope.of(context).requestFocus(_passwordFocus);
                           },
                         ),
                         const SizedBox(height: 16),
@@ -175,6 +178,7 @@ class _LoginPageState extends State<LoginPage> {
                           controller: _passwordController,
                           obscureText: true,
                           textInputAction: TextInputAction.done,
+                          focusNode: _passwordFocus,
                           onFieldSubmitted: (_) {
                             if (!_isLoading) {
                               _login();
@@ -336,6 +340,8 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 }

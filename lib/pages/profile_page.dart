@@ -211,7 +211,7 @@ class _ProfilePageState extends State<ProfilePage> {
     if (_newPasswordController.text.isNotEmpty &&
         _newPasswordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('As senhas nao coincidem.')),
+        const SnackBar(content: Text('As senhas não coincidem.')),
       );
       return;
     }
@@ -312,7 +312,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Voce perdera seus Chronos e pedidos em aberto.',
+                'Você perderá seus Chronos e pedidos em aberto.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: AppColors.preto),
               ),
