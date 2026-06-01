@@ -1,11 +1,22 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import '../models/main_page_requests_model.dart';
 import '../services/auth_session_service.dart';
 import 'api_service.dart';
 
 class ServiceCatalogService {
-  Future<ServiceListResult> fetchServices({int? page, int? size}) async {
+  Future<ServiceListResult> fetchServices({
+    int? page,
+    int? size,
+    String? status,
+    String? query,
+    List<String> categories = const [],
+    String? modality,
+    DateTime? deadline,
+    int? minTimeChronos,
+    int? maxTimeChronos,
+    String? sort,
+  }) async {
     final String? token = await _getToken();
 
     if (token == null) {
@@ -14,11 +25,32 @@ class ServiceCatalogService {
       );
     }
 
-    final query = <String>[];
-    if (page != null) query.add('page=$page');
-    if (size != null) query.add('size=$size');
-    final endpoint =
-        query.isEmpty ? '/service/get/all' : '/service/get/all?${query.join('&')}';
+    final queryParameters = <String, List<String>>{};
+    void addQueryValue(String key, Object? value) {
+      final text = value?.toString().trim();
+      if (text == null || text.isEmpty) return;
+      queryParameters.putIfAbsent(key, () => <String>[]).add(text);
+    }
+
+    addQueryValue('page', page);
+    addQueryValue('size', size);
+    addQueryValue('query', query);
+    for (final category in categories) {
+      addQueryValue('categories', category);
+    }
+    addQueryValue('modality', modality);
+    if (deadline != null) {
+      addQueryValue('deadline', _formatDate(deadline));
+    }
+    addQueryValue('minTimeChronos', minTimeChronos);
+    addQueryValue('maxTimeChronos', maxTimeChronos);
+    addQueryValue('sort', sort);
+
+    final path = status == null || status.trim().isEmpty
+        ? '/service/get/all'
+        : '/service/get/all/${Uri.encodeComponent(status.trim())}';
+    final queryString = Uri(queryParameters: queryParameters).query;
+    final endpoint = queryString.isEmpty ? path : '$path?$queryString';
 
     final response = await ApiService.get(endpoint, token: token);
 
@@ -81,6 +113,14 @@ class ServiceCatalogService {
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value);
     return null;
+  }
+
+  String _formatDate(DateTime date) {
+    return [
+      date.year.toString().padLeft(4, '0'),
+      date.month.toString().padLeft(2, '0'),
+      date.day.toString().padLeft(2, '0'),
+    ].join('-');
   }
 }
 
