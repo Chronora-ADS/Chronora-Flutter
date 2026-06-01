@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../core/constants/app_colors.dart';
 
@@ -11,7 +12,7 @@ class ServiceFilters {
   static const String sortBestRated = '2';
   static const String sortHighestTime = '3';
   static const String sortLowestTime = '4';
-  static const String remoteModality = 'Remoto';
+  static const String remoteModality = 'À distância';
   static const String presencialModality = 'Presencial';
 
   final String deadlineText;
@@ -86,6 +87,8 @@ class _FiltersModalState extends State<FiltersModal> {
   late String ordenacaoValue;
   String? modalidadeSelecionada;
   DateTime? _selectedPrazoDate;
+  String? _deadlineErrorText;
+  late final TextEditingController _prazoController;
   late final TextEditingController _categoriaController;
   late final Set<String> selectedCategories;
 
@@ -98,6 +101,13 @@ class _FiltersModalState extends State<FiltersModal> {
     modalidadeSelecionada = widget.initialFilters.modalidadeSelecionada;
     _selectedPrazoDate = widget.initialFilters.selectedPrazoDate ??
         _parseDate(widget.initialFilters.deadlineText);
+    _prazoController = TextEditingController(
+      text: _selectedPrazoDate == null ? '' : _formatDate(_selectedPrazoDate!),
+    );
+    _deadlineErrorText = _deadlineErrorFor(_prazoController.text);
+    if (_deadlineErrorText != null) {
+      _selectedPrazoDate = null;
+    }
     selectedCategories = widget.initialFilters.effectiveCategories.toSet();
     _categoriaController = TextEditingController();
   }
@@ -146,12 +156,12 @@ class _FiltersModalState extends State<FiltersModal> {
                   ),
                   const SizedBox(height: 20),
                   _buildFilterSection(
-                    'Tipo de servico',
+                    'Tipo de serviço',
                     Row(
                       children: [
                         Expanded(
                           child: _buildSelectableButton(
-                            label: 'A distancia',
+                            label: ServiceFilters.remoteModality,
                             selected: modalidadeSelecionada ==
                                 ServiceFilters.remoteModality,
                             onPressed: () => _toggleModality(
@@ -175,7 +185,7 @@ class _FiltersModalState extends State<FiltersModal> {
                   ),
                   const SizedBox(height: 20),
                   _buildFilterSection(
-                    'Avaliacao de usuario',
+                    'Avaliação de usuário',
                     DropdownButtonFormField<String>(
                       initialValue: avaliacaoValue,
                       items: const [
@@ -242,21 +252,40 @@ class _FiltersModalState extends State<FiltersModal> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          decoration: BoxDecoration(
-                            color: AppColors.branco,
-                            border: Border.all(
-                              color: AppColors.amareloUmPoucoEscuro,
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                        SizedBox(
+                          height: 46,
                           child: TextField(
                             controller: _categoriaController,
                             onSubmitted: _addCategory,
+                            textAlignVertical: TextAlignVertical.center,
                             decoration: InputDecoration(
                               hintText: 'Digite e pressione Enter',
-                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(
+                                  color: AppColors.amareloUmPoucoEscuro,
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(
+                                  color: AppColors.amareloUmPoucoEscuro,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(
+                                  color: AppColors.amareloUmPoucoEscuro,
+                                ),
+                              ),
+                              suffixIconConstraints: const BoxConstraints(
+                                minHeight: 46,
+                                minWidth: 48,
+                              ),
                               suffixIcon: IconButton(
                                 onPressed: () =>
                                     _addCategory(_categoriaController.text),
@@ -313,7 +342,7 @@ class _FiltersModalState extends State<FiltersModal> {
                   ),
                   const SizedBox(height: 20),
                   _buildFilterSection(
-                    'Ordenacao',
+                    'Ordenação',
                     DropdownButtonFormField<String>(
                       initialValue: ordenacaoValue,
                       items: const [
@@ -403,47 +432,56 @@ class _FiltersModalState extends State<FiltersModal> {
   }
 
   Widget _buildDateSelector() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: AppColors.branco,
-        border: Border.all(color: AppColors.amareloUmPoucoEscuro),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              _selectedPrazoDate != null
-                  ? 'Ate ${_formatDate(_selectedPrazoDate!)}'
-                  : 'Selecione a data limite',
-              style: TextStyle(
-                color: _selectedPrazoDate != null
-                    ? AppColors.preto
-                    : AppColors.amareloUmPoucoEscuro.withValues(alpha: 0.6),
+    final hasDeadlineText = _prazoController.text.isNotEmpty;
+
+    return TextField(
+      controller: _prazoController,
+      keyboardType: TextInputType.number,
+      inputFormatters: const [_DateTextInputFormatter()],
+      onChanged: _handleDeadlineTextChanged,
+      textAlignVertical: TextAlignVertical.center,
+      decoration: InputDecoration(
+        hintText: 'dd/mm/aaaa',
+        hintStyle: TextStyle(
+          color: AppColors.amareloUmPoucoEscuro.withValues(alpha: 0.6),
+        ),
+        errorText: _deadlineErrorText,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+        border: _dateInputBorder(AppColors.amareloUmPoucoEscuro),
+        enabledBorder: _dateInputBorder(AppColors.amareloUmPoucoEscuro),
+        focusedBorder: _dateInputBorder(AppColors.amareloUmPoucoEscuro),
+        errorBorder: _dateInputBorder(Colors.red.shade700),
+        focusedErrorBorder: _dateInputBorder(Colors.red.shade700),
+        suffixIconConstraints: BoxConstraints(
+          minHeight: 46,
+          minWidth: hasDeadlineText ? 96 : 48,
+        ),
+        suffixIcon: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (hasDeadlineText)
+              IconButton(
+                tooltip: 'Limpar data',
+                icon: const Icon(
+                  Icons.close,
+                  color: AppColors.amareloUmPoucoEscuro,
+                ),
+                onPressed: _clearDeadlineDate,
               ),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(
-              Icons.date_range,
-              color: AppColors.amareloUmPoucoEscuro,
-            ),
-            onPressed: _showPrazoDialog,
-          ),
-          if (_selectedPrazoDate != null)
             IconButton(
+              tooltip: 'Abrir calendário',
               icon: const Icon(
-                Icons.close,
+                Icons.date_range,
                 color: AppColors.amareloUmPoucoEscuro,
               ),
-              onPressed: () {
-                setState(() {
-                  _selectedPrazoDate = null;
-                });
-              },
+              onPressed: _showPrazoDialog,
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -500,6 +538,31 @@ class _FiltersModalState extends State<FiltersModal> {
     );
   }
 
+  OutlineInputBorder _dateInputBorder(Color color) {
+    return OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(color: color),
+    );
+  }
+
+  void _handleDeadlineTextChanged(String value) {
+    final errorText = _deadlineErrorFor(value);
+
+    setState(() {
+      _deadlineErrorText = errorText;
+      _selectedPrazoDate =
+          errorText == null && value.length == 10 ? _parseDate(value) : null;
+    });
+  }
+
+  void _clearDeadlineDate() {
+    setState(() {
+      _selectedPrazoDate = null;
+      _deadlineErrorText = null;
+      _prazoController.clear();
+    });
+  }
+
   void _addCategory(String value) {
     final category = value.trim();
     if (category.isEmpty) return;
@@ -518,6 +581,8 @@ class _FiltersModalState extends State<FiltersModal> {
       modalidadeSelecionada = null;
       selectedCategories.clear();
       _selectedPrazoDate = null;
+      _deadlineErrorText = null;
+      _prazoController.clear();
       _categoriaController.clear();
     });
 
@@ -527,9 +592,25 @@ class _FiltersModalState extends State<FiltersModal> {
 
   void _applyFilters() {
     FocusScope.of(context).unfocus();
+    final deadlineError = _deadlineErrorFor(
+      _prazoController.text,
+      validateIncomplete: true,
+    );
+    if (deadlineError != null) {
+      setState(() {
+        _deadlineErrorText = deadlineError;
+        _selectedPrazoDate = null;
+      });
+      return;
+    }
+
+    final selectedDeadline = _parseDate(_prazoController.text);
+
     widget.onApplyFilters(
       ServiceFilters(
-        selectedPrazoDate: _selectedPrazoDate,
+        deadlineText:
+            selectedDeadline == null ? '' : _prazoController.text.trim(),
+        selectedPrazoDate: selectedDeadline,
         tempoValue: tempoValue,
         avaliacaoValue: avaliacaoValue,
         ordenacaoValue: ordenacaoValue,
@@ -551,17 +632,27 @@ class _FiltersModalState extends State<FiltersModal> {
   Future<void> _showPrazoDialog() async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final lastDate = today.add(const Duration(days: 365));
+    final selectedDate = _selectedPrazoDate;
+    final initialDate = selectedDate != null &&
+            !selectedDate.isBefore(today) &&
+            !selectedDate.isAfter(lastDate)
+        ? selectedDate
+        : today;
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedPrazoDate ?? today,
+      initialDate: initialDate,
       firstDate: today,
-      lastDate: today.add(const Duration(days: 365)),
+      lastDate: lastDate,
     );
 
     if (picked == null) return;
 
     setState(() {
-      _selectedPrazoDate = DateTime(picked.year, picked.month, picked.day);
+      final pickedDate = DateTime(picked.year, picked.month, picked.day);
+      _selectedPrazoDate = pickedDate;
+      _deadlineErrorText = null;
+      _prazoController.text = _formatDate(pickedDate);
     });
   }
 
@@ -586,9 +677,13 @@ class _FiltersModalState extends State<FiltersModal> {
   DateTime? _parseDate(String value) {
     final text = value.trim();
     if (text.isEmpty) return null;
+    if (text.length != 10) return null;
 
     final parts = text.split('/');
     if (parts.length != 3) return null;
+    if (parts[0].length != 2 || parts[1].length != 2 || parts[2].length != 4) {
+      return null;
+    }
 
     final day = int.tryParse(parts[0]);
     final month = int.tryParse(parts[1]);
@@ -604,6 +699,36 @@ class _FiltersModalState extends State<FiltersModal> {
     }
 
     return parsedDate;
+  }
+
+  String? _deadlineErrorFor(
+    String value, {
+    bool validateIncomplete = false,
+  }) {
+    final text = value.trim();
+    if (text.isEmpty) return null;
+
+    if (text.length != 10) {
+      return validateIncomplete
+          ? 'Informe uma data válida no formato dd/mm/aaaa.'
+          : null;
+    }
+
+    final parsedDate = _parseDate(text);
+    if (parsedDate == null) {
+      return 'Informe uma data válida no formato dd/mm/aaaa.';
+    }
+
+    if (parsedDate.isBefore(_today())) {
+      return 'Altere para uma data atual ou futura.';
+    }
+
+    return null;
+  }
+
+  DateTime _today() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
   }
 
   String _formatDate(DateTime date) {
@@ -626,7 +751,36 @@ class _FiltersModalState extends State<FiltersModal> {
 
   @override
   void dispose() {
+    _prazoController.dispose();
     _categoriaController.dispose();
     super.dispose();
+  }
+}
+
+class _DateTextInputFormatter extends TextInputFormatter {
+  const _DateTextInputFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digitsOnly = newValue.text.replaceAll(RegExp(r'\D'), '');
+    final limitedDigits =
+        digitsOnly.length > 8 ? digitsOnly.substring(0, 8) : digitsOnly;
+    final formattedDate = StringBuffer();
+
+    for (var index = 0; index < limitedDigits.length; index++) {
+      if (index == 2 || index == 4) {
+        formattedDate.write('/');
+      }
+      formattedDate.write(limitedDigits[index]);
+    }
+
+    final text = formattedDate.toString();
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
   }
 }

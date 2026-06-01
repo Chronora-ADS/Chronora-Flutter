@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:chronora/core/models/main_page_requests_model.dart';
@@ -33,7 +32,7 @@ class _MainPageState extends State<MainPage> {
   String _userName = 'Usuario';
   double _userRating = 0.0;
   String? _userPhotoUrl;
-  Timer? _searchDebounce;
+  String _submittedSearchQuery = '';
 
   List<Service> services = [];
   List<Service> _visibleServices = [];
@@ -50,12 +49,11 @@ class _MainPageState extends State<MainPage> {
   @override
   void initState() {
     super.initState();
-    _searchController.addListener(_handleSearchChanged);
     _fetchCurrentUser();
     _reloadServices();
   }
 
-  bool get _hasSearchQuery => _searchController.text.trim().isNotEmpty;
+  bool get _hasSearchQuery => _submittedSearchQuery.isNotEmpty;
 
   bool get _isFilterMode =>
       _hasSearchQuery ||
@@ -137,7 +135,7 @@ class _MainPageState extends State<MainPage> {
         page: _nextPage,
         size: _pageSize,
         status: 'CRIADO',
-        query: _searchController.text.trim(),
+        query: _submittedSearchQuery,
         categories: _activeFilters.effectiveCategories,
         modality: _backendModality(_activeFilters.modalidadeSelecionada),
         deadline: _selectedDeadlineFilter,
@@ -188,12 +186,11 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
-  void _handleSearchChanged() {
-    _searchDebounce?.cancel();
-    _searchDebounce = Timer(const Duration(milliseconds: 350), () {
-      if (!mounted) return;
-      _fetchServices(showLoading: true, reset: true);
+  void _submitSearch([String? value]) {
+    setState(() {
+      _submittedSearchQuery = _searchController.text.trim();
     });
+    _fetchServices(showLoading: true, reset: true);
   }
 
   void _handleFiltersApplied(ServiceFilters filters) {
@@ -368,6 +365,8 @@ class _MainPageState extends State<MainPage> {
                           margin: const EdgeInsets.only(bottom: 16),
                           child: TextField(
                             controller: _searchController,
+                            textInputAction: TextInputAction.search,
+                            onSubmitted: _submitSearch,
                             decoration: InputDecoration(
                               hintText: 'Pintura de parede, aula de ingles...',
                               hintStyle: const TextStyle(
@@ -383,9 +382,13 @@ class _MainPageState extends State<MainPage> {
                                 horizontal: 16,
                                 vertical: 12,
                               ),
-                              prefixIcon: const Icon(
-                                Icons.search,
-                                color: AppColors.textoPlaceholder,
+                              prefixIcon: IconButton(
+                                tooltip: 'Pesquisar',
+                                onPressed: _submitSearch,
+                                icon: const Icon(
+                                  Icons.search,
+                                  color: AppColors.textoPlaceholder,
+                                ),
                               ),
                             ),
                           ),
@@ -675,10 +678,7 @@ class _MainPageState extends State<MainPage> {
 
   @override
   void dispose() {
-    _searchDebounce?.cancel();
-    _searchController
-      ..removeListener(_handleSearchChanged)
-      ..dispose();
+    _searchController.dispose();
     super.dispose();
   }
 }
