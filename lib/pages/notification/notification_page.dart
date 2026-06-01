@@ -6,6 +6,7 @@ import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/services/auth_session_service.dart';
+import '../../core/services/service_deadline_controller.dart';
 import '../../widgets/backgrounds/background_default_widget.dart';
 import '../../widgets/header.dart';
 import '../../widgets/notification_card.dart';
@@ -23,7 +24,10 @@ class _NotificationPageState extends State<NotificationPage> {
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
   bool _isLoading = true;
+  bool _isSubmittingDeadlineAction = false;
   List<NotificationEntry> _notifications = const [];
+  final ServiceDeadlineController _serviceDeadlineController =
+      ServiceDeadlineController();
 
   @override
   void initState() {
@@ -132,6 +136,109 @@ class _NotificationPageState extends State<NotificationPage> {
     }
   }
 
+  Future<void> _renewDeadline(NotificationEntry notification) async {
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day).add(
+      const Duration(days: 1),
+    );
+    final lastDate = tomorrow.add(const Duration(days: 365));
+    final currentDeadline = notification.service.deadline;
+    var initialDate = tomorrow;
+    if (currentDeadline != null && currentDeadline.isAfter(tomorrow)) {
+      initialDate =
+          currentDeadline.isAfter(lastDate) ? lastDate : currentDeadline;
+    }
+
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: tomorrow,
+      lastDate: lastDate,
+    );
+
+    if (selectedDate == null) {
+      return;
+    }
+
+    await _runDeadlineAction(
+      action: () => _serviceDeadlineController.renewDeadline(
+        serviceId: notification.service.id,
+        deadline: selectedDate,
+      ),
+      successMessage: 'Prazo renovado com sucesso.',
+    );
+  }
+
+  Future<void> _cancelDeadlineService(NotificationEntry notification) async {
+    final shouldCancel = await showDialog<bool>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text('Cancelar pedido'),
+              content: const Text('Deseja cancelar este pedido?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Voltar'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Cancelar pedido'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!shouldCancel) {
+      return;
+    }
+
+    await _runDeadlineAction(
+      action: () => _serviceDeadlineController.cancelService(
+        serviceId: notification.service.id,
+      ),
+      successMessage: 'Pedido cancelado com sucesso.',
+    );
+  }
+
+  Future<void> _runDeadlineAction({
+    required Future<void> Function() action,
+    required String successMessage,
+  }) async {
+    if (_isSubmittingDeadlineAction) {
+      return;
+    }
+
+    setState(() {
+      _isSubmittingDeadlineAction = true;
+    });
+
+    try {
+      await action();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(successMessage)),
+      );
+      await _loadNotifications();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmittingDeadlineAction = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -224,6 +331,8 @@ class _NotificationPageState extends State<NotificationPage> {
       itemCount: _notifications.length,
       itemBuilder: (context, index) {
         final notification = _notifications[index];
+        final canRespondToDeadline =
+            ServiceDeadlineController.canRespondToDeadline(notification);
         return GestureDetector(
           onTap: () => _openNotification(notification),
           child: Container(
@@ -260,6 +369,35 @@ class _NotificationPageState extends State<NotificationPage> {
                     fontSize: 12,
                   ),
                 ),
+                if (canRespondToDeadline) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ElevatedButton(
+                        onPressed: _isSubmittingDeadlineAction
+                            ? null
+                            : () => _renewDeadline(notification),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.amareloClaro,
+                          foregroundColor: AppColors.preto,
+                        ),
+                        child: const Text('Renovar prazo'),
+                      ),
+                      OutlinedButton(
+                        onPressed: _isSubmittingDeadlineAction
+                            ? null
+                            : () => _cancelDeadlineService(notification),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                        ),
+                        child: const Text('Cancelar pedido'),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
