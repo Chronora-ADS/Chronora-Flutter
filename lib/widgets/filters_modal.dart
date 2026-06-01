@@ -166,7 +166,7 @@ class _FiltersModalState extends State<FiltersModal> {
                       items: const [
                         DropdownMenuItem(
                           value: ServiceFilters.allRatings,
-                          child: Text('Todas as avaliacoes'),
+                          child: Text('Todas as avaliações'),
                         ),
                         DropdownMenuItem(
                           value: '0',
