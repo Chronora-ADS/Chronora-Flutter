@@ -1,7 +1,5 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
-
 import '../api/api_service.dart';
 import 'auth_session_service.dart';
 
@@ -25,19 +23,62 @@ class ChronosWalletService {
     return _extractChronosBalance(response.body);
   }
 
-  Future<void> buyChronos(int amount) async {
-    await _sendChronosUpdate('/user/put/buy-chronos', amount);
+  Future<BuyPaymentResponse> createBuyPayment(int chronosAmount) async {
+    final token = await AuthSessionService.getValidAccessToken();
+    if (token == null) throw Exception('Usuario nao autenticado.');
+
+    final response = await ApiService.post(
+      '/payment/buy/create',
+      {'chronosAmount': chronosAmount},
+      token: token,
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(ApiService.extractErrorMessage(response.body,
+          fallback: 'Nao foi possivel iniciar o pagamento.'));
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return BuyPaymentResponse(
+      transactionId: data['transactionId'] as int,
+      qrCode: data['qrCode'] as String,
+      qrCodeBase64: data['qrCodeBase64'] as String,
+      expiresAt: DateTime.parse(data['expiresAt'] as String),
+    );
   }
 
-  Future<void> sellChronos({
-    required int amount,
-    String? pixKey,
+  Future<String> checkBuyPaymentStatus(int transactionId) async {
+    final token = await AuthSessionService.getValidAccessToken();
+    if (token == null) throw Exception('Usuario nao autenticado.');
+
+    final response =
+        await ApiService.get('/payment/buy/status/$transactionId', token: token);
+
+    if (response.statusCode != 200) {
+      throw Exception(ApiService.extractErrorMessage(response.body));
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return data['status'] as String;
+  }
+
+  Future<void> createSellPayment({
+    required int chronosAmount,
+    required String pixKey,
   }) async {
-    await _sendChronosUpdate(
-      '/user/put/sell-chronos',
-      amount,
-      pixKey: pixKey,
+    final token = await AuthSessionService.getValidAccessToken();
+    if (token == null) throw Exception('Usuario nao autenticado.');
+
+    final response = await ApiService.post(
+      '/payment/sell/create',
+      {'chronosAmount': chronosAmount, 'pixKey': pixKey},
+      token: token,
     );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(ApiService.extractErrorMessage(response.body,
+          fallback: 'Nao foi possivel processar a venda.'));
+    }
   }
 
   int _extractChronosBalance(String responseBody) {
@@ -48,43 +89,24 @@ class ChronosWalletService {
     return 0;
   }
 
-  Future<void> _sendChronosUpdate(
-    String endpoint,
-    int amount, {
-    String? pixKey,
-  }) async {
-    final token = await AuthSessionService.getValidAccessToken();
-    if (token == null) {
-      throw Exception('Token de autenticacao nao encontrado.');
-    }
-
-    final headers = <String, String>{
-      'Chronos': amount.toString(),
-      'Authorization': 'Bearer $token',
-      if (pixKey != null && pixKey.trim().isNotEmpty) 'Pix-Key': pixKey.trim(),
-    };
-
-    final response = await ApiService.putWithHeaders(endpoint, headers);
-    _ensureSuccess(response);
-  }
-
-  void _ensureSuccess(http.Response response) {
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return;
-    }
-
-    throw Exception(
-      ApiService.extractErrorMessage(
-        response.body,
-        fallback: 'Nao foi possivel processar a operacao com Chronos.',
-      ),
-    );
-  }
-
   int _toInt(dynamic value) {
     if (value is int) return value;
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value) ?? 0;
     return 0;
   }
+}
+
+class BuyPaymentResponse {
+  final int transactionId;
+  final String qrCode;
+  final String qrCodeBase64;
+  final DateTime expiresAt;
+
+  const BuyPaymentResponse({
+    required this.transactionId,
+    required this.qrCode,
+    required this.qrCodeBase64,
+    required this.expiresAt,
+  });
 }
