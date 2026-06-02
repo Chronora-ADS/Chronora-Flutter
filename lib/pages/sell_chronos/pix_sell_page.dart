@@ -1,8 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/api/api_service.dart';
-import '../../core/services/auth_session_service.dart';
+import '../../core/services/chronos_wallet_service.dart';
 import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
@@ -23,6 +21,7 @@ class PixSellPage extends StatefulWidget {
 }
 
 class _PixSellPageState extends State<PixSellPage> {
+  final _walletService = ChronosWalletService();
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
   late TextEditingController _pixKeyController;
@@ -40,41 +39,11 @@ class _PixSellPageState extends State<PixSellPage> {
     super.dispose();
   }
 
-  Future<String?> _getToken() async {
-    return AuthSessionService.getValidAccessToken();
-  }
-
-  /// Faz a requisição PUT para vender Chronos
   Future<void> _sellChronosBackend(int amount, String pixKey) async {
-    final String? token = await _getToken();
-
-    if (token == null) {
-      throw Exception('Token de autenticação não encontrado');
-    }
-
-    try {
-      final response = await ApiService.putWithHeaders(
-        '/user/put/sell-chronos',
-        {
-          'Chronos': amount.toString(),
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (response.statusCode != 200) {
-        try {
-          final errorData = json.decode(response.body);
-          final errorMessage =
-              errorData['message'] ?? 'Erro ao processar venda';
-          throw Exception(errorMessage);
-        } catch (e) {
-          throw Exception('Erro ${response.statusCode}: ${response.body}');
-        }
-      }
-    } catch (error) {
-      rethrow;
-    }
+    await _walletService.createSellPayment(
+      chronosAmount: amount,
+      pixKey: pixKey,
+    );
   }
 
   void _toggleDrawer() {
