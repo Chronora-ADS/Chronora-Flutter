@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'core/api/api_service.dart';
 import 'core/constants/app_routes.dart';
 import 'core/services/auth_session_service.dart';
@@ -78,6 +80,13 @@ class _AuthGateState extends State<_AuthGate> {
   }
 
   Future<bool> _resolveSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final rememberMe = prefs.getBool('remember_me') ?? false;
+    if (!rememberMe) {
+      await AuthSessionService.clearSession();
+      return false;
+    }
+
     final token = await AuthSessionService.getValidAccessToken();
     if (token == null || token.isEmpty) return false;
 
