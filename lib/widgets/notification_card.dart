@@ -42,16 +42,30 @@ class NotificationEntry {
 class NotificationServiceSummary {
   final int id;
   final String title;
+  final String status;
+  final DateTime? deadline;
 
   NotificationServiceSummary({
     required this.id,
     required this.title,
+    this.status = '',
+    this.deadline,
   });
 
   factory NotificationServiceSummary.fromJson(Map<String, dynamic> json) {
     return NotificationServiceSummary(
       id: NotificationEntry._readInt(json['id']),
       title: json['title']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+      deadline: _readOptionalDate(json['deadline']),
     );
+  }
+
+  static DateTime? _readOptionalDate(dynamic value) {
+    if (value is DateTime) return value;
+    if (value is String) {
+      return DateTime.tryParse(value);
+    }
+    return null;
   }
 }
