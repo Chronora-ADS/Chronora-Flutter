@@ -27,6 +27,11 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  final _nameFocus = FocusNode();
+  final _emailFocus = FocusNode();
+  final _phoneFocus = FocusNode();
+  final _passwordFocus = FocusNode();
+  final _confirmPasswordFocus = FocusNode();
 
   String? _fileName;
   PlatformFile? _pickedFile;
@@ -253,8 +258,9 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                     controller: _nameController,
                     validator: _validateName,
                     textInputAction: TextInputAction.next,
+                    focusNode: _nameFocus,
                     onFieldSubmitted: (_) {
-                      FocusScope.of(context).nextFocus();
+                      FocusScope.of(context).requestFocus(_emailFocus);
                     },
                   ),
                   const SizedBox(height: 16),
@@ -264,8 +270,9 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                     keyboardType: TextInputType.emailAddress,
                     validator: _validateEmail,
                     textInputAction: TextInputAction.next,
+                    focusNode: _emailFocus,
                     onFieldSubmitted: (_) {
-                      FocusScope.of(context).nextFocus();
+                      FocusScope.of(context).requestFocus(_phoneFocus);
                     },
                   ),
                   const SizedBox(height: 16),
@@ -276,8 +283,9 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                     validator: _validatePhone,
                     inputFormatters: const [_BrazilianPhoneInputFormatter()],
                     textInputAction: TextInputAction.next,
+                    focusNode: _phoneFocus,
                     onFieldSubmitted: (_) {
-                      FocusScope.of(context).nextFocus();
+                      FocusScope.of(context).requestFocus(_passwordFocus);
                     },
                   ),
                   const SizedBox(height: 16),
@@ -287,8 +295,9 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                     obscureText: true,
                     validator: _validatePassword,
                     textInputAction: TextInputAction.next,
+                    focusNode: _passwordFocus,
                     onFieldSubmitted: (_) {
-                      FocusScope.of(context).nextFocus();
+                      FocusScope.of(context).requestFocus(_confirmPasswordFocus);
                     },
                   ),
                   const SizedBox(height: 16),
@@ -298,6 +307,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                     obscureText: true,
                     validator: _validateConfirmPassword,
                     textInputAction: TextInputAction.done,
+                    focusNode: _confirmPasswordFocus,
                     onFieldSubmitted: (_) {
                       if (!_isLoading) {
                         _submitForm();
@@ -441,6 +451,11 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
     _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _nameFocus.dispose();
+    _emailFocus.dispose();
+    _phoneFocus.dispose();
+    _passwordFocus.dispose();
+    _confirmPasswordFocus.dispose();
     super.dispose();
   }
 }

@@ -13,6 +13,7 @@ class AuthTextField extends StatelessWidget {
     final TextInputAction? textInputAction;
     final void Function(String)? onFieldSubmitted;
     final List<TextInputFormatter>? inputFormatters;
+    final FocusNode? focusNode;
 
     const AuthTextField({
         super.key,
@@ -26,6 +27,7 @@ class AuthTextField extends StatelessWidget {
         this.textInputAction,
         this.onFieldSubmitted,
         this.inputFormatters,
+        this.focusNode,
     });
 
     @override
@@ -51,6 +53,7 @@ class AuthTextField extends StatelessWidget {
                 textInputAction: textInputAction,
                 onFieldSubmitted: onFieldSubmitted,
                 inputFormatters: inputFormatters,
+                focusNode: focusNode,
                 style: const TextStyle(fontSize: 20),
                 decoration: InputDecoration(
                     hintText: hintText,

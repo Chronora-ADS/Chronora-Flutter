@@ -10,6 +10,7 @@ import 'package:chronora/pages/profile_page.dart';
 import 'package:chronora/pages/requests/my_requests.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_creation.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_edit.dart';
+import 'package:chronora/pages/requests/request_accepted_view.dart';
 import 'package:chronora/pages/requests/request_view.dart';
 import 'package:chronora/pages/sell_chronos/sell_chronos_page.dart';
 import 'package:chronora/widgets/auth_guard.dart';
@@ -46,6 +47,7 @@ class AppRoutes {
       resetPassword: (context) => const ResetPasswordPage(),
       requestCreation: (context) => _protected(const RequestCreationPage()),
       requestView: (context) => _protected(const RequestView()),
+      requestAcceptedView: (context) => _protected(const RequestAcceptedView()),
       requestEditing: (context) => _protected(const RequestEditingPage()),
       notifications: (context) => _protected(const NotificationPage()),
       profile: (context) => _protected(const ProfilePage()),
