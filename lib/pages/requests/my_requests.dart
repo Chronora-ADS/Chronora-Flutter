@@ -17,6 +17,11 @@ class MeusPedidosPage extends StatefulWidget {
 }
 
 class _MeusPedidosPageState extends State<MeusPedidosPage> {
+  static const Color _surfaceColor = Color(0xFF121414);
+  static const Color _surfaceElevatedColor = Color(0xFF181A1A);
+  static const Color _outlineColor = Color(0xFF2A2D2D);
+  static const double _contentMaxWidth = 1240;
+
   static const List<String> _serviceStatuses = [
     'CRIADO',
     'ACEITO',
@@ -133,29 +138,15 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
             ? 'Nenhum pedido criado por voce foi encontrado.'
             : 'Nenhum pedido criado por voce combina com a busca.',
         requestsByStatus: _groupServicesByStatus(
-          belongsToGroup: (envelope) =>
-              _isCreatedByCurrentUser(envelope) &&
-              _normalizeStatus(envelope.service.status) != 'ACEITO',
+          belongsToGroup: _isCreatedByCurrentUser,
         ),
       ),
       _RequestSectionGroup(
-        key: 'created_by_me_accepted',
-        title: 'Pedidos Criados por Voce e Aceitos',
+        key: 'accepted_from_others',
+        title: 'Pedidos de Outros Usuarios Aceitos por Voce',
         emptyMessage: _searchQuery.trim().isEmpty
-            ? 'Nenhum pedido criado por voce com status aceito foi encontrado.'
-            : 'Nenhum pedido criado por voce com status aceito combina com a busca.',
-        requestsByStatus: _groupServicesByStatus(
-          belongsToGroup: (envelope) =>
-              _isCreatedByCurrentUser(envelope) &&
-              _normalizeStatus(envelope.service.status) == 'ACEITO',
-        ),
-      ),
-      _RequestSectionGroup(
-        key: 'accepted_by_me',
-        title: 'Pedidos Aceitos por Voce',
-        emptyMessage: _searchQuery.trim().isEmpty
-            ? 'Nenhum pedido aceito por voce foi encontrado.'
-            : 'Nenhum pedido aceito por voce combina com a busca.',
+            ? 'Nenhum pedido de outro usuario aceito por voce foi encontrado.'
+            : 'Nenhum pedido de outro usuario aceito por voce combina com a busca.',
         requestsByStatus: _groupServicesByStatus(
           belongsToGroup: (envelope) =>
               !_isCreatedByCurrentUser(envelope) &&
@@ -384,21 +375,21 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
                     onRefresh: _loadMyRequests,
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.only(
-                        top: 16,
-                        left: 16,
-                        right: 16,
-                        bottom: 24,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildSearchField(),
-                          const SizedBox(height: 24),
-                          _buildSeparators(),
-                          const SizedBox(height: 24),
-                          _buildContent(requestGroups: requestGroups),
-                        ],
+                      padding: const EdgeInsets.fromLTRB(18, 24, 18, 32),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxWidth: _contentMaxWidth,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildPageHeader(requestGroups),
+                              const SizedBox(height: 20),
+                              _buildContent(requestGroups: requestGroups),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -460,47 +451,260 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         });
       },
       decoration: InputDecoration(
-        hintText: 'Pintura de parede, aula de inglês...',
-        hintStyle: const TextStyle(color: AppColors.textoPlaceholder),
+        hintText: 'Buscar por titulo, categoria ou criador',
+        hintStyle: TextStyle(color: AppColors.cinza.withValues(alpha: 0.78)),
         filled: true,
-        fillColor: AppColors.branco,
+        fillColor: _surfaceElevatedColor,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _outlineColor),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _outlineColor),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(
+            color: AppColors.amareloClaro,
+            width: 1.5,
+          ),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
-          vertical: 12,
+          vertical: 14,
         ),
-        prefixIcon: const Icon(
-          Icons.search,
-          color: AppColors.textoPlaceholder,
-        ),
+        prefixIcon: const Icon(Icons.search, color: AppColors.amareloClaro),
+        suffixIcon: _searchQuery.isEmpty
+            ? null
+            : IconButton(
+                tooltip: 'Limpar busca',
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() {
+                    _searchQuery = '';
+                  });
+                },
+                icon: const Icon(Icons.close, color: AppColors.cinza),
+              ),
+      ),
+      cursorColor: AppColors.amareloClaro,
+      style: const TextStyle(color: AppColors.branco),
+    );
+  }
+
+  Widget _buildPageHeader(List<_RequestSectionGroup> requestGroups) {
+    final totalRequests = requestGroups.fold<int>(
+      0,
+      (total, group) => total + group.totalServices,
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _surfaceColor.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _outlineColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.22),
+            blurRadius: 24,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompact = constraints.maxWidth < 720;
+
+          final heading = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Meus pedidos',
+                style: TextStyle(
+                  color: AppColors.branco,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '$totalRequests pedido(s) vinculados ao seu login',
+                style: TextStyle(
+                  color: AppColors.cinza.withValues(alpha: 0.92),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          );
+
+          final search = isCompact
+              ? _buildSearchField()
+              : SizedBox(width: 430, child: _buildSearchField());
+
+          if (isCompact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                heading,
+                const SizedBox(height: 18),
+                search,
+              ],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(child: heading),
+              const SizedBox(width: 24),
+              search,
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildSeparators() {
-    return Column(
-      children: [
-        Align(
-          alignment: Alignment.center,
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.8,
-            height: 3,
-            color: AppColors.branco,
-          ),
+  Widget _buildInfoBanner(String message) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        color: AppColors.amareloClaro.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.amareloClaro.withValues(alpha: 0.26),
         ),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.center,
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.5,
-            height: 3,
-            color: AppColors.branco,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.amareloClaro.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.touch_app_outlined,
+              color: AppColors.amareloClaro,
+              size: 20,
+            ),
           ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: AppColors.branco,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String message) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 28),
+      decoration: BoxDecoration(
+        color: AppColors.preto.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.branco.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.amareloClaro.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.inbox_outlined,
+              color: AppColors.amareloClaro,
+              size: 24,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            message,
+            style: TextStyle(
+              color: AppColors.branco.withValues(alpha: 0.9),
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _groupIcon(String groupKey) {
+    switch (groupKey) {
+      case 'created_by_me':
+        return Icons.add_task_outlined;
+      case 'accepted_from_others':
+        return Icons.handshake_outlined;
+      default:
+        return Icons.list_alt_outlined;
+    }
+  }
+
+  IconData _statusIcon(String status) {
+    switch (status) {
+      case 'CRIADO':
+        return Icons.pending_actions_outlined;
+      case 'ACEITO':
+        return Icons.check_circle_outline;
+      case 'EM_ANDAMENTO':
+        return Icons.timelapse_outlined;
+      case 'CONCLUIDO':
+        return Icons.task_alt_outlined;
+      case 'CANCELADO':
+        return Icons.cancel_outlined;
+      default:
+        return Icons.list_alt_outlined;
+    }
+  }
+
+  String _statusActionLabel(bool isSelected) {
+    return isSelected ? 'Ocultar pedidos' : 'Ver pedidos';
+  }
+
+  Widget _buildCountPill(int count, {bool isSelected = false}) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 44, minHeight: 34),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: isSelected
+            ? AppColors.amareloClaro
+            : AppColors.amareloClaro.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: isSelected
+              ? AppColors.amareloClaro
+              : AppColors.amareloClaro.withValues(alpha: 0.28),
         ),
-      ],
+      ),
+      child: Text(
+        '$count',
+        style: TextStyle(
+          color: isSelected ? AppColors.preto : AppColors.amareloClaro,
+          fontSize: 14,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
     );
   }
 
@@ -546,15 +750,10 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
           if (index < requestGroups.length - 1) const SizedBox(height: 20),
         ],
         if (_selectedSectionKey == null)
-          const Padding(
-            padding: EdgeInsets.only(top: 20),
-            child: Text(
-              'Selecione um status para visualizar os pedidos.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.branco,
-                fontSize: 16,
-              ),
+          Padding(
+            padding: const EdgeInsets.only(top: 20),
+            child: _buildInfoBanner(
+              'Selecione uma categoria de status para visualizar os pedidos.',
             ),
           ),
       ],
@@ -567,36 +766,77 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     final availableStatuses = _availableStatuses(group.requestsByStatus);
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.branco.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: AppColors.branco.withValues(alpha: 0.12),
-        ),
+        color: _surfaceColor.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _outlineColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            group.title,
-            style: const TextStyle(
-              color: AppColors.branco,
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.amareloClaro.withValues(alpha: 0.13),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.amareloClaro.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Icon(
+                  _groupIcon(group.key),
+                  color: AppColors.amareloClaro,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      group.title,
+                      style: const TextStyle(
+                        color: AppColors.branco,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${group.totalServices} pedido(s)',
+                      style: TextStyle(
+                        color: AppColors.cinza.withValues(alpha: 0.9),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _buildCountPill(group.totalServices),
+            ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            '${group.totalServices} pedido(s)',
-            style: TextStyle(
-              color: AppColors.branco.withValues(alpha: 0.72),
-              fontSize: 13,
-            ),
+          const SizedBox(height: 16),
+          Container(
+            height: 1,
+            color: AppColors.branco.withValues(alpha: 0.08),
           ),
           const SizedBox(height: 16),
           if (availableStatuses.isEmpty)
-            _buildFeedbackText(group.emptyMessage)
+            _buildEmptyState(group.emptyMessage)
           else
             Column(
               children: [
@@ -632,16 +872,17 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
       decoration: BoxDecoration(
         color: isSelected
-            ? AppColors.branco.withValues(alpha: 0.10)
-            : AppColors.branco.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(20),
+            ? AppColors.amareloClaro.withValues(alpha: 0.10)
+            : _surfaceElevatedColor,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isSelected
-              ? AppColors.amareloClaro
-              : AppColors.branco.withValues(alpha: 0.16),
-          width: isSelected ? 2 : 1,
+              ? AppColors.amareloClaro.withValues(alpha: 0.74)
+              : _outlineColor,
+          width: 1,
         ),
       ),
       child: Column(
@@ -650,7 +891,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
           Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(14),
               onTap: () => _toggleStatusSelection(sectionKey),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -659,6 +900,29 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
                 ),
                 child: Row(
                   children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.amareloClaro
+                            : AppColors.branco.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.amareloClaro
+                              : AppColors.branco.withValues(alpha: 0.08),
+                        ),
+                      ),
+                      child: Icon(
+                        _statusIcon(status),
+                        color: isSelected
+                            ? AppColors.preto
+                            : AppColors.amareloClaro,
+                        size: 21,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -667,46 +931,24 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
                             title,
                             style: const TextStyle(
                               color: AppColors.branco,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            isSelected
-                                ? 'Toque para ocultar os pedidos'
-                                : 'Toque para visualizar os pedidos',
+                            _statusActionLabel(isSelected),
                             style: TextStyle(
-                              color: AppColors.branco.withValues(alpha: 0.78),
+                              color: AppColors.cinza.withValues(alpha: 0.9),
                               fontSize: 13,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.amareloClaro
-                            : AppColors.amareloUmPoucoEscuro.withValues(
-                                alpha: 0.32,
-                              ),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        '${services.length}',
-                        style: TextStyle(
-                          color:
-                              isSelected ? AppColors.preto : AppColors.branco,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
+                    _buildCountPill(services.length, isSelected: isSelected),
                     const SizedBox(width: 12),
                     Icon(
                       isSelected
@@ -728,7 +970,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
               child: Divider(
                 height: 1,
                 thickness: 1,
-                color: AppColors.amareloUmPoucoEscuro,
+                color: _outlineColor,
               ),
             ),
             Padding(
@@ -746,7 +988,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     required List<ServiceEnvelope> services,
   }) {
     if (services.isEmpty) {
-      return _buildFeedbackText(
+      return _buildEmptyState(
         _searchQuery.trim().isEmpty
             ? _emptyStatusMessage(status)
             : 'Nenhum pedido ${_statusDescription(status)} combina com a busca.',
