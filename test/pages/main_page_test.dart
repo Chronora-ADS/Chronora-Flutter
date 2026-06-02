@@ -699,7 +699,7 @@ Map<String, dynamic> _serviceJson({
       'email': 'ana@example.com',
     },
     'categories': categories.map((name) => {'name': name}).toList(),
-    'deadline': '2026-06-01',
+    'deadline': '2099-12-31',
     'modality': 'REMOTO',
   };
 }
