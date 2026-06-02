@@ -6,7 +6,7 @@ COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
 
 COPY . .
-RUN flutter build web --release
+RUN flutter build web --release --dart-define=API_BASE_URL=https://chronora-java-master.onrender.com
 
 FROM node:20-alpine
 
