@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:chronora/core/models/main_page_requests_model.dart';
+import 'package:chronora/core/models/service_detail_model.dart';
 import 'package:chronora/core/utils/service_image_resolver.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -77,6 +78,36 @@ void main() {
         ServiceImageResolver.resolveNetworkUrl('/uploads/a.png'),
         'http://localhost:8085/uploads/a.png',
       );
+    });
+
+    test('parseia contador da chamada de codigo no detalhe do servico', () {
+      final service = ServiceDetailModel.fromJson({
+        'id': 42,
+        'title': 'Aula de violao',
+        'description': 'Aula introdutoria',
+        'timeChronos': 3,
+        'deadline': '2026-05-30',
+        'modality': 'REMOTO',
+        'status': 'ACEITO',
+        'postedAt': '2026-05-29T10:00:00',
+        'verificationCodeCallCount': 2,
+        'userCreator': {
+          'id': 7,
+          'name': 'Ana',
+          'phoneNumber': 47999999999,
+        },
+        'userAccepted': {
+          'id': 9,
+          'name': 'Bruno',
+          'phoneNumber': 47988888888,
+        },
+        'verificationCode': '1234',
+        'verificationCodeExpiresAt': '2026-05-29T10:02:00',
+      });
+
+      expect(service.verificationCodeCallCount, 2);
+      expect(service.acceptedRequestInfo?.authenticationCode, '1234');
+      expect(service.acceptedRequestInfo?.acceptedUser?.name, 'Bruno');
     });
   });
 }

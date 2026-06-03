@@ -347,7 +347,7 @@ void main() {
         (tester) async {
       SharedPreferences.setMockInitialValues({'auth_token': 'token-local'});
       final requestedUrls = <Uri>[];
-      final pastDate = DateTime.now().subtract(const Duration(days: 1));
+      final pastDate = DateTime.now().subtract(const Duration(days: 30));
 
       ApiService.setClientForTesting(
         MockClient((request) async {

@@ -13,6 +13,7 @@ class ServiceDetailModel {
   final String? serviceImage;
   final UserCreator userCreator;
   final String postedAt;
+  final int verificationCodeCallCount;
   final AcceptedRequestInfo? acceptedRequestInfo;
 
   ServiceDetailModel({
@@ -27,6 +28,7 @@ class ServiceDetailModel {
     this.serviceImage,
     required this.userCreator,
     this.postedAt = '',
+    this.verificationCodeCallCount = 0,
     this.acceptedRequestInfo,
   });
 
@@ -50,6 +52,11 @@ class ServiceDetailModel {
             const <String, dynamic>{},
       ),
       postedAt: (json['postedAt'] ?? '').toString(),
+      verificationCodeCallCount: _toInt(
+        json['verificationCodeCallCount'] ??
+            json['verification_code_call_count'] ??
+            json['startCallCount'],
+      ),
       acceptedRequestInfo: AcceptedRequestInfo.fromJson(json),
     );
   }
@@ -102,6 +109,7 @@ class ServiceDetailModel {
       'status': status,
       if (serviceImage != null) 'serviceImage': serviceImage,
       if (postedAt.isNotEmpty) 'postedAt': postedAt,
+      'verificationCodeCallCount': verificationCodeCallCount,
       if (acceptedRequestInfo != null) ...acceptedRequestInfo!.toJson(),
     };
   }
