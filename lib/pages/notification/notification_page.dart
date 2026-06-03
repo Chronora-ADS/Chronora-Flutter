@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -21,10 +22,13 @@ class NotificationPage extends StatefulWidget {
 }
 
 class _NotificationPageState extends State<NotificationPage> {
+  static const int _pageSize = 10;
+
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
   bool _isLoading = true;
   bool _isSubmittingDeadlineAction = false;
+  int _visibleNotificationsLimit = _pageSize;
   List<NotificationEntry> _notifications = const [];
   final ServiceDeadlineController _serviceDeadlineController =
       ServiceDeadlineController();
@@ -75,12 +79,14 @@ class _NotificationPageState extends State<NotificationPage> {
       if (!mounted) return;
       setState(() {
         _notifications = notifications;
+        _visibleNotificationsLimit = _pageSize;
         _isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _notifications = const [];
+        _visibleNotificationsLimit = _pageSize;
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -320,9 +326,15 @@ class _NotificationPageState extends State<NotificationPage> {
       );
     }
 
+    final visibleCount = _visibleNotificationCount;
+
     return ListView.builder(
-      itemCount: _notifications.length,
+      itemCount: visibleCount + (_shouldShowLoadMoreButton ? 1 : 0),
       itemBuilder: (context, index) {
+        if (index == visibleCount) {
+          return _buildLoadMoreButton();
+        }
+
         final notification = _notifications[index];
         final canRespondToDeadline =
             ServiceDeadlineController.canRespondToDeadline(notification);
@@ -396,6 +408,46 @@ class _NotificationPageState extends State<NotificationPage> {
           ),
         );
       },
+    );
+  }
+
+  int get _visibleNotificationCount {
+    return math.min(_visibleNotificationsLimit, _notifications.length);
+  }
+
+  bool get _shouldShowLoadMoreButton {
+    return _visibleNotificationCount < _notifications.length;
+  }
+
+  void _loadMoreNotifications() {
+    if (!_shouldShowLoadMoreButton) {
+      return;
+    }
+
+    setState(() {
+      _visibleNotificationsLimit = math.min(
+        _visibleNotificationsLimit + _pageSize,
+        _notifications.length,
+      );
+    });
+  }
+
+  Widget _buildLoadMoreButton() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _loadMoreNotifications,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.branco,
+          foregroundColor: AppColors.preto,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+        child: const Text(
+          'Carregar mais',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
     );
   }
 
