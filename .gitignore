@@ -50,6 +50,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Signing credentials — NUNCA versionar
+android/key.properties
+*.jks
 macos/Flutter/GeneratedPluginRegistrant.swift
 pubspec.lock
 /macos/Flutter
