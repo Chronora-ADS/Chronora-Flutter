@@ -11,6 +11,7 @@ import '../core/services/auth_session_service.dart';
 import '../widgets/backgrounds/background_default_widget.dart';
 import '../widgets/filters_modal.dart';
 import '../widgets/header.dart';
+import '../widgets/service_cancellation_reason_modal.dart';
 import '../widgets/service_card.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/wallet_modal.dart';
@@ -40,6 +41,8 @@ class _MainPageState extends State<MainPage> {
   String errorMessage = '';
   bool _isFetching = false;
   bool _isLoadingMore = false;
+  bool _didHandleRouteArguments = false;
+  bool _isSubmittingCancellationJustification = false;
   static const int _pageSize = 10;
   int _nextPage = 0;
   bool _hasMorePages = true;
@@ -51,6 +54,38 @@ class _MainPageState extends State<MainPage> {
     super.initState();
     _fetchCurrentUser();
     _reloadServices();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_didHandleRouteArguments) {
+      return;
+    }
+    _didHandleRouteArguments = true;
+
+    final arguments = ModalRoute.of(context)?.settings.arguments;
+    if (arguments is! Map) {
+      return;
+    }
+
+    final rawServiceId =
+        arguments['pendingServiceCancellationJustificationServiceId'];
+    final serviceId = rawServiceId is int
+        ? rawServiceId
+        : rawServiceId is String
+            ? int.tryParse(rawServiceId)
+            : null;
+
+    if (serviceId == null) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _openCancellationJustificationModal(serviceId);
+    });
   }
 
   bool get _hasSearchQuery => _submittedSearchQuery.isNotEmpty;
@@ -88,6 +123,115 @@ class _MainPageState extends State<MainPage> {
     } catch (_) {
       // Mantem fallback visual sem quebrar a pagina principal.
     }
+  }
+
+  Future<void> _openCancellationJustificationModal(int serviceId) async {
+    if (_isSubmittingCancellationJustification) {
+      return;
+    }
+
+    while (mounted) {
+      final justification = await _showCancellationJustificationDialog();
+
+      if (!mounted) {
+        return;
+      }
+
+      if (justification == null || justification.trim().isEmpty) {
+        continue;
+      }
+
+      final didSubmit = await _submitCancellationJustification(
+        serviceId: serviceId,
+        justification: justification.trim(),
+      );
+
+      if (didSubmit) {
+        return;
+      }
+    }
+  }
+
+  Future<String?> _showCancellationJustificationDialog() {
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const ServiceCancellationReasonModal(),
+    );
+  }
+
+  Future<bool> _submitCancellationJustification({
+    required int serviceId,
+    required String justification,
+  }) async {
+    if (_isSubmittingCancellationJustification) {
+      return false;
+    }
+
+    _isSubmittingCancellationJustification = true;
+
+    try {
+      final token = await AuthSessionService.getValidAccessToken();
+      if (token == null) {
+        throw Exception('Usuario nao autenticado.');
+      }
+
+      final response = await ApiService.put(
+        '/service/cancelAcceptedService/$serviceId/justification',
+        {'justification': justification},
+        token: token,
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+          ApiService.extractErrorMessage(
+            response.body,
+            fallback: 'Nao foi possivel registrar a justificativa.',
+          ),
+        );
+      }
+
+      if (!mounted) {
+        return true;
+      }
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Justificativa registrada.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      return true;
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(
+                _friendlyErrorMessage(
+                  error,
+                  fallback: 'Nao foi possivel registrar a justificativa.',
+                ),
+              ),
+              backgroundColor: AppColors.vermelho,
+            ),
+          );
+      }
+      return false;
+    } finally {
+      _isSubmittingCancellationJustification = false;
+    }
+  }
+
+  String _friendlyErrorMessage(Object error, {required String fallback}) {
+    final rawMessage = error.toString().replaceFirst(
+          RegExp(r'^Exception:\s*'),
+          '',
+        );
+    return ApiService.extractErrorMessage(rawMessage, fallback: fallback);
   }
 
   Future<void> _reloadServices() async {

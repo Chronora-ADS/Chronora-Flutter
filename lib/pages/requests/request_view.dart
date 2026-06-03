@@ -412,6 +412,7 @@ class _RequestViewState extends State<RequestView> {
       'acceptedAt': acceptedInfo.acceptedAt,
       'authenticationCode': acceptedInfo.authenticationCode,
       'authenticationCodeExpiresAt': acceptedInfo.expiresAt,
+      'verificationCodeCallCount': detail.verificationCodeCallCount,
     };
 
     if (replace) {

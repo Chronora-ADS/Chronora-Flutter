@@ -15,6 +15,8 @@ import '../../widgets/wallet_modal.dart';
 
 enum RequestAcceptedAudience { provider, requester }
 
+enum _ExpiredCodeAction { cancelService, secondCall }
+
 class RequestAcceptedView extends StatefulWidget {
   final ServiceDetailModel? serviceDetail;
   final RequestAcceptedAudience audience;
@@ -50,11 +52,15 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   DateTime _acceptedAt = DateTime.now();
   String _authenticationCode = '';
   DateTime? _authenticationCodeExpiresAt;
+  int _authenticationCodeCallCount = 0;
   Duration _remainingAuthenticationCodeTime = Duration.zero;
   Timer? _countdownTimer;
   Timer? _acceptedRequestSyncTimer;
   bool _isHandlingExpiration = false;
   bool _isLeavingAcceptedView = false;
+  bool _isSecondCallPromptOpen = false;
+  bool _didShowProviderExpiredMessage = false;
+  bool _isCancellingService = false;
 
   bool get _isRequesterView =>
       _resolvedAudience == RequestAcceptedAudience.requester;
@@ -66,6 +72,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       _hasAuthenticationCode &&
       _hasAuthenticationCodeExpiration &&
       !_isAuthenticationCodeExpired;
+
+  bool get _isSecondCall => _authenticationCodeCallCount >= 2;
 
   String get _displayAuthenticationCode =>
       _hasAuthenticationCode ? _authenticationCode : '----';
@@ -127,6 +135,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
               (arguments['verificationCodeExpiresAt'] as String?)?.trim() ??
               (arguments['expiresAt'] as String?)?.trim();
       final acceptedAt = arguments['acceptedAt'];
+      final verificationCodeCallCount =
+          _toNullableInt(arguments['verificationCodeCallCount']);
 
       if (acceptedUserName != null && acceptedUserName.isNotEmpty) {
         _acceptedUserName = acceptedUserName;
@@ -155,6 +165,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       }
 
       _applyAuthenticationCodeExpiresAt(authenticationCodeExpiresAt);
+      _applyAuthenticationCodeCallCount(verificationCodeCallCount);
 
       _applyAcceptedAt(acceptedAt);
     } else {
@@ -192,6 +203,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       _authenticationCode = acceptedCode;
     }
 
+    _applyAuthenticationCodeCallCount(
+      _resolvedServiceDetail?.verificationCodeCallCount,
+    );
     _applyAuthenticationCodeExpiresAt(acceptedRequestInfo?.expiresAt);
 
     final serviceAcceptedAt = acceptedRequestInfo?.acceptedAt?.trim();
@@ -374,6 +388,17 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     }
   }
 
+  void _applyAuthenticationCodeCallCount(int? callCount) {
+    if (callCount != null && callCount > 0) {
+      _authenticationCodeCallCount = callCount;
+      return;
+    }
+
+    if (_authenticationCodeCallCount == 0 && _hasAuthenticationCode) {
+      _authenticationCodeCallCount = 1;
+    }
+  }
+
   void _startAuthenticationCodeCountdown() {
     _countdownTimer?.cancel();
     _syncRemainingAuthenticationCodeTime();
@@ -383,7 +408,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     }
 
     if (_isAuthenticationCodeExpired) {
-      _handleAcceptedRequestExpiration();
+      _handleAuthenticationCodeExpired();
       return;
     }
 
@@ -393,7 +418,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       _syncRemainingAuthenticationCodeTime();
       if (_isAuthenticationCodeExpired) {
         _countdownTimer?.cancel();
-        _handleAcceptedRequestExpiration();
+        _handleAuthenticationCodeExpired();
       }
     });
   }
@@ -430,7 +455,39 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     return '$minutes:$seconds';
   }
 
-  Future<void> _handleAcceptedRequestExpiration() async {
+  Future<void> _handleAuthenticationCodeExpired() async {
+    if (_isLeavingAcceptedView) return;
+
+    if (!_isSecondCall) {
+      if (_isRequesterView) {
+        await _openSecondCallPrompt();
+        return;
+      }
+
+      _showProviderWaitingForRequesterDecision();
+      return;
+    }
+
+    await _expireAcceptedRequestAfterSecondCall();
+  }
+
+  void _showProviderWaitingForRequesterDecision() {
+    if (_didShowProviderExpiredMessage || !mounted) return;
+    _didShowProviderExpiredMessage = true;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text(
+            'O tempo expirou. Aguardando o solicitante decidir a segunda chamada.',
+          ),
+          backgroundColor: AppColors.vermelho,
+        ),
+      );
+  }
+
+  Future<void> _expireAcceptedRequestAfterSecondCall() async {
     if (_isHandlingExpiration || _isLeavingAcceptedView) return;
     _isHandlingExpiration = true;
 
@@ -457,10 +514,241 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
     await _leaveAcceptedView(
       const SnackBar(
-        content: Text('O tempo para iniciar o pedido expirou.'),
+        content: Text(
+          'A segunda chamada expirou. O servico foi cancelado e o pedido voltou para aberto.',
+        ),
         backgroundColor: AppColors.vermelho,
       ),
     );
+  }
+
+  Future<void> _openSecondCallPrompt() async {
+    if (_isSecondCallPromptOpen || _isLeavingAcceptedView) return;
+
+    _isSecondCallPromptOpen = true;
+    _isHandlingExpiration = true;
+    _countdownTimer?.cancel();
+
+    final action = await showDialog<_ExpiredCodeAction>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _TimeExpiredActionDialog(),
+    );
+
+    _isSecondCallPromptOpen = false;
+    _isHandlingExpiration = false;
+
+    if (!mounted || action == null || _isLeavingAcceptedView) {
+      return;
+    }
+
+    if (action == _ExpiredCodeAction.secondCall) {
+      await _requestSecondCall();
+      return;
+    }
+
+    await _openCancelAcceptedServiceFlow(skipConfirmation: true);
+  }
+
+  Future<void> _requestSecondCall() async {
+    if (_isHandlingExpiration || _isLeavingAcceptedView) return;
+
+    final serviceId = _resolvedServiceDetail?.id;
+    if (serviceId == null) {
+      _showSnackBar('Servico nao encontrado.');
+      return;
+    }
+
+    _isHandlingExpiration = true;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null) {
+        throw Exception('Usuario nao autenticado.');
+      }
+
+      final response = await ApiService.put(
+        '/service/secondCall/$serviceId',
+        const {},
+        token: token,
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+          ApiService.extractErrorMessage(
+            response.body,
+            fallback: 'Nao foi possivel iniciar a segunda chamada.',
+          ),
+        );
+      }
+
+      final latestDetail = _parseServiceDetailFromResponse(response.body);
+      if (!mounted || latestDetail == null) {
+        return;
+      }
+
+      setState(() {
+        _resolvedServiceDetail = latestDetail;
+        _serviceId = latestDetail.id ?? _serviceId;
+        _syncAcceptedRequestInfoFromServiceDetail();
+        _didShowProviderExpiredMessage = false;
+      });
+
+      _syncRemainingAuthenticationCodeTime();
+      _startAuthenticationCodeCountdown();
+      _startAcceptedRequestSync();
+
+      _showSnackBar(
+        'Segunda chamada iniciada. Um novo codigo foi gerado.',
+        backgroundColor: Colors.green,
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      _showSnackBar(
+        _friendlyErrorMessage(
+          error,
+          fallback: 'Nao foi possivel iniciar a segunda chamada.',
+        ),
+      );
+    } finally {
+      _isHandlingExpiration = false;
+    }
+  }
+
+  ServiceDetailModel? _parseServiceDetailFromResponse(String body) {
+    final trimmedBody = body.trim();
+    if (trimmedBody.isEmpty) {
+      return null;
+    }
+
+    try {
+      final decoded = json.decode(trimmedBody);
+      if (decoded is Map<String, dynamic>) {
+        return ServiceDetailModel.fromJson(decoded);
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
+  Future<bool> _openCancelAcceptedServiceFlow({
+    bool skipConfirmation = false,
+  }) async {
+    if (_isCancellingService || _isLeavingAcceptedView) return false;
+
+    if (!skipConfirmation) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Cancelar servico'),
+          content: const Text(
+            'Deseja cancelar o servico com este fornecedor? O pedido voltara para a lista de pedidos em aberto.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Voltar'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Continuar'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) {
+        return false;
+      }
+    }
+
+    await _cancelAcceptedService();
+    return _isLeavingAcceptedView;
+  }
+
+  Future<void> _cancelAcceptedService() async {
+    if (_isCancellingService || _isLeavingAcceptedView) return;
+
+    final serviceId = _resolvedServiceDetail?.id;
+    if (serviceId == null) {
+      _showSnackBar('Servico nao encontrado.');
+      return;
+    }
+
+    setState(() {
+      _isCancellingService = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null) {
+        throw Exception('Usuario nao autenticado.');
+      }
+
+      final response = await ApiService.put(
+        '/service/cancelAcceptedService/$serviceId',
+        const {},
+        token: token,
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+          ApiService.extractErrorMessage(
+            response.body,
+            fallback: 'Nao foi possivel cancelar o servico.',
+          ),
+        );
+      }
+
+      await _leaveAcceptedView(
+        null,
+        {
+          'pendingServiceCancellationJustificationServiceId': serviceId,
+        },
+      );
+    } catch (error) {
+      if (!mounted) return;
+      _showSnackBar(
+        _friendlyErrorMessage(
+          error,
+          fallback: 'Nao foi possivel cancelar o servico.',
+        ),
+      );
+    } finally {
+      if (mounted && !_isLeavingAcceptedView) {
+        setState(() {
+          _isCancellingService = false;
+        });
+      } else {
+        _isCancellingService = false;
+      }
+    }
+  }
+
+  void _showSnackBar(String message,
+      {Color backgroundColor = AppColors.vermelho}) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: backgroundColor,
+        ),
+      );
+  }
+
+  String _friendlyErrorMessage(Object error, {required String fallback}) {
+    final rawMessage = error.toString().replaceFirst(
+          RegExp(r'^Exception:\s*'),
+          '',
+        );
+    return ApiService.extractErrorMessage(rawMessage, fallback: fallback);
   }
 
   Future<void> _openStartRequestDialog() async {
@@ -543,16 +831,15 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
       if (!hasActiveAcceptedRequest) {
         final normalizedStatus = latestDetail.status.trim().toUpperCase();
-        final wasExpiredOrReopened = normalizedStatus == 'CRIADO';
+        final wasReopened = normalizedStatus == 'CRIADO';
         await _leaveAcceptedView(
           SnackBar(
             content: Text(
-              wasExpiredOrReopened
-                  ? 'O tempo para iniciar o pedido expirou.'
+              wasReopened
+                  ? 'O servico foi cancelado e o pedido voltou para aberto.'
                   : 'Pedido confirmado. Retornando para a pagina inicial.',
             ),
-            backgroundColor:
-                wasExpiredOrReopened ? AppColors.vermelho : Colors.green,
+            backgroundColor: wasReopened ? AppColors.vermelho : Colors.green,
           ),
         );
         return;
@@ -567,12 +854,15 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       _syncRemainingAuthenticationCodeTime();
 
       if (_isAuthenticationCodeExpired) {
-        await _handleAcceptedRequestExpiration();
+        await _handleAuthenticationCodeExpired();
       }
     } catch (_) {}
   }
 
-  Future<void> _leaveAcceptedView([SnackBar? snackBar]) async {
+  Future<void> _leaveAcceptedView([
+    SnackBar? snackBar,
+    Object? mainArguments,
+  ]) async {
     if (_isLeavingAcceptedView) return;
     _isLeavingAcceptedView = true;
 
@@ -597,6 +887,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       context,
       AppRoutes.main,
       (route) => false,
+      arguments: mainArguments,
     );
   }
 
@@ -714,6 +1005,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
               _buildAcceptedProviderCard(),
               const SizedBox(height: 18),
               _buildAuthenticationCodeCard(),
+              const SizedBox(height: 18),
+              _buildCancelServiceButton(),
             ] else ...[
               const SizedBox(height: 12),
               _buildCalloutCard(),
@@ -721,6 +1014,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
               _buildAcceptedProviderCard(),
               const SizedBox(height: 18),
               _buildStartButton(),
+              const SizedBox(height: 12),
+              _buildCancelServiceButton(),
             ],
           ],
         ),
@@ -1242,6 +1537,34 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     );
   }
 
+  Widget _buildCancelServiceButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: _isCancellingService
+            ? null
+            : () => _openCancelAcceptedServiceFlow(),
+        style: OutlinedButton.styleFrom(
+          backgroundColor: AppColors.preto,
+          foregroundColor: AppColors.branco,
+          disabledForegroundColor: Colors.white54,
+          side: const BorderSide(color: AppColors.vermelho, width: 2.5),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+        child: Text(
+          _isCancellingService ? 'Cancelando servico...' : 'Cancelar servico',
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildServiceImage() {
     final imageUrl = _resolvedServiceDetail?.serviceImageUrl;
 
@@ -1456,6 +1779,135 @@ class _InfoCard extends StatelessWidget {
           const SizedBox(height: 4),
           child,
         ],
+      ),
+    );
+  }
+}
+
+class _TimeExpiredActionDialog extends StatelessWidget {
+  const _TimeExpiredActionDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: screenWidth < 560 ? screenWidth - 36 : 520,
+        ),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
+          decoration: BoxDecoration(
+            color: AppColors.branco,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: AppColors.amareloUmPoucoEscuro,
+              width: 2,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black54,
+                blurRadius: 20,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.timer_off, color: AppColors.vermelho, size: 28),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Tempo esgotado',
+                      style: TextStyle(
+                        color: AppColors.preto,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'O codigo expirou. Cancele o servico com este fornecedor ou inicie uma segunda chamada com um novo codigo.',
+                style: TextStyle(
+                  color: AppColors.preto,
+                  fontSize: 15,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 20),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompact = constraints.maxWidth < 380;
+                  final cancelButton = OutlinedButton(
+                    onPressed: () => Navigator.of(context)
+                        .pop(_ExpiredCodeAction.cancelService),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.vermelho,
+                      side: const BorderSide(
+                        color: AppColors.vermelho,
+                        width: 1.6,
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Cancelar servico',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  );
+
+                  final secondCallButton = ElevatedButton(
+                    onPressed: () => Navigator.of(context)
+                        .pop(_ExpiredCodeAction.secondCall),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.amareloUmPoucoEscuro,
+                      foregroundColor: AppColors.branco,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Segunda chamada',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  );
+
+                  if (isCompact) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        cancelButton,
+                        const SizedBox(height: 10),
+                        secondCallButton,
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    children: [
+                      Expanded(child: cancelButton),
+                      const SizedBox(width: 12),
+                      Expanded(child: secondCallButton),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
