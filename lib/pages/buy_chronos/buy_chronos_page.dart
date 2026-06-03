@@ -28,9 +28,10 @@ class BuyChronosController extends ChangeNotifier {
   int purchaseAmount = 0;
   String errorMessage = '';
   bool isLoading = false;
-  bool isLoadingBalance = true; // Novo estado para carregamento do saldo
+  bool isLoadingBalance = true;
   final ChronosWalletService _walletService;
   String selectedPaymentMethod = 'Cartão de Crédito';
+  BuyPaymentResponse? pendingPayment;
 
   // Controllers
   late TextEditingController amountController;
@@ -57,12 +58,15 @@ class BuyChronosController extends ChangeNotifier {
     super.dispose();
   }
 
-  /// Carrega o saldo atual do usuário do backend
   Future<void> _loadCurrentBalance() async {
     try {
-      final balance = await _walletService.fetchCurrentBalance();
+      final results = await Future.wait([
+        _walletService.fetchCurrentBalance(),
+        _walletService.fetchPendingBuyPayment(),
+      ]);
       _updateState(() {
-        currentBalance = balance;
+        currentBalance = results[0] as int;
+        pendingPayment = results[1] as BuyPaymentResponse?;
         isLoadingBalance = false;
       });
     } catch (error) {
@@ -71,6 +75,11 @@ class BuyChronosController extends ChangeNotifier {
         currentBalance = 0;
       });
     }
+  }
+
+  void clearPendingPayment() {
+    pendingPayment = null;
+    notifyListeners();
   }
 
   Future<BuyPaymentResponse> _purchaseChronosBackend(int amount) async {
@@ -548,6 +557,100 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
   }
 
   Widget _buildForm(BuildContext context, BuyChronosController controller) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (controller.pendingPayment != null) ...[
+          _buildPendingPaymentCard(context, controller),
+          const SizedBox(height: 16),
+        ],
+        _buildMainForm(context, controller),
+      ],
+    );
+  }
+
+  Widget _buildPendingPaymentCard(BuildContext context, BuyChronosController controller) {
+    final pending = controller.pendingPayment!;
+    final remaining = pending.expiresAt.difference(DateTime.now());
+    final expired = remaining.isNegative;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.amareloClaro, width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.payment, color: AppColors.amareloClaro, size: 18),
+              const SizedBox(width: 8),
+              const Text(
+                'Pagamento PIX pendente',
+                style: TextStyle(
+                  color: AppColors.amareloClaro,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const Spacer(),
+              if (!expired)
+                Text(
+                  '${remaining.inMinutes}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')}',
+                  style: const TextStyle(color: AppColors.cinza, fontSize: 12),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            expired
+                ? 'O pagamento anterior expirou.'
+                : 'Você tem um pagamento em aberto. Deseja retomar?',
+            style: const TextStyle(color: AppColors.branco, fontSize: 13),
+          ),
+          if (!expired) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PixBuyPage(
+                        transactionId: pending.transactionId,
+                        qrCode: pending.qrCode,
+                        expiresAt: pending.expiresAt,
+                        chronosAmount: 0,
+                        totalAmount: 0,
+                      ),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.amareloClaro,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                child: const Text(
+                  'Retomar pagamento',
+                  style: TextStyle(color: AppColors.preto, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+          TextButton(
+            onPressed: controller.clearPendingPayment,
+            child: const Text('Ignorar', style: TextStyle(color: AppColors.cinza, fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainForm(BuildContext context, BuyChronosController controller) {
     return Container(
       padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
