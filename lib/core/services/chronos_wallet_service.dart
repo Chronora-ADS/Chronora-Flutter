@@ -23,6 +23,23 @@ class ChronosWalletService {
     return _extractChronosBalance(response.body);
   }
 
+  Future<BuyPaymentResponse?> fetchPendingBuyPayment() async {
+    final token = await AuthSessionService.getValidAccessToken();
+    if (token == null) return null;
+
+    final response = await ApiService.get('/payment/buy/pending', token: token);
+    if (response.statusCode == 204) return null;
+    if (response.statusCode != 200) return null;
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return BuyPaymentResponse(
+      transactionId: data['transactionId'] as int,
+      qrCode: data['qrCode'] as String,
+      qrCodeBase64: '',
+      expiresAt: DateTime.parse(data['expiresAt'] as String),
+    );
+  }
+
   Future<BuyPaymentResponse> createBuyPayment(int chronosAmount) async {
     final token = await AuthSessionService.getValidAccessToken();
     if (token == null) throw Exception('Usuario nao autenticado.');
