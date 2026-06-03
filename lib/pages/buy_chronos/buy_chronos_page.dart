@@ -5,7 +5,7 @@ import '../../core/services/chronos_wallet_service.dart';
 import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
-import 'buy_success_page.dart';
+import 'pix_buy_page.dart';
 
 /// Controller para gerenciar a compra de Chronos
 ///
@@ -73,9 +73,8 @@ class BuyChronosController extends ChangeNotifier {
     }
   }
 
-  /// Faz a requisição PUT para comprar Chronos
-  Future<void> _purchaseChronosBackend(int amount) async {
-    await _walletService.buyChronos(amount);
+  Future<BuyPaymentResponse> _purchaseChronosBackend(int amount) async {
+    return _walletService.createBuyPayment(amount);
   }
 
   void _updateState(void Function() callback) {
@@ -113,7 +112,7 @@ class BuyChronosController extends ChangeNotifier {
 
   Future<void> purchaseChronos({
     required int amount,
-    required Function onSuccess,
+    required Function(BuyPaymentResponse) onSuccess,
     required Function(String) onError,
   }) async {
     if (amount <= 0) {
@@ -121,7 +120,6 @@ class BuyChronosController extends ChangeNotifier {
       return;
     }
 
-    // REGRA: Verifica se ultrapassa o limite de 300 Chronos
     if (chronosAfterPurchase > MAX_CHRONOS_PER_ACCOUNT) {
       onError(
           'Limite máximo de $MAX_CHRONOS_PER_ACCOUNT Chronos por conta atingido!\n\n'
@@ -130,22 +128,14 @@ class BuyChronosController extends ChangeNotifier {
       return;
     }
 
-    // Inicia o processamento
     isLoading = true;
     notifyListeners();
 
     try {
-      // Faz a requisição PUT para o backend
-      await _purchaseChronosBackend(amount);
-
-      // Atualiza o saldo local após sucesso
-      currentBalance = chronosAfterPurchase;
-      purchaseAmount = 0;
-      amountController.clear();
+      final response = await _purchaseChronosBackend(amount);
       isLoading = false;
       notifyListeners();
-
-      onSuccess(); // ← Dispara a navegação para a tela de sucesso
+      onSuccess(response);
     } catch (e) {
       isLoading = false;
       notifyListeners();
@@ -821,15 +811,16 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
                                 0;
                             await controller.purchaseChronos(
                               amount: amount,
-                              onSuccess: () {
+                              onSuccess: (response) {
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => BuySuccessPage(
+                                    builder: (context) => PixBuyPage(
+                                      transactionId: response.transactionId,
+                                      qrCode: response.qrCode,
+                                      expiresAt: response.expiresAt,
                                       chronosAmount: amount,
                                       totalAmount: controller.totalAmount,
-                                      paymentMethod:
-                                          controller.selectedPaymentMethod,
                                     ),
                                   ),
                                 );
