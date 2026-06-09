@@ -523,31 +523,41 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   }
 
   Future<void> _openSecondCallPrompt() async {
-    if (_isSecondCallPromptOpen || _isLeavingAcceptedView) return;
+    if (_isSecondCallPromptOpen ||
+        _isHandlingExpiration ||
+        _isLeavingAcceptedView) {
+      return;
+    }
 
     _isSecondCallPromptOpen = true;
     _isHandlingExpiration = true;
     _countdownTimer?.cancel();
 
-    final action = await showDialog<_ExpiredCodeAction>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const _TimeExpiredActionDialog(),
-    );
+    try {
+      final action = await showDialog<_ExpiredCodeAction>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const _TimeExpiredActionDialog(),
+      );
 
-    _isSecondCallPromptOpen = false;
-    _isHandlingExpiration = false;
+      _isHandlingExpiration = false;
 
-    if (!mounted || action == null || _isLeavingAcceptedView) {
-      return;
+      if (!mounted || action == null || _isLeavingAcceptedView) {
+        return;
+      }
+
+      if (action == _ExpiredCodeAction.secondCall) {
+        await _requestSecondCall();
+        return;
+      }
+
+      await _openCancelAcceptedServiceFlow(skipConfirmation: true);
+    } finally {
+      _isSecondCallPromptOpen = false;
+      if (!_isLeavingAcceptedView) {
+        _isHandlingExpiration = false;
+      }
     }
-
-    if (action == _ExpiredCodeAction.secondCall) {
-      await _requestSecondCall();
-      return;
-    }
-
-    await _openCancelAcceptedServiceFlow(skipConfirmation: true);
   }
 
   Future<void> _requestSecondCall() async {
@@ -642,22 +652,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       final confirmed = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Cancelar servico'),
-          content: const Text(
-            'Deseja cancelar o servico com este fornecedor? O pedido voltara para a lista de pedidos em aberto.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Voltar'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Continuar'),
-            ),
-          ],
-        ),
+        builder: (_) => const _CancelServiceConfirmationDialog(),
       );
 
       if (confirmed != true) {
@@ -1913,6 +1908,134 @@ class _TimeExpiredActionDialog extends StatelessWidget {
   }
 }
 
+class _CancelServiceConfirmationDialog extends StatelessWidget {
+  const _CancelServiceConfirmationDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: screenWidth < 560 ? screenWidth - 36 : 520,
+        ),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
+          decoration: BoxDecoration(
+            color: AppColors.branco,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: AppColors.vermelho,
+              width: 2,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black54,
+                blurRadius: 20,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Row(
+                children: [
+                  Icon(
+                    Icons.report_problem_outlined,
+                    color: AppColors.vermelho,
+                    size: 28,
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Cancelar servico',
+                      style: TextStyle(
+                        color: AppColors.preto,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Deseja cancelar o servico com este fornecedor? O pedido voltara para a lista de pedidos em aberto.',
+                style: TextStyle(
+                  color: AppColors.preto,
+                  fontSize: 15,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 20),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompact = constraints.maxWidth < 380;
+                  final backButton = OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.preto,
+                      side: const BorderSide(color: AppColors.cinza),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Voltar',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  );
+
+                  final continueButton = ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.vermelho,
+                      foregroundColor: AppColors.branco,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Continuar',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  );
+
+                  if (isCompact) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        backButton,
+                        const SizedBox(height: 10),
+                        continueButton,
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    children: [
+                      Expanded(child: backButton),
+                      const SizedBox(width: 12),
+                      Expanded(child: continueButton),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _StartRequestDialog extends StatefulWidget {
   final int? serviceId;
   final String authenticationCode;
@@ -2087,89 +2210,205 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Iniciar pedido'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Digite o codigo de autenticacao de 4 digitos.',
-              style: TextStyle(fontSize: 15),
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: screenWidth < 480 ? screenWidth - 40 : 420,
+        ),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
+          decoration: BoxDecoration(
+            color: AppColors.branco,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: AppColors.amareloUmPoucoEscuro,
+              width: 2,
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _codeController,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(4),
-              ],
-              decoration: const InputDecoration(
-                labelText: 'Codigo de autenticacao',
-                border: OutlineInputBorder(),
-                counterText: '',
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              !_hasExpiration
-                  ? 'Tempo indisponivel no momento.'
-                  : 'Tempo restante: ${_isExpired ? '00:00' : _formattedCountdown}',
-              style: TextStyle(
-                color: !_hasExpiration || _isExpired
-                    ? AppColors.vermelho
-                    : AppColors.preto,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            if (!_hasExpiration) ...[
-              const SizedBox(height: 8),
-              const Text(
-                'A expiracao do codigo ainda nao foi carregada do servidor.',
-                style: TextStyle(
-                  color: AppColors.vermelho,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ] else if (_isExpired) ...[
-              const SizedBox(height: 8),
-              const Text(
-                'O tempo do codigo expirou.',
-                style: TextStyle(
-                  color: AppColors.vermelho,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ] else if (_validationMessage != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                _validationMessage!,
-                style: const TextStyle(
-                  color: AppColors.vermelho,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black54,
+                blurRadius: 20,
+                offset: Offset(0, 8),
               ),
             ],
-          ],
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.pin,
+                      color: AppColors.amareloUmPoucoEscuro,
+                      size: 28,
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Iniciar pedido',
+                        style: TextStyle(
+                          color: AppColors.preto,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Digite o codigo de autenticacao de 4 digitos.',
+                  style: TextStyle(
+                    color: AppColors.preto,
+                    fontSize: 15,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Codigo de autenticacao',
+                  style: TextStyle(
+                    color: AppColors.preto,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 54,
+                  child: TextField(
+                    controller: _codeController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 4,
+                    textAlignVertical: TextAlignVertical.center,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(4),
+                    ],
+                    decoration: InputDecoration(
+                      hintText: '0000',
+                      counterText: '',
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 14),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: AppColors.cinza),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(
+                          color: AppColors.amareloUmPoucoEscuro,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    style: const TextStyle(
+                      color: AppColors.preto,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 4,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  !_hasExpiration
+                      ? 'Tempo indisponivel no momento.'
+                      : 'Tempo restante: ${_isExpired ? '00:00' : _formattedCountdown}',
+                  style: TextStyle(
+                    color: !_hasExpiration || _isExpired
+                        ? AppColors.vermelho
+                        : AppColors.preto,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (!_hasExpiration) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'A expiracao do codigo ainda nao foi carregada do servidor.',
+                    style: TextStyle(
+                      color: AppColors.vermelho,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ] else if (_isExpired) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'O tempo do codigo expirou.',
+                    style: TextStyle(
+                      color: AppColors.vermelho,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ] else if (_validationMessage != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _validationMessage!,
+                    style: const TextStyle(
+                      color: AppColors.vermelho,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _isSubmitting
+                            ? null
+                            : () => Navigator.of(context).pop(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.preto,
+                          side: const BorderSide(color: AppColors.cinza),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Cancelar',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _isSubmitting ? null : _submit,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.amareloUmPoucoEscuro,
+                          foregroundColor: AppColors.branco,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          _isSubmitting ? 'Confirmando...' : 'Confirmar',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancelar'),
-        ),
-        ElevatedButton(
-          onPressed: _isSubmitting ? null : _submit,
-          child: Text(_isSubmitting ? 'Confirmando...' : 'Confirmar'),
-        ),
-      ],
     );
   }
 }
