@@ -66,11 +66,10 @@ class _NotificationPageState extends State<NotificationPage> {
       final decoded = jsonDecode(response.body);
       final rawItems = _extractList(decoded);
       final notifications = rawItems
-          .map(
-            (item) => NotificationEntry.fromJson(
-              (item as Map).cast<String, dynamic>(),
-            ),
-          )
+          .whereType<Map>()
+          .map((item) => item.cast<String, dynamic>())
+          .map(_extractNotificationMap)
+          .map(NotificationEntry.fromJson)
           .toList()
         ..sort(
           (a, b) => b.notificationTime.compareTo(a.notificationTime),
@@ -103,13 +102,47 @@ class _NotificationPageState extends State<NotificationPage> {
       return decoded;
     }
     if (decoded is Map<String, dynamic>) {
-      final data =
-          decoded['data'] ?? decoded['content'] ?? decoded['notifications'];
-      if (data is List) {
-        return data;
+      for (final key in const [
+        'notifications',
+        'notification',
+        'data',
+        'content',
+        'items',
+        'results',
+        'result',
+        'list',
+      ]) {
+        final value = decoded[key];
+        if (value is List) {
+          return value;
+        }
+        if (value is Map<String, dynamic>) {
+          final nestedItems = _extractList(value);
+          if (nestedItems.isNotEmpty) {
+            return nestedItems;
+          }
+        }
       }
     }
     return const [];
+  }
+
+  Map<String, dynamic> _extractNotificationMap(Map<String, dynamic> item) {
+    for (final key in const [
+      'notification',
+      'notificationEntity',
+      'notificationDto',
+      'data',
+    ]) {
+      final value = item[key];
+      if (value is Map<String, dynamic>) {
+        return value;
+      }
+      if (value is Map) {
+        return value.cast<String, dynamic>();
+      }
+    }
+    return item;
   }
 
   void _toggleDrawer() {

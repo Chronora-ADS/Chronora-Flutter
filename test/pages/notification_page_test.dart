@@ -126,6 +126,121 @@ void main() {
       expect(find.text('Notificacao 12'), findsOneWidget);
       expect(find.text('Carregar mais'), findsNothing);
     });
+
+    testWidgets(
+        'Cenario: Dado resposta envelopada, quando abre notificacoes, entao lista itens do backend',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({'auth_token': 'token-local'});
+      ApiService.setClientForTesting(
+        MockClient((request) async {
+          if (request.url.path.endsWith('/user/get')) {
+            return http.Response(
+              jsonEncode({'id': 1, 'name': 'Ana', 'timeChronos': 8}),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+
+          if (request.url.path.endsWith('/notification/get/all')) {
+            return http.Response(
+              jsonEncode({
+                'data': {
+                  'notification': [
+                    {
+                      'notificationId': 99,
+                      'content': 'Nova notificacao do backend',
+                      'createdAt': '2026-06-01T21:03:00',
+                      'servicePost': {
+                        'serviceId': 7,
+                        'name': 'Pedido envelopado',
+                        'serviceStatus': 'ACEITO',
+                      },
+                    },
+                  ],
+                },
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+
+          return http.Response('not found', 404);
+        }),
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: MediaQuery(
+            data: MediaQueryData(
+              padding: EdgeInsets.only(top: 24),
+              size: Size(390, 844),
+            ),
+            child: NotificationPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nova notificacao do backend'), findsOneWidget);
+      expect(find.text('Pedido: Pedido envelopado'), findsOneWidget);
+      expect(find.text('Nenhuma notificacao encontrada.'), findsNothing);
+    });
+
+    testWidgets(
+        'Cenario: Dado dez notificacoes, quando abre a tela, entao botao carregar mais fica oculto',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({'auth_token': 'token-local'});
+      ApiService.setClientForTesting(
+        MockClient((request) async {
+          if (request.url.path.endsWith('/user/get')) {
+            return http.Response(
+              jsonEncode({'id': 1, 'name': 'Ana', 'timeChronos': 8}),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+
+          if (request.url.path.endsWith('/notification/get/all')) {
+            return http.Response(
+              jsonEncode(List.generate(10, (index) {
+                final position = index + 1;
+                return _notificationJson(
+                  id: position,
+                  message: 'Notificacao $position',
+                  minutesAgo: index,
+                );
+              })),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+
+          return http.Response('not found', 404);
+        }),
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: MediaQuery(
+            data: MediaQueryData(
+              padding: EdgeInsets.only(top: 24),
+              size: Size(390, 844),
+            ),
+            child: NotificationPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.text('Notificacao 10'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+
+      expect(find.text('Notificacao 10'), findsOneWidget);
+      expect(find.text('Carregar mais'), findsNothing);
+    });
   });
 }
 
