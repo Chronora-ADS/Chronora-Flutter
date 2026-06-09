@@ -17,6 +17,11 @@ class MeusPedidosPage extends StatefulWidget {
 }
 
 class _MeusPedidosPageState extends State<MeusPedidosPage> {
+  static const Color _surfaceColor = Color(0xFF121414);
+  static const Color _surfaceElevatedColor = Color(0xFF181A1A);
+  static const Color _outlineColor = Color(0xFF2A2D2D);
+  static const double _contentMaxWidth = 1240;
+
   static const List<String> _serviceStatuses = [
     'CRIADO',
     'ACEITO',
@@ -24,6 +29,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     'CONCLUIDO',
     'CANCELADO',
   ];
+  static const int _sectionPageSize = 10;
 
   final TextEditingController _searchController = TextEditingController();
   final MyRequestsService _myRequestsService = MyRequestsService();
@@ -41,7 +47,8 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     email: '',
   );
   String? _selectedSectionKey;
-  List<ServiceEnvelope> _services = [];
+  final Map<String, _LazyStatusSectionState> _statusSections = {};
+  final Map<String, int> _sectionCounts = {};
 
   @override
   void initState() {
@@ -53,6 +60,9 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
+      _selectedSectionKey = null;
+      _statusSections.clear();
+      _sectionCounts.clear();
     });
 
     try {
@@ -60,10 +70,10 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
       setState(() {
         _currentUser = result.currentUser;
-        _services = result.services;
+        _sectionCounts.addAll(_buildSectionCounts(result.services));
         _isLoading = false;
       });
-      _logLoadSummary(result.stats);
+      _logIdentitySummary();
     } on MyRequestsException catch (error) {
       setState(() {
         _isLoading = false;
@@ -77,35 +87,9 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     }
   }
 
-  void _logLoadSummary(MyRequestsLoadStats stats) {
+  void _logIdentitySummary() {
     if (!kDebugMode) {
       return;
-    }
-
-    final visibleCountsByStatus = <String, int>{
-      for (final status in _serviceStatuses) status: 0,
-    };
-    var visibleForUser = 0;
-    var createdByUser = 0;
-    var acceptedByUser = 0;
-
-    for (final envelope in _services) {
-      final created = _isCreatedByCurrentUser(envelope);
-      final accepted = _isAcceptedByCurrentUser(envelope);
-      if (!created && !accepted) {
-        continue;
-      }
-
-      visibleForUser++;
-      if (created) {
-        createdByUser++;
-      }
-      if (accepted) {
-        acceptedByUser++;
-      }
-
-      final status = _normalizeStatus(envelope.service.status);
-      visibleCountsByStatus[status] = (visibleCountsByStatus[status] ?? 0) + 1;
     }
 
     debugPrint(
@@ -113,14 +97,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       'id:${_currentUser.id ?? 'null'} '
       'nome:${_currentUser.name.isEmpty ? '<vazio>' : _currentUser.name} '
       'email:${_currentUser.email.isEmpty ? '<vazio>' : _currentUser.email} '
-      'paginas:${stats.pagesFetched} '
-      'itensApi:${stats.rawItemsFetched} '
-      'unicosApi:${stats.uniqueServicesFetched} '
-      'totalElements:${stats.totalElements ?? 'n/a'} '
-      'visiveisUsuario:$visibleForUser '
-      'criados:$createdByUser '
-      'aceitos:$acceptedByUser '
-      'status:$visibleCountsByStatus',
+      'modo:sob-demanda',
     );
   }
 
@@ -132,31 +109,21 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         emptyMessage: _searchQuery.trim().isEmpty
             ? 'Nenhum pedido criado por voce foi encontrado.'
             : 'Nenhum pedido criado por voce combina com a busca.',
+        countsByStatus: _countsByStatusForGroup('created_by_me'),
         requestsByStatus: _groupServicesByStatus(
-          belongsToGroup: (envelope) =>
-              _isCreatedByCurrentUser(envelope) &&
-              _normalizeStatus(envelope.service.status) != 'ACEITO',
+          groupKey: 'created_by_me',
+          belongsToGroup: _isCreatedByCurrentUser,
         ),
       ),
       _RequestSectionGroup(
-        key: 'created_by_me_accepted',
-        title: 'Pedidos Criados por Voce e Aceitos',
+        key: 'accepted_from_others',
+        title: 'Pedidos de Outros Usuarios Aceitos por Voce',
         emptyMessage: _searchQuery.trim().isEmpty
-            ? 'Nenhum pedido criado por voce com status aceito foi encontrado.'
-            : 'Nenhum pedido criado por voce com status aceito combina com a busca.',
+            ? 'Nenhum pedido de outro usuario aceito por voce foi encontrado.'
+            : 'Nenhum pedido de outro usuario aceito por voce combina com a busca.',
+        countsByStatus: _countsByStatusForGroup('accepted_from_others'),
         requestsByStatus: _groupServicesByStatus(
-          belongsToGroup: (envelope) =>
-              _isCreatedByCurrentUser(envelope) &&
-              _normalizeStatus(envelope.service.status) == 'ACEITO',
-        ),
-      ),
-      _RequestSectionGroup(
-        key: 'accepted_by_me',
-        title: 'Pedidos Aceitos por Voce',
-        emptyMessage: _searchQuery.trim().isEmpty
-            ? 'Nenhum pedido aceito por voce foi encontrado.'
-            : 'Nenhum pedido aceito por voce combina com a busca.',
-        requestsByStatus: _groupServicesByStatus(
+          groupKey: 'accepted_from_others',
           belongsToGroup: (envelope) =>
               !_isCreatedByCurrentUser(envelope) &&
               _isAcceptedByCurrentUser(envelope),
@@ -165,28 +132,73 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     ];
   }
 
+  Map<String, int> _buildSectionCounts(List<ServiceEnvelope> services) {
+    final counts = <String, int>{
+      for (final groupKey in const [
+        'created_by_me',
+        'accepted_from_others',
+      ])
+        for (final status in _serviceStatuses)
+          _buildSectionKey(groupKey, status): 0,
+    };
+    final seenBySection = <String, Set<int>>{};
+
+    for (final envelope in services) {
+      for (final groupKey in const [
+        'created_by_me',
+        'accepted_from_others',
+      ]) {
+        if (!_belongsToGroup(groupKey, envelope)) {
+          continue;
+        }
+
+        final sectionKey = _buildSectionKey(
+          groupKey,
+          _normalizeStatus(envelope.service.status),
+        );
+        final seenIds = seenBySection.putIfAbsent(sectionKey, () => <int>{});
+        if (seenIds.add(envelope.service.id)) {
+          counts[sectionKey] = (counts[sectionKey] ?? 0) + 1;
+        }
+      }
+    }
+
+    return counts;
+  }
+
+  Map<String, int> _countsByStatusForGroup(String groupKey) {
+    return <String, int>{
+      for (final status in _serviceStatuses)
+        status: _sectionCounts[_buildSectionKey(groupKey, status)] ?? 0,
+    };
+  }
+
   Map<String, List<ServiceEnvelope>> _groupServicesByStatus({
+    required String groupKey,
     required bool Function(ServiceEnvelope envelope) belongsToGroup,
   }) {
     final grouped = <String, List<ServiceEnvelope>>{
       for (final status in _serviceStatuses) status: <ServiceEnvelope>[],
     };
-    final merged = <int, ServiceEnvelope>{};
 
-    for (final envelope in _services) {
-      if (!belongsToGroup(envelope) || !_matchesSearch(envelope)) {
+    for (final status in _serviceStatuses) {
+      final sectionKey = _buildSectionKey(groupKey, status);
+      final state = _statusSections[sectionKey];
+      if (state == null) {
         continue;
       }
 
-      merged[envelope.service.id] = envelope;
-    }
+      final merged = <int, ServiceEnvelope>{};
+      for (final envelope in state.services) {
+        if (!belongsToGroup(envelope) || !_matchesSearch(envelope)) {
+          continue;
+        }
 
-    final ordered = merged.values.toList()
-      ..sort((a, b) => b.service.id.compareTo(a.service.id));
+        merged[envelope.service.id] = envelope;
+      }
 
-    for (final envelope in ordered) {
-      final status = _normalizeStatus(envelope.service.status);
-      grouped.putIfAbsent(status, () => <ServiceEnvelope>[]).add(envelope);
+      grouped[status] = merged.values.toList()
+        ..sort((a, b) => b.service.id.compareTo(a.service.id));
     }
 
     return grouped;
@@ -360,10 +372,119 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     });
   }
 
-  void _toggleStatusSelection(String status) {
+  Future<void> _toggleStatusSelection({
+    required String sectionKey,
+    required String groupKey,
+    required String status,
+  }) async {
+    final shouldSelect = _selectedSectionKey != sectionKey;
     setState(() {
-      _selectedSectionKey = _selectedSectionKey == status ? null : status;
+      _selectedSectionKey = shouldSelect ? sectionKey : null;
     });
+
+    if (!shouldSelect) {
+      return;
+    }
+
+    final state = _sectionState(sectionKey);
+    if (!state.hasLoaded) {
+      await _loadStatusSection(
+        sectionKey: sectionKey,
+        groupKey: groupKey,
+        status: status,
+        reset: true,
+      );
+    }
+  }
+
+  _LazyStatusSectionState _sectionState(String sectionKey) {
+    return _statusSections.putIfAbsent(
+      sectionKey,
+      _LazyStatusSectionState.new,
+    );
+  }
+
+  Future<void> _loadStatusSection({
+    required String sectionKey,
+    required String groupKey,
+    required String status,
+    bool reset = false,
+  }) async {
+    final state = _sectionState(sectionKey);
+    if (state.isLoading || (!reset && !state.hasMore)) {
+      return;
+    }
+
+    setState(() {
+      state.isLoading = true;
+      state.errorMessage = '';
+      if (reset) {
+        state.services.clear();
+        state.nextPage = 0;
+        state.hasMore = true;
+        state.hasLoaded = false;
+      }
+    });
+
+    try {
+      var page = state.nextPage;
+      var hasMore = state.hasMore;
+      final fetched = <ServiceEnvelope>[];
+      final seenIds = state.services.map((item) => item.service.id).toSet();
+
+      while (fetched.length < _sectionPageSize && hasMore) {
+        final result = await _myRequestsService.loadStatusPage(
+          status: status,
+          page: page,
+          pageSize: _sectionPageSize,
+        );
+
+        for (final envelope in result.services) {
+          if (!_belongsToGroup(groupKey, envelope)) {
+            continue;
+          }
+          if (seenIds.add(envelope.service.id)) {
+            fetched.add(envelope);
+          }
+        }
+
+        hasMore = result.hasMore;
+        page = result.page + 1;
+
+        if (result.services.isEmpty) {
+          break;
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        state.services.addAll(fetched);
+        state.services.sort((a, b) => b.service.id.compareTo(a.service.id));
+        state.nextPage = page;
+        state.hasMore = hasMore;
+        state.hasLoaded = true;
+        state.isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        state.errorMessage = 'Falha ao carregar pedidos: $error';
+        state.hasLoaded = true;
+        state.isLoading = false;
+      });
+    }
+  }
+
+  bool _belongsToGroup(String groupKey, ServiceEnvelope envelope) {
+    switch (groupKey) {
+      case 'created_by_me':
+        return _isCreatedByCurrentUser(envelope);
+      case 'accepted_from_others':
+        return !_isCreatedByCurrentUser(envelope) &&
+            _isAcceptedByCurrentUser(envelope);
+      default:
+        return false;
+    }
   }
 
   @override
@@ -384,21 +505,21 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
                     onRefresh: _loadMyRequests,
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.only(
-                        top: 16,
-                        left: 16,
-                        right: 16,
-                        bottom: 24,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildSearchField(),
-                          const SizedBox(height: 24),
-                          _buildSeparators(),
-                          const SizedBox(height: 24),
-                          _buildContent(requestGroups: requestGroups),
-                        ],
+                      padding: const EdgeInsets.fromLTRB(18, 24, 18, 32),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxWidth: _contentMaxWidth,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildPageHeader(requestGroups),
+                              const SizedBox(height: 20),
+                              _buildContent(requestGroups: requestGroups),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -460,47 +581,260 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         });
       },
       decoration: InputDecoration(
-        hintText: 'Pintura de parede, aula de inglês...',
-        hintStyle: const TextStyle(color: AppColors.textoPlaceholder),
+        hintText: 'Buscar por titulo, categoria ou criador',
+        hintStyle: TextStyle(color: AppColors.cinza.withValues(alpha: 0.78)),
         filled: true,
-        fillColor: AppColors.branco,
+        fillColor: _surfaceElevatedColor,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _outlineColor),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _outlineColor),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(
+            color: AppColors.amareloClaro,
+            width: 1.5,
+          ),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
-          vertical: 12,
+          vertical: 14,
         ),
-        prefixIcon: const Icon(
-          Icons.search,
-          color: AppColors.textoPlaceholder,
-        ),
+        prefixIcon: const Icon(Icons.search, color: AppColors.amareloClaro),
+        suffixIcon: _searchQuery.isEmpty
+            ? null
+            : IconButton(
+                tooltip: 'Limpar busca',
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() {
+                    _searchQuery = '';
+                  });
+                },
+                icon: const Icon(Icons.close, color: AppColors.cinza),
+              ),
+      ),
+      cursorColor: AppColors.amareloClaro,
+      style: const TextStyle(color: AppColors.branco),
+    );
+  }
+
+  Widget _buildPageHeader(List<_RequestSectionGroup> requestGroups) {
+    final totalRequests = requestGroups.fold<int>(
+      0,
+      (total, group) => total + group.totalServices,
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _surfaceColor.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _outlineColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.22),
+            blurRadius: 24,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompact = constraints.maxWidth < 720;
+
+          final heading = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Meus pedidos',
+                style: TextStyle(
+                  color: AppColors.branco,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '$totalRequests pedido(s) vinculados ao seu login',
+                style: TextStyle(
+                  color: AppColors.cinza.withValues(alpha: 0.92),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          );
+
+          final search = isCompact
+              ? _buildSearchField()
+              : SizedBox(width: 430, child: _buildSearchField());
+
+          if (isCompact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                heading,
+                const SizedBox(height: 18),
+                search,
+              ],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(child: heading),
+              const SizedBox(width: 24),
+              search,
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildSeparators() {
-    return Column(
-      children: [
-        Align(
-          alignment: Alignment.center,
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.8,
-            height: 3,
-            color: AppColors.branco,
-          ),
+  Widget _buildInfoBanner(String message) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        color: AppColors.amareloClaro.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.amareloClaro.withValues(alpha: 0.26),
         ),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.center,
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.5,
-            height: 3,
-            color: AppColors.branco,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.amareloClaro.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.touch_app_outlined,
+              color: AppColors.amareloClaro,
+              size: 20,
+            ),
           ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: AppColors.branco,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String message) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 28),
+      decoration: BoxDecoration(
+        color: AppColors.preto.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.branco.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.amareloClaro.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.inbox_outlined,
+              color: AppColors.amareloClaro,
+              size: 24,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            message,
+            style: TextStyle(
+              color: AppColors.branco.withValues(alpha: 0.9),
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _groupIcon(String groupKey) {
+    switch (groupKey) {
+      case 'created_by_me':
+        return Icons.add_task_outlined;
+      case 'accepted_from_others':
+        return Icons.handshake_outlined;
+      default:
+        return Icons.list_alt_outlined;
+    }
+  }
+
+  IconData _statusIcon(String status) {
+    switch (status) {
+      case 'CRIADO':
+        return Icons.pending_actions_outlined;
+      case 'ACEITO':
+        return Icons.check_circle_outline;
+      case 'EM_ANDAMENTO':
+        return Icons.timelapse_outlined;
+      case 'CONCLUIDO':
+        return Icons.task_alt_outlined;
+      case 'CANCELADO':
+        return Icons.cancel_outlined;
+      default:
+        return Icons.list_alt_outlined;
+    }
+  }
+
+  String _statusActionLabel(bool isSelected) {
+    return isSelected ? 'Ocultar pedidos' : 'Ver pedidos';
+  }
+
+  Widget _buildCountPill(int count, {bool isSelected = false}) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 44, minHeight: 34),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: isSelected
+            ? AppColors.amareloClaro
+            : AppColors.amareloClaro.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: isSelected
+              ? AppColors.amareloClaro
+              : AppColors.amareloClaro.withValues(alpha: 0.28),
         ),
-      ],
+      ),
+      child: Text(
+        '$count',
+        style: TextStyle(
+          color: isSelected ? AppColors.preto : AppColors.amareloClaro,
+          fontSize: 14,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
     );
   }
 
@@ -528,16 +862,6 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       );
     }
 
-    final hasAnyServices =
-        requestGroups.any((group) => group.totalServices > 0);
-    if (!hasAnyServices) {
-      return _buildFeedbackText(
-        _searchQuery.trim().isEmpty
-            ? 'Nenhum pedido relacionado ao seu login foi encontrado.'
-            : 'Nenhum pedido combina com a busca.',
-      );
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -546,15 +870,10 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
           if (index < requestGroups.length - 1) const SizedBox(height: 20),
         ],
         if (_selectedSectionKey == null)
-          const Padding(
-            padding: EdgeInsets.only(top: 20),
-            child: Text(
-              'Selecione um status para visualizar os pedidos.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.branco,
-                fontSize: 16,
-              ),
+          Padding(
+            padding: const EdgeInsets.only(top: 20),
+            child: _buildInfoBanner(
+              'Selecione uma categoria de status para visualizar os pedidos.',
             ),
           ),
       ],
@@ -564,39 +883,80 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
   Widget _buildRequestGroup({
     required _RequestSectionGroup group,
   }) {
-    final availableStatuses = _availableStatuses(group.requestsByStatus);
+    final availableStatuses = _availableStatuses(group.key);
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.branco.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: AppColors.branco.withValues(alpha: 0.12),
-        ),
+        color: _surfaceColor.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _outlineColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            group.title,
-            style: const TextStyle(
-              color: AppColors.branco,
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.amareloClaro.withValues(alpha: 0.13),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.amareloClaro.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Icon(
+                  _groupIcon(group.key),
+                  color: AppColors.amareloClaro,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      group.title,
+                      style: const TextStyle(
+                        color: AppColors.branco,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${group.totalServices} pedido(s)',
+                      style: TextStyle(
+                        color: AppColors.cinza.withValues(alpha: 0.9),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _buildCountPill(group.totalServices),
+            ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            '${group.totalServices} pedido(s)',
-            style: TextStyle(
-              color: AppColors.branco.withValues(alpha: 0.72),
-              fontSize: 13,
-            ),
+          const SizedBox(height: 16),
+          Container(
+            height: 1,
+            color: AppColors.branco.withValues(alpha: 0.08),
           ),
           const SizedBox(height: 16),
           if (availableStatuses.isEmpty)
-            _buildFeedbackText(group.emptyMessage)
+            _buildEmptyState(group.emptyMessage)
           else
             Column(
               children: [
@@ -604,10 +964,13 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
                     index < availableStatuses.length;
                     index++) ...[
                   _buildStatusSelectorItem(
+                    groupKey: group.key,
                     sectionKey:
                         _buildSectionKey(group.key, availableStatuses[index]),
                     status: availableStatuses[index],
                     title: _statusSectionTitle(availableStatuses[index]),
+                    totalCount:
+                        group.countsByStatus[availableStatuses[index]] ?? 0,
                     services:
                         group.requestsByStatus[availableStatuses[index]] ??
                             const <ServiceEnvelope>[],
@@ -623,25 +986,29 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
   }
 
   Widget _buildStatusSelectorItem({
+    required String groupKey,
     required String sectionKey,
     required String status,
     required String title,
+    required int totalCount,
     required List<ServiceEnvelope> services,
   }) {
     final isSelected = _selectedSectionKey == sectionKey;
 
     return AnimatedContainer(
+      key: ValueKey('my-requests-status-$sectionKey'),
       duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
       decoration: BoxDecoration(
         color: isSelected
-            ? AppColors.branco.withValues(alpha: 0.10)
-            : AppColors.branco.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(20),
+            ? AppColors.amareloClaro.withValues(alpha: 0.10)
+            : _surfaceElevatedColor,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isSelected
-              ? AppColors.amareloClaro
-              : AppColors.branco.withValues(alpha: 0.16),
-          width: isSelected ? 2 : 1,
+              ? AppColors.amareloClaro.withValues(alpha: 0.74)
+              : _outlineColor,
+          width: 1,
         ),
       ),
       child: Column(
@@ -650,8 +1017,12 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
           Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: () => _toggleStatusSelection(sectionKey),
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => _toggleStatusSelection(
+                sectionKey: sectionKey,
+                groupKey: groupKey,
+                status: status,
+              ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 18,
@@ -659,6 +1030,29 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
                 ),
                 child: Row(
                   children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.amareloClaro
+                            : AppColors.branco.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.amareloClaro
+                              : AppColors.branco.withValues(alpha: 0.08),
+                        ),
+                      ),
+                      child: Icon(
+                        _statusIcon(status),
+                        color: isSelected
+                            ? AppColors.preto
+                            : AppColors.amareloClaro,
+                        size: 21,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -667,46 +1061,24 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
                             title,
                             style: const TextStyle(
                               color: AppColors.branco,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            isSelected
-                                ? 'Toque para ocultar os pedidos'
-                                : 'Toque para visualizar os pedidos',
+                            _statusActionLabel(isSelected),
                             style: TextStyle(
-                              color: AppColors.branco.withValues(alpha: 0.78),
+                              color: AppColors.cinza.withValues(alpha: 0.9),
                               fontSize: 13,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.amareloClaro
-                            : AppColors.amareloUmPoucoEscuro.withValues(
-                                alpha: 0.32,
-                              ),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        '${services.length}',
-                        style: TextStyle(
-                          color:
-                              isSelected ? AppColors.preto : AppColors.branco,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
+                    _buildCountPill(totalCount, isSelected: isSelected),
                     const SizedBox(width: 12),
                     Icon(
                       isSelected
@@ -728,12 +1100,17 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
               child: Divider(
                 height: 1,
                 thickness: 1,
-                color: AppColors.amareloUmPoucoEscuro,
+                color: _outlineColor,
               ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
-              child: _buildStatusSection(status: status, services: services),
+              child: _buildStatusSection(
+                sectionKey: sectionKey,
+                groupKey: groupKey,
+                status: status,
+                services: services,
+              ),
             ),
           ],
         ],
@@ -742,18 +1119,77 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
   }
 
   Widget _buildStatusSection({
+    required String sectionKey,
+    required String groupKey,
     required String status,
     required List<ServiceEnvelope> services,
   }) {
-    if (services.isEmpty) {
-      return _buildFeedbackText(
-        _searchQuery.trim().isEmpty
-            ? _emptyStatusMessage(status)
-            : 'Nenhum pedido ${_statusDescription(status)} combina com a busca.',
+    final state = _statusSections[sectionKey];
+
+    if (state != null && state.isLoading && services.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.amareloClaro),
+          ),
+        ),
       );
     }
 
-    return _buildServiceList(services: services);
+    if (state != null && state.errorMessage.isNotEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildFeedbackText(state.errorMessage),
+          const SizedBox(height: 12),
+          _buildSectionLoadMoreButton(
+            label: 'Tentar novamente',
+            onPressed: () => _loadStatusSection(
+              sectionKey: sectionKey,
+              groupKey: groupKey,
+              status: status,
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (services.isEmpty) {
+      return _buildEmptyState(
+        state == null || !state.hasLoaded
+            ? 'Abra esta categoria para carregar os pedidos.'
+            : _searchQuery.trim().isEmpty
+                ? _emptyStatusMessage(status)
+                : 'Nenhum pedido ${_statusDescription(status)} combina com a busca.',
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildServiceList(services: services),
+        if (state != null && state.isLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(
+              child: CircularProgressIndicator(
+                valueColor:
+                    AlwaysStoppedAnimation<Color>(AppColors.amareloClaro),
+              ),
+            ),
+          )
+        else if (state != null && state.hasMore)
+          _buildSectionLoadMoreButton(
+            label: 'Carregar mais',
+            onPressed: () => _loadStatusSection(
+              sectionKey: sectionKey,
+              groupKey: groupKey,
+              status: status,
+            ),
+          ),
+      ],
+    );
   }
 
   Widget _buildServiceList({
@@ -856,12 +1292,36 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     );
   }
 
-  List<String> _availableStatuses(
-    Map<String, List<ServiceEnvelope>> requestsByStatus,
-  ) {
-    return _serviceStatuses
-        .where((status) => (requestsByStatus[status] ?? const []).isNotEmpty)
-        .toList();
+  Widget _buildSectionLoadMoreButton({
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.amareloClaro,
+          foregroundColor: AppColors.preto,
+          padding: const EdgeInsets.symmetric(vertical: 13),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+      ),
+    );
+  }
+
+  List<String> _availableStatuses(String groupKey) {
+    if (groupKey == 'accepted_from_others') {
+      return _serviceStatuses.where((status) => status != 'CRIADO').toList();
+    }
+
+    return _serviceStatuses;
   }
 
   String _buildSectionKey(String groupKey, String status) {
@@ -879,19 +1339,30 @@ class _RequestSectionGroup {
   final String key;
   final String title;
   final String emptyMessage;
+  final Map<String, int> countsByStatus;
   final Map<String, List<ServiceEnvelope>> requestsByStatus;
 
   const _RequestSectionGroup({
     required this.key,
     required this.title,
     required this.emptyMessage,
+    required this.countsByStatus,
     required this.requestsByStatus,
   });
 
   int get totalServices {
-    return requestsByStatus.values.fold(
+    return countsByStatus.values.fold(
       0,
-      (total, services) => total + services.length,
+      (total, count) => total + count,
     );
   }
+}
+
+class _LazyStatusSectionState {
+  final List<ServiceEnvelope> services = [];
+  int nextPage = 0;
+  bool hasMore = true;
+  bool isLoading = false;
+  bool hasLoaded = false;
+  String errorMessage = '';
 }

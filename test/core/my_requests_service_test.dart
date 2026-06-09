@@ -134,6 +134,52 @@ void main() {
       expect(result.services, isEmpty);
       expect(result.stats.pagesFetched, 1);
     });
+
+    test('busca uma pagina de pedidos por status sob demanda', () async {
+      SharedPreferences.setMockInitialValues({
+        'auth_token': _buildJwt({
+          'id': 1,
+          'name': 'Ana',
+          'email': 'ana@example.com',
+        }),
+      });
+
+      ApiService.setClientForTesting(
+        MockClient((request) async {
+          if (request.url.path.endsWith('/service/get/all/CRIADO')) {
+            expect(request.url.queryParameters['page'], '2');
+            expect(request.url.queryParameters['size'], '10');
+
+            return http.Response(
+              jsonEncode({
+                'content': [
+                  _serviceJson(id: 201, creatorId: 1, status: 'CRIADO'),
+                ],
+                'page': 2,
+                'totalPages': 4,
+                'totalElements': 31,
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+
+          return http.Response('not found', 404);
+        }),
+      );
+
+      final result = await MyRequestsService().loadStatusPage(
+        status: 'CRIADO',
+        page: 2,
+        pageSize: 10,
+      );
+
+      expect(result.services.single.service.id, 201);
+      expect(result.page, 2);
+      expect(result.totalPages, 4);
+      expect(result.totalElements, 31);
+      expect(result.hasMore, isTrue);
+    });
   });
 }
 

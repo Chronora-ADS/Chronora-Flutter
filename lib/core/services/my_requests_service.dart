@@ -56,6 +56,27 @@ class MyRequestsLoadResult {
   });
 }
 
+class MyRequestsStatusPage {
+  final List<ServiceEnvelope> services;
+  final int page;
+  final int? totalPages;
+  final int? totalElements;
+
+  const MyRequestsStatusPage({
+    required this.services,
+    required this.page,
+    required this.totalPages,
+    required this.totalElements,
+  });
+
+  bool get hasMore {
+    if (totalPages == null) {
+      return services.isNotEmpty;
+    }
+    return page + 1 < totalPages!;
+  }
+}
+
 class MyRequestsException implements Exception {
   final String message;
 
@@ -71,6 +92,7 @@ class MyRequestsService {
   Future<MyRequestsLoadResult> loadMyRequests({
     int pageSize = defaultPageSize,
   }) async {
+    final currentUser = await loadCurrentUser();
     final token = await AuthSessionService.getValidAccessToken();
     if (token == null) {
       throw const MyRequestsException(
@@ -78,7 +100,6 @@ class MyRequestsService {
       );
     }
 
-    final currentUser = await _fetchCurrentUser(token);
     final pagedResult = await _fetchAllServices(
       token: token,
       pageSize: pageSize,
@@ -93,6 +114,50 @@ class MyRequestsService {
         uniqueServicesFetched: pagedResult.services.length,
         totalElements: pagedResult.totalElements,
       ),
+    );
+  }
+
+  Future<MyRequestsUserIdentity> loadCurrentUser() async {
+    final token = await AuthSessionService.getValidAccessToken();
+    if (token == null) {
+      throw const MyRequestsException(
+        'Voce precisa estar logado para visualizar seus pedidos.',
+      );
+    }
+
+    return _fetchCurrentUser(token);
+  }
+
+  Future<MyRequestsStatusPage> loadStatusPage({
+    required String status,
+    required int page,
+    required int pageSize,
+  }) async {
+    final token = await AuthSessionService.getValidAccessToken();
+    if (token == null) {
+      throw const MyRequestsException(
+        'Voce precisa estar logado para visualizar seus pedidos.',
+      );
+    }
+
+    final normalizedStatus = Uri.encodeComponent(status.trim().toUpperCase());
+    final response = await ApiService.get(
+      '/service/get/all/$normalizedStatus?page=$page&size=$pageSize',
+      token: token,
+    );
+
+    if (response.statusCode != 200) {
+      throw MyRequestsException(
+        'Erro ${response.statusCode} ao carregar seus pedidos.',
+      );
+    }
+
+    final parsedPage = _parseServicesPage(response.body);
+    return MyRequestsStatusPage(
+      services: parsedPage.items,
+      page: parsedPage.page ?? page,
+      totalPages: parsedPage.totalPages,
+      totalElements: parsedPage.totalElements,
     );
   }
 
