@@ -10,6 +10,7 @@ import 'package:chronora/pages/profile_page.dart';
 import 'package:chronora/pages/requests/my_requests.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_creation.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_edit.dart';
+import 'package:chronora/pages/requests/order_in_progress_page.dart';
 import 'package:chronora/pages/requests/request_accepted_view.dart';
 import 'package:chronora/pages/requests/request_view.dart';
 import 'package:chronora/pages/sell_chronos/sell_chronos_page.dart';
@@ -32,6 +33,7 @@ class AppRoutes {
   static const String notifications = '/notification';
   static const String profile = '/profile';
   static const String settings = '/settings';
+  static const String orderInProgress = '/order-in-progress';
 
   static String requestViewWithId(int id) => '$requestView/$id';
   static String requestEditingWithId(int id) => '$requestEditing/$id';
@@ -52,6 +54,8 @@ class AppRoutes {
       notifications: (context) => _protected(const NotificationPage()),
       profile: (context) => _protected(const ProfilePage()),
       myOrders: (context) => _protected(const MeusPedidosPage()),
+      orderInProgress: (context) =>
+          _protected(const OrderInProgressPage()),
       settings: (context) => _protected(const ComingSoonPage(
             title: 'Configuracoes',
             description:

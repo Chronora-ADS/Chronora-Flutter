@@ -148,6 +148,19 @@ class _RequestViewState extends State<RequestView> {
         _acceptedRequestInfo = acceptedInfo;
         _isLoading = false;
       });
+
+      if (detail.status.trim().toUpperCase() == 'EM_ANDAMENTO') {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          Navigator.pushReplacementNamed(
+            context,
+            AppRoutes.orderInProgress,
+            arguments: detail,
+          );
+        });
+        return;
+      }
+
       _routeToAcceptedRequestIfNeeded(detail, acceptedInfo, isOwner: isOwner);
     } catch (e) {
       if (!mounted) return;
