@@ -8,6 +8,7 @@ import 'package:chronora/widgets/side_menu.dart';
 import 'package:chronora/widgets/wallet_modal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'review_page.dart';
 
 class MeusPedidosPage extends StatefulWidget {
   const MeusPedidosPage({super.key});
@@ -1168,7 +1169,11 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildServiceList(services: services),
+        _buildServiceList(
+          services: services,
+          groupKey: groupKey,
+          status: status,
+        ),
         if (state != null && state.isLoading)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
@@ -1194,34 +1199,83 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
   Widget _buildServiceList({
     required List<ServiceEnvelope> services,
+    required String groupKey,
+    required String status,
   }) {
+    final isProvider = groupKey == 'accepted_from_others';
+
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: services.length,
       itemBuilder: (context, index) {
         final envelope = services[index];
+        final service = envelope.service;
         final navigationArguments = {
-          'service': envelope.service,
+          'service': service,
           'readOnly': true,
           'showAcceptAction': false,
         };
 
+        final showReview = status == 'CONCLUIDO' &&
+            (isProvider ? !service.ratedByProvider : !service.ratedByCreator);
+
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
-          child: ServiceCard(
-            service: envelope.service,
-            onView: () async {
-              final result = await Navigator.pushNamed(
-                context,
-                '${AppRoutes.requestView}/${envelope.service.id}',
-                arguments: navigationArguments,
-              );
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ServiceCard(
+                service: service,
+                onView: () async {
+                  final result = await Navigator.pushNamed(
+                    context,
+                    '${AppRoutes.requestView}/${service.id}',
+                    arguments: navigationArguments,
+                  );
 
-              if (result == true) {
-                await _loadMyRequests();
-              }
-            },
+                  if (result == true) {
+                    await _loadMyRequests();
+                  }
+                },
+              ),
+              if (showReview) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ReviewPage(
+                            serviceId: service.id,
+                            isProvider: isProvider,
+                          ),
+                        ),
+                      );
+                      await _loadMyRequests();
+                    },
+                    icon: const Icon(Icons.star_outline, size: 18),
+                    label: Text(
+                      isProvider ? 'Avaliar solicitante' : 'Avaliar prestador',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.amareloUmPoucoEscuro,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         );
       },
