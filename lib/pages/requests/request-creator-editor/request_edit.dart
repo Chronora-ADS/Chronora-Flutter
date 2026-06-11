@@ -419,6 +419,8 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     try {
       final token = await AuthSessionService.getValidAccessToken();
 
+      if (!mounted) return;
+
       if (token == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -437,6 +439,8 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       if (_selectedImage != null) {
         base64Image = await _convertImageToBase64();
       }
+
+      if (!mounted) return;
 
       // Formatação da data
       final deadlineText = _deadlineController.text.trim();
@@ -694,7 +698,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         decoration: InputDecoration(
           hintText: 'Pintura de parede, aula de inglês...',
           hintStyle: TextStyle(
-            color: Colors.black.withOpacity(0.7),
+            color: Colors.black.withValues(alpha: 0.7),
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           border: OutlineInputBorder(
@@ -745,7 +749,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withValues(alpha: 0.3),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -757,7 +761,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         decoration: InputDecoration(
           hintText: placeholder,
           hintStyle: TextStyle(
-            color: Colors.black.withOpacity(0.7),
+            color: Colors.black.withValues(alpha: 0.7),
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           border: OutlineInputBorder(
@@ -779,7 +783,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withValues(alpha: 0.3),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -795,7 +799,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         decoration: InputDecoration(
           hintText: 'Descrição',
           hintStyle: TextStyle(
-            color: Colors.black.withOpacity(0.7),
+            color: Colors.black.withValues(alpha: 0.7),
           ),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -846,7 +850,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withValues(alpha: 0.3),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -859,7 +863,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         decoration: InputDecoration(
           hintText: placeholder,
           hintStyle: TextStyle(
-            color: Colors.black.withOpacity(0.7),
+            color: Colors.black.withValues(alpha: 0.7),
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           border: OutlineInputBorder(
@@ -960,7 +964,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withOpacity(0.3),
+                color: Colors.grey.withValues(alpha: 0.3),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -971,7 +975,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
             decoration: InputDecoration(
               hintText: 'Categoria(s) - Pressione Enter para adicionar',
               hintStyle: TextStyle(
-                color: Colors.black.withOpacity(0.7),
+                color: Colors.black.withValues(alpha: 0.7),
               ),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               border: OutlineInputBorder(
@@ -1004,7 +1008,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withValues(alpha: 0.3),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -1017,7 +1021,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         decoration: InputDecoration(
           hintText: 'Modalidade',
           hintStyle: TextStyle(
-            color: Colors.black.withOpacity(0.7),
+            color: Colors.black.withValues(alpha: 0.7),
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           border: OutlineInputBorder(
@@ -1333,7 +1337,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
               right: 0,
               bottom: 0,
               child: Container(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: Row(
                   children: [
                     SizedBox(
@@ -1367,7 +1371,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
               right: 0,
               bottom: 0,
               child: Container(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
