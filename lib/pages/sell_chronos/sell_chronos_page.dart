@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/services/api_service.dart';
+import '../../core/api/api_service.dart';
+import '../../core/services/auth_session_service.dart';
 import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
@@ -15,7 +15,8 @@ import 'pix_sell_page.dart';
 class SellChronosController extends ChangeNotifier {
   static const double CHRONOS_SELL_PRICE = 2.00; // R$ por Chronos
   static const double TAX_PERCENTAGE = 0.10; // 10%
-  static const int MIN_CHRONOS_KEEP = 1; // Mínimo de Chronos que deve permanecer na carteira
+  static const int MIN_CHRONOS_KEEP =
+      0; // Backend permite vender ate zerar a carteira
   static const String TOOLTIP_TEXT =
       'O valor de venda de Chronos é equivalente a R\$2,00 reais. No final, é aplicada uma taxa de 10% sobre o total.';
 
@@ -25,27 +26,36 @@ class SellChronosController extends ChangeNotifier {
   String errorMessage = '';
   bool isLoading = false;
   bool isLoadingBalance = true; // Novo estado para carregamento do saldo
-  
+
   // Controllers
   late TextEditingController amountController;
   late TextEditingController pixKeyController;
-  
-  SellChronosController() {
+
+  SellChronosController({
+    int? initialBalance,
+    bool autoloadBalance = true,
+  }) {
     amountController = TextEditingController();
     pixKeyController = TextEditingController();
-    _loadCurrentBalance(); // Carrega saldo ao criar controller
+    if (initialBalance != null) {
+      currentBalance = initialBalance;
+      isLoadingBalance = false;
+    } else if (autoloadBalance) {
+      _loadCurrentBalance(); // Carrega saldo ao criar controller
+    } else {
+      isLoadingBalance = false;
+    }
   }
-  
+
   @override
   void dispose() {
     amountController.dispose();
     pixKeyController.dispose();
     super.dispose();
   }
-  
+
   Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
+    return AuthSessionService.getValidAccessToken();
   }
 
   /// Carrega o saldo atual do usuário do backend
@@ -100,7 +110,7 @@ class SellChronosController extends ChangeNotifier {
     callback();
     notifyListeners();
   }
-  
+
   void initializeInitialValues() {
     amountController.clear();
     pixKeyController.clear();
@@ -117,17 +127,17 @@ class SellChronosController extends ChangeNotifier {
   int get chronosAfterSale => currentBalance - sellAmount;
 
   // REGRA: Não pode vender todos os Chronos - deve manter pelo menos MIN_CHRONOS_KEEP
-  bool get isAmountValid => 
-      sellAmount > 0 && 
+  bool get isAmountValid =>
+      sellAmount > 0 &&
       sellAmount <= currentBalance &&
       chronosAfterSale >= MIN_CHRONOS_KEEP;
-  
+
   bool get isPixValid => true; // PIX será validado em outra tela
   bool get canProceed => isAmountValid && !isLoading && !isLoadingBalance;
-  
+
   void updateSellAmount(String value) {
     errorMessage = '';
-    
+
     if (value.isEmpty) {
       sellAmount = 0;
       notifyListeners();
@@ -136,7 +146,7 @@ class SellChronosController extends ChangeNotifier {
 
     try {
       int amount = int.parse(value);
-      
+
       if (amount < 0) {
         errorMessage = 'A quantidade não pode ser negativa.';
         sellAmount = 0;
@@ -146,7 +156,7 @@ class SellChronosController extends ChangeNotifier {
         errorMessage = 'Saldo insuficiente para vender $amount Chronos.';
         sellAmount = amount;
       } else if (chronosAfterSale < MIN_CHRONOS_KEEP) {
-        errorMessage = 'Você deve manter pelo menos $MIN_CHRONOS_KEEP Chronos em sua carteira.';
+        errorMessage = 'Voce nao pode vender mais Chronos do que possui.';
         sellAmount = amount;
       } else {
         sellAmount = amount;
@@ -155,10 +165,10 @@ class SellChronosController extends ChangeNotifier {
       errorMessage = 'Digite apenas números inteiros.';
       sellAmount = 0;
     }
-    
+
     notifyListeners();
   }
-  
+
   void reset() {
     sellAmount = 0;
     pixKey = '';
@@ -167,7 +177,7 @@ class SellChronosController extends ChangeNotifier {
     pixKeyController.clear();
     notifyListeners();
   }
-  
+
   Future<void> sellChronos({
     required int amount,
     required String pixKey,
@@ -178,32 +188,32 @@ class SellChronosController extends ChangeNotifier {
       onError('Quantidade inválida');
       return;
     }
-    
+
     if (amount > currentBalance) {
       onError('Saldo insuficiente');
       return;
     }
-    
+
     if (chronosAfterSale < MIN_CHRONOS_KEEP) {
-      onError('Você deve manter pelo menos $MIN_CHRONOS_KEEP Chronos em sua carteira.');
+      onError('Voce nao pode vender mais Chronos do que possui.');
       return;
     }
-    
+
     if (!_validatePixBasic(pixKey)) {
       onError('Chave PIX inválida');
       return;
     }
-    
+
     isLoading = true;
     notifyListeners();
-    
+
     try {
       // TODO: Integrar com backend real
       // await _sellChronosBackend(amount, pixKey);
-      
+
       // Simulação temporária
       await Future.delayed(const Duration(milliseconds: 900));
-      
+
       // Atualiza saldo local após sucesso
       currentBalance = chronosAfterSale;
       sellAmount = 0;
@@ -229,7 +239,8 @@ class SellChronosController extends ChangeNotifier {
 
     if (emailRegex.hasMatch(key)) return true;
     final clean = key.replaceAll(RegExp(r'[^0-9]'), '');
-    if (clean.length == 11 && digitsOnly.hasMatch(clean)) return true; // possível CPF
+    if (clean.length == 11 && digitsOnly.hasMatch(clean))
+      return true; // possível CPF
     if (phoneRegex.hasMatch(key)) return true;
     // chave aleatória (UUID-like) allow alphanumeric between 8 and 64
     final randomKey = RegExp(r'^[a-zA-Z0-9_-]{8,64}\$');
@@ -372,14 +383,11 @@ class _SellChronosPageState extends State<SellChronosPage> {
               'assets/img/Search.png',
               width: 20,
               height: 20,
-              errorBuilder: (context, error, stackTrace) => 
-                const Icon(Icons.search, size: 20),
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.search, size: 20),
             ),
           ),
         ),
-        onChanged: (value) {
-          print('Texto da busca: $value');
-        },
       ),
     );
   }
@@ -459,12 +467,16 @@ class _SellChronosPageState extends State<SellChronosPage> {
                 ),
                 child: TextField(
                   controller: _controller.amountController,
-                  onChanged: _controller.isLoadingBalance ? null : _controller.updateSellAmount,
+                  onChanged: _controller.isLoadingBalance
+                      ? null
+                      : _controller.updateSellAmount,
                   enabled: !_controller.isLoadingBalance,
                   keyboardType: TextInputType.number,
                   style: const TextStyle(color: Colors.black),
                   decoration: InputDecoration(
-                    hintText: _controller.isLoadingBalance ? 'Carregando saldo...' : 'Quantidade de venda',
+                    hintText: _controller.isLoadingBalance
+                        ? 'Carregando saldo...'
+                        : 'Quantidade de venda',
                     hintStyle: TextStyle(
                       color: Colors.black.withOpacity(0.7),
                     ),
@@ -479,7 +491,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
                   ),
                 ),
               ),
-              
+
               // Mensagem de erro
               if (_controller.errorMessage.isNotEmpty) ...{
                 const SizedBox(height: 8),
@@ -505,9 +517,11 @@ class _SellChronosPageState extends State<SellChronosPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _labelValueRow('Subtotal', 'R\$ ${_controller.subtotal.toStringAsFixed(2)}'),
+                    _labelValueRow('Subtotal',
+                        'R\$ ${_controller.subtotal.toStringAsFixed(2)}'),
                     const SizedBox(height: 8),
-                    _labelValueRow('Taxa (10%)', 'R\$ ${_controller.taxAmount.toStringAsFixed(2)}'),
+                    _labelValueRow('Taxa (10%)',
+                        'R\$ ${_controller.taxAmount.toStringAsFixed(2)}'),
                     const SizedBox(height: 10),
                     Divider(color: Colors.grey.withOpacity(0.5)),
                     const SizedBox(height: 10),
@@ -518,16 +532,16 @@ class _SellChronosPageState extends State<SellChronosPage> {
                         Row(
                           children: [
                             const Text(
-                              'Total a receber', 
+                              'Total a receber',
                               style: TextStyle(
-                                color: Colors.black, 
-                                fontWeight: FontWeight.bold
-                              ),
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(width: 6),
                             // Tooltip com ponto de interrogação
                             Tooltip(
-                              message: 'O valor de venda Chronos é equivalente à 20% de 10 reais. No final, é aplicado uma taxa de 10% sobre o total.',
+                              message:
+                                  'O valor de venda Chronos é equivalente à 20% de 10 reais. No final, é aplicado uma taxa de 10% sobre o total.',
                               decoration: BoxDecoration(
                                 color: Colors.black,
                                 borderRadius: BorderRadius.circular(8),
@@ -558,11 +572,10 @@ class _SellChronosPageState extends State<SellChronosPage> {
                           ],
                         ),
                         Text(
-                          'R\$ ${_controller.totalAmount.toStringAsFixed(2)}', 
+                          'R\$ ${_controller.totalAmount.toStringAsFixed(2)}',
                           style: const TextStyle(
-                            color: Color(0xFFC29503), 
-                            fontWeight: FontWeight.bold
-                          ),
+                              color: Color(0xFFC29503),
+                              fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
@@ -574,25 +587,29 @@ class _SellChronosPageState extends State<SellChronosPage> {
               // Chronos pós-venda
               Row(
                 children: [
-                  Text('Chronos pós-venda:', style: TextStyle(color: Colors.black.withOpacity(0.7))),
+                  Text('Chronos pós-venda:',
+                      style: TextStyle(color: Colors.black.withOpacity(0.7))),
                   const SizedBox(width: 8),
                   Image.asset('assets/img/Coin.png', width: 18, height: 18),
                   const SizedBox(width: 6),
                   Text(
                     '${_controller.chronosAfterSale}',
                     style: TextStyle(
-                      color: _controller.chronosAfterSale < SellChronosController.MIN_CHRONOS_KEEP ? Colors.red : Colors.black,
+                      color: _controller.chronosAfterSale <
+                              SellChronosController.MIN_CHRONOS_KEEP
+                          ? Colors.red
+                          : Colors.black,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
               ),
-              
+
               // Mensagem informativa sobre o mínimo
               if (_controller.chronosAfterSale >= 0) ...{
                 const SizedBox(height: 8),
                 Text(
-                  'Você deve manter pelo menos ${SellChronosController.MIN_CHRONOS_KEEP} Chronos em sua carteira.',
+                  'O backend permite vender ate zerar seu saldo de Chronos.',
                   style: TextStyle(
                     color: Colors.black.withOpacity(0.6),
                     fontSize: 11,
@@ -635,7 +652,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
                     child: Container(
                       height: 46,
                       decoration: BoxDecoration(
-                        color: _controller.canProceed 
+                        color: _controller.canProceed
                             ? const Color(0xFFC29503)
                             : Colors.grey,
                         borderRadius: BorderRadius.circular(8),
@@ -643,7 +660,9 @@ class _SellChronosPageState extends State<SellChronosPage> {
                       child: TextButton(
                         onPressed: _controller.canProceed
                             ? () {
-                                int amount = int.tryParse(_controller.amountController.text) ?? 0;
+                                int amount = int.tryParse(
+                                        _controller.amountController.text) ??
+                                    0;
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -658,7 +677,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
                         child: Text(
                           'Continuar',
                           style: TextStyle(
-                            color: _controller.canProceed 
+                            color: _controller.canProceed
                                 ? const Color(0xFFE9EAEC)
                                 : Colors.white70,
                             fontWeight: FontWeight.bold,
@@ -681,7 +700,9 @@ class _SellChronosPageState extends State<SellChronosPage> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: TextStyle(color: Colors.black.withOpacity(0.7))),
-        Text(value, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        Text(value,
+            style: const TextStyle(
+                color: Colors.black, fontWeight: FontWeight.bold)),
       ],
     );
   }
@@ -689,29 +710,43 @@ class _SellChronosPageState extends State<SellChronosPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: Header(onMenuPressed: _toggleDrawer),
       backgroundColor: const Color(0xFF0B0C0C),
       body: Stack(
         children: [
-          // Background images
-          _buildBackgroundImages(),
-          
-          // Main content - BARRA DE PESQUISA NO TOPO, CARD CENTRALIZADO
           Column(
             children: [
-              // Barra de pesquisa no topo
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: _buildSearchBar(),
-              ),
-              
-              // Card centralizado verticalmente no meio da tela
+              Header(onMenuPressed: _toggleDrawer),
               Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _buildForm(context),
-                  ),
+                child: Stack(
+                  children: [
+                    // Background images
+                    _buildBackgroundImages(),
+
+                    // Main content - BARRA DE PESQUISA NO TOPO, CARD CENTRALIZADO
+                    Column(
+                      children: [
+                        // Barra de pesquisa no topo
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
+                          child: _buildSearchBar(),
+                        ),
+
+                        // Card centralizado verticalmente no meio da tela
+                        Expanded(
+                          child: Center(
+                            child: SingleChildScrollView(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              child: _buildForm(context),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],

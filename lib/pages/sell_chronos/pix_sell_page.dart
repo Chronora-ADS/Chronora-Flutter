@@ -1,8 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/services/api_service.dart';
+import '../../core/services/chronos_wallet_service.dart';
 import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
@@ -23,6 +21,7 @@ class PixSellPage extends StatefulWidget {
 }
 
 class _PixSellPageState extends State<PixSellPage> {
+  final _walletService = ChronosWalletService();
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
   late TextEditingController _pixKeyController;
@@ -40,41 +39,11 @@ class _PixSellPageState extends State<PixSellPage> {
     super.dispose();
   }
 
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
-  }
-
-  /// Faz a requisição PUT para vender Chronos
   Future<void> _sellChronosBackend(int amount, String pixKey) async {
-    final String? token = await _getToken();
-    
-    if (token == null) {
-      throw Exception('Token de autenticação não encontrado');
-    }
-
-    try {
-      final response = await ApiService.putWithHeaders(
-        '/user/put/sell-chronos',
-        {
-          'Chronos': amount.toString(),
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (response.statusCode != 200) {
-        try {
-          final errorData = json.decode(response.body);
-          final errorMessage = errorData['message'] ?? 'Erro ao processar venda';
-          throw Exception(errorMessage);
-        } catch (e) {
-          throw Exception('Erro ${response.statusCode}: ${response.body}');
-        }
-      }
-    } catch (error) {
-      rethrow;
-    }
+    await _walletService.createSellPayment(
+      chronosAmount: amount,
+      pixKey: pixKey,
+    );
   }
 
   void _toggleDrawer() {
@@ -183,14 +152,11 @@ class _PixSellPageState extends State<PixSellPage> {
               'assets/img/Search.png',
               width: 20,
               height: 20,
-              errorBuilder: (context, error, stackTrace) => 
-                const Icon(Icons.search, size: 20),
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.search, size: 20),
             ),
           ),
         ),
-        onChanged: (value) {
-          print('Texto da busca: $value');
-        },
       ),
     );
   }
@@ -240,9 +206,11 @@ class _PixSellPageState extends State<PixSellPage> {
                 const SizedBox(height: 12),
                 _labelValueRow('Chronos vendidos', '${widget.chronosAmount}'),
                 const SizedBox(height: 8),
-                _labelValueRow('Valor a receber', 'R\$ ${widget.totalAmount.toStringAsFixed(2)}'),
+                _labelValueRow('Valor a receber',
+                    'R\$ ${widget.totalAmount.toStringAsFixed(2)}'),
                 const SizedBox(height: 8),
-                _labelValueRow('Taxa (10%)', 'R\$ ${(widget.totalAmount * 0.1).toStringAsFixed(2)}'),
+                _labelValueRow('Taxa (10%)',
+                    'R\$ ${(widget.totalAmount * 0.1).toStringAsFixed(2)}'),
               ],
             ),
           ),
@@ -282,7 +250,9 @@ class _PixSellPageState extends State<PixSellPage> {
               keyboardType: TextInputType.text,
               style: const TextStyle(color: Colors.black),
               decoration: InputDecoration(
-                hintText: _isProcessing ? 'Processando venda...' : 'Digite sua chave PIX (CPF, e-mail, telefone, chave aleatória)',
+                hintText: _isProcessing
+                    ? 'Processando venda...'
+                    : 'Digite sua chave PIX (CPF, e-mail, telefone, chave aleatória)',
                 hintStyle: TextStyle(
                   color: Colors.black.withOpacity(0.7),
                   fontSize: 12,
@@ -322,11 +292,12 @@ class _PixSellPageState extends State<PixSellPage> {
                         setState(() {
                           _isProcessing = true;
                         });
-                        
+
                         try {
                           // Faz a requisição para o backend
-                          await _sellChronosBackend(widget.chronosAmount, pixKey);
-                          
+                          await _sellChronosBackend(
+                              widget.chronosAmount, pixKey);
+
                           // Se der sucesso, navega para a página de sucesso
                           Navigator.pushReplacement(
                             context,
@@ -342,10 +313,12 @@ class _PixSellPageState extends State<PixSellPage> {
                           setState(() {
                             _isProcessing = false;
                           });
-                          showErrorDialog('Erro ao processar venda: ${e.toString()}');
+                          showErrorDialog(
+                              'Erro ao processar venda: ${e.toString()}');
                         }
                       } else {
-                        showErrorDialog('Chave PIX inválida. Verifique os dados informados.');
+                        showErrorDialog(
+                            'Chave PIX inválida. Verifique os dados informados.');
                       }
                     },
               style: ElevatedButton.styleFrom(
@@ -362,7 +335,8 @@ class _PixSellPageState extends State<PixSellPage> {
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFE9EAEC)),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Color(0xFFE9EAEC)),
                       ),
                     )
                   : const Text(
@@ -383,9 +357,11 @@ class _PixSellPageState extends State<PixSellPage> {
             width: double.infinity,
             height: 46,
             child: OutlinedButton(
-              onPressed: _isProcessing ? null : () {
-                Navigator.pop(context);
-              },
+              onPressed: _isProcessing
+                  ? null
+                  : () {
+                      Navigator.pop(context);
+                    },
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(
                   color: Color(0xFFC29503),
@@ -435,47 +411,61 @@ class _PixSellPageState extends State<PixSellPage> {
 
   bool _validatePixKey(String key) {
     if (key.isEmpty) return false;
-    
+
     final emailRegex = RegExp(r"^[\w-.]+@[\w-]+\.[a-zA-Z]{2,}");
     if (emailRegex.hasMatch(key)) return true;
-    
+
     final digitsOnly = key.replaceAll(RegExp(r'[^0-9]'), '');
     if (digitsOnly.length == 11) return true;
-    
+
     if (digitsOnly.length >= 10 && digitsOnly.length <= 13) return true;
-    
+
     final randomKey = RegExp(r'^[a-zA-Z0-9_-]{8,64}$');
     if (randomKey.hasMatch(key)) return true;
-    
+
     return false;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: Header(onMenuPressed: _toggleDrawer),
       backgroundColor: const Color(0xFF0B0C0C),
       body: Stack(
         children: [
-          // Background images
-          _buildBackgroundImages(),
-          
-          // Main content - BARRA DE PESQUISA NO TOPO, CARD CENTRALIZADO
           Column(
             children: [
-              // Barra de pesquisa no topo
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: _buildSearchBar(),
-              ),
-              
-              // Card centralizado verticalmente no meio da tela
+              Header(onMenuPressed: _toggleDrawer),
               Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: _buildForm(context),
-                  ),
+                child: Stack(
+                  children: [
+                    // Background images
+                    _buildBackgroundImages(),
+
+                    // Main content - BARRA DE PESQUISA NO TOPO, CARD CENTRALIZADO
+                    Column(
+                      children: [
+                        // Barra de pesquisa no topo
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
+                          child: _buildSearchBar(),
+                        ),
+
+                        // Card centralizado verticalmente no meio da tela
+                        Expanded(
+                          child: Center(
+                            child: SingleChildScrollView(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              child: _buildForm(context),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],

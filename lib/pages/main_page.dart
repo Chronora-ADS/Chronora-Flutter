@@ -1,14 +1,18 @@
 import 'dart:convert';
+
 import 'package:chronora/core/models/main_page_requests_model.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 
+import '../core/api/api_service.dart';
+import '../core/api/service_catalog_service.dart';
 import '../core/constants/app_colors.dart';
-import '../core/services/api_service.dart';
+import '../core/constants/app_routes.dart';
+import '../core/services/auth_session_service.dart';
 import '../widgets/backgrounds/background_default_widget.dart';
-import '../widgets/header.dart';
-import '../widgets/service_card.dart';
 import '../widgets/filters_modal.dart';
+import '../widgets/header.dart';
+import '../widgets/service_cancellation_reason_modal.dart';
+import '../widgets/service_card.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/wallet_modal.dart';
 
@@ -21,78 +25,428 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   final TextEditingController _searchController = TextEditingController();
+  final ServiceCatalogService _serviceCatalogService = ServiceCatalogService();
+
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
+  int _walletRefreshVersion = 0;
+  String _userName = 'Usuario';
+  double _userRating = 0.0;
+  String? _userPhotoUrl;
+  String _submittedSearchQuery = '';
 
   List<Service> services = [];
+  List<Service> _visibleServices = [];
   bool isLoading = true;
   String errorMessage = '';
+  bool _isFetching = false;
+  bool _isLoadingMore = false;
+  bool _didHandleRouteArguments = false;
+  bool _isSubmittingCancellationJustification = false;
+  static const int _pageSize = 10;
+  int _nextPage = 0;
+  bool _hasMorePages = true;
 
-  double tempoValue = 5.0;
-  String avaliacaoValue = "0";
-  String ordenacaoValue = "0";
+  ServiceFilters _activeFilters = const ServiceFilters();
 
   @override
   void initState() {
     super.initState();
-    _fetchServices();
+    _fetchCurrentUser();
+    _reloadServices();
   }
 
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_didHandleRouteArguments) {
+      return;
+    }
+    _didHandleRouteArguments = true;
+
+    final arguments = ModalRoute.of(context)?.settings.arguments;
+    if (arguments is! Map) {
+      return;
+    }
+
+    final rawServiceId =
+        arguments['pendingServiceCancellationJustificationServiceId'];
+    final serviceId = rawServiceId is int
+        ? rawServiceId
+        : rawServiceId is String
+            ? int.tryParse(rawServiceId)
+            : null;
+
+    if (serviceId == null) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _openCancellationJustificationModal(serviceId);
+    });
   }
 
-  Future<void> _fetchServices() async {
+  bool get _hasSearchQuery => _submittedSearchQuery.isNotEmpty;
+
+  bool get _isFilterMode =>
+      _hasSearchQuery ||
+      _activeFilters.hasActiveFilters ||
+      _activeFilters.hasCustomSort;
+
+  Future<void> _fetchCurrentUser() async {
     try {
-      final String? token = await _getToken();
+      final token = await AuthSessionService.getValidAccessToken();
+      if (token == null) return;
 
-      if (token == null) {
-        setState(() {
-          isLoading = false;
-          errorMessage =
-              "Você precisa estar logado para visualizar os serviços.";
-        });
+      final response = await ApiService.get('/user/get', token: token);
+      if (response.statusCode != 200) return;
+
+      final data = json.decode(response.body);
+      if (data is! Map<String, dynamic> || !mounted) return;
+
+      setState(() {
+        _userName = (data['name'] ?? 'Usuario').toString();
+        final ratingRaw =
+            data['rating'] ?? data['userRating'] ?? data['avaliacao'];
+        if (ratingRaw is num) {
+          _userRating = ratingRaw.toDouble();
+        } else if (ratingRaw is String) {
+          _userRating = double.tryParse(ratingRaw) ?? 0.0;
+        }
+
+        final photo =
+            data['profileImageUrl'] ?? data['profileImage'] ?? data['photoUrl'];
+        _userPhotoUrl = photo?.toString();
+      });
+    } catch (_) {
+      // Mantem fallback visual sem quebrar a pagina principal.
+    }
+  }
+
+  Future<void> _openCancellationJustificationModal(int serviceId) async {
+    if (_isSubmittingCancellationJustification) {
+      return;
+    }
+
+    while (mounted) {
+      final justification = await _showCancellationJustificationDialog();
+
+      if (!mounted) {
         return;
       }
 
-      final response = await ApiService.get('/service/get/all', token: token);
+      if (justification == null || justification.trim().isEmpty) {
+        continue;
+      }
 
-      if (response.statusCode == 200) {
-        final dynamic responseData = json.decode(response.body);
-        List<dynamic> data = [];
+      final didSubmit = await _submitCancellationJustification(
+        serviceId: serviceId,
+        justification: justification.trim(),
+      );
 
-        if (responseData is Map<String, dynamic>) {
-          if (responseData.containsKey('services')) {
-            data = responseData['services'] as List<dynamic>;
-          } else if (responseData.containsKey('data')) {
-            data = responseData['data'] as List<dynamic>;
-          } else if (responseData.containsKey('content')) {
-            data = responseData['content'] as List<dynamic>;
-          } else {
-            print('Estrutura inesperada: $responseData');
-          }
-        } else if (responseData is List<dynamic>) {
-          data = responseData;
+      if (didSubmit) {
+        return;
+      }
+    }
+  }
+
+  Future<String?> _showCancellationJustificationDialog() {
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const ServiceCancellationReasonModal(),
+    );
+  }
+
+  Future<bool> _submitCancellationJustification({
+    required int serviceId,
+    required String justification,
+  }) async {
+    if (_isSubmittingCancellationJustification) {
+      return false;
+    }
+
+    _isSubmittingCancellationJustification = true;
+
+    try {
+      final token = await AuthSessionService.getValidAccessToken();
+      if (token == null) {
+        throw Exception('Usuario nao autenticado.');
+      }
+
+      final response = await ApiService.put(
+        '/service/cancelAcceptedService/$serviceId/justification',
+        {'justification': justification},
+        token: token,
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+          ApiService.extractErrorMessage(
+            response.body,
+            fallback: 'Nao foi possivel registrar a justificativa.',
+          ),
+        );
+      }
+
+      if (!mounted) {
+        return true;
+      }
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Justificativa registrada.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      return true;
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(
+                _friendlyErrorMessage(
+                  error,
+                  fallback: 'Nao foi possivel registrar a justificativa.',
+                ),
+              ),
+              backgroundColor: AppColors.vermelho,
+            ),
+          );
+      }
+      return false;
+    } finally {
+      _isSubmittingCancellationJustification = false;
+    }
+  }
+
+  String _friendlyErrorMessage(Object error, {required String fallback}) {
+    final rawMessage = error.toString().replaceFirst(
+          RegExp(r'^Exception:\s*'),
+          '',
+        );
+    return ApiService.extractErrorMessage(rawMessage, fallback: fallback);
+  }
+
+  Future<void> _reloadServices() async {
+    await _fetchServices(showLoading: true, reset: true);
+  }
+
+  Future<void> _refreshServicesAndWallet() async {
+    await _reloadServices();
+    if (!mounted) return;
+
+    setState(() {
+      _walletRefreshVersion++;
+    });
+  }
+
+  Future<void> _fetchServices({
+    bool showLoading = false,
+    bool reset = false,
+  }) async {
+    if (_isFetching) return;
+    _isFetching = true;
+
+    if (reset) {
+      _nextPage = 0;
+      _hasMorePages = true;
+      services = [];
+      _visibleServices = [];
+    }
+
+    if (mounted) {
+      setState(() {
+        if (showLoading || services.isEmpty) {
+          isLoading = true;
+          _isLoadingMore = false;
+        } else {
+          _isLoadingMore = true;
         }
+        errorMessage = '';
+      });
+    }
 
+    try {
+      final tempoRange = _tempoRangeForFilter(_activeFilters.tempoValue);
+      final result = await _serviceCatalogService.fetchServices(
+        page: _nextPage,
+        size: _pageSize,
+        status: 'CRIADO',
+        query: _submittedSearchQuery,
+        categories: _activeFilters.effectiveCategories,
+        modality: _backendModality(_activeFilters.modalidadeSelecionada),
+        deadline: _selectedDeadlineFilter,
+        minTimeChronos: tempoRange?[0],
+        maxTimeChronos: tempoRange?[1],
+        sort: _activeFilters.ordenacaoValue,
+      );
+
+      final updatedServices = reset || _nextPage == 0
+          ? result.services
+          : _mergeServices(services, result.services);
+
+      final totalPages = result.totalPages;
+      final currentPage = result.page ?? _nextPage;
+      final hasMore = totalPages != null
+          ? currentPage + 1 < totalPages
+          : result.services.length >= _pageSize;
+
+      if (mounted) {
         setState(() {
-          services = data.map((item) => Service.fromJson(item)).toList();
+          services = updatedServices;
+          _visibleServices = updatedServices;
+          _nextPage = currentPage + 1;
+          _hasMorePages = hasMore;
           isLoading = false;
+          _isLoadingMore = false;
+          errorMessage = '';
         });
-      } else {
+      }
+    } on ServiceCatalogException catch (error) {
+      if (mounted) {
         setState(() {
           isLoading = false;
-          errorMessage = "Erro ${response.statusCode} ao carregar os serviços.";
+          _isLoadingMore = false;
+          errorMessage = error.message;
         });
       }
     } catch (error) {
-      print('Erro na requisição: $error');
-      setState(() {
-        isLoading = false;
-        errorMessage = "Falha ao carregar os serviços: $error";
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          _isLoadingMore = false;
+          errorMessage = 'Falha ao carregar os servicos: $error';
+        });
+      }
+    } finally {
+      _isFetching = false;
     }
+  }
+
+  void _submitSearch([String? value]) {
+    setState(() {
+      _submittedSearchQuery = _searchController.text.trim();
+    });
+    _fetchServices(showLoading: true, reset: true);
+  }
+
+  void _handleFiltersApplied(ServiceFilters filters) {
+    setState(() {
+      _activeFilters = filters;
+    });
+    _fetchServices(showLoading: true, reset: true);
+  }
+
+  DateTime? get _selectedDeadlineFilter {
+    final selectedDate = _activeFilters.selectedPrazoDate;
+    if (selectedDate != null) return _dateOnly(selectedDate);
+    return _parseDate(_activeFilters.deadlineText);
+  }
+
+  List<int>? _tempoRangeForFilter(double value) {
+    if (value <= ServiceFilters.noTempoFilter) return null;
+
+    final maxTime = value.toInt();
+    final minTime = maxTime <= 5 ? 0 : maxTime - 5;
+    return [minTime, maxTime];
+  }
+
+  List<Service> _mergeServices(List<Service> current, List<Service> incoming) {
+    final mergedById = <int, Service>{};
+
+    for (final service in current) {
+      mergedById[service.id] = service;
+    }
+
+    for (final service in incoming) {
+      mergedById[service.id] = service;
+    }
+
+    return mergedById.values.toList();
+  }
+
+  String _normalizeText(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('à', 'a')
+        .replaceAll('ã', 'a')
+        .replaceAll('â', 'a')
+        .replaceAll('ä', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('è', 'e')
+        .replaceAll('ê', 'e')
+        .replaceAll('ë', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ì', 'i')
+        .replaceAll('î', 'i')
+        .replaceAll('ï', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ò', 'o')
+        .replaceAll('õ', 'o')
+        .replaceAll('ô', 'o')
+        .replaceAll('ö', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ù', 'u')
+        .replaceAll('û', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ç', 'c')
+        .trim();
+  }
+
+  String _normalizeModality(String value) {
+    final normalized = _normalizeText(value);
+
+    if (normalized.contains('presencial')) return 'presencial';
+    if (normalized.contains('remoto') || normalized.contains('distancia')) {
+      return 'remoto';
+    }
+
+    return normalized;
+  }
+
+  String? _backendModality(String? modality) {
+    if (modality == null || modality.trim().isEmpty) return null;
+
+    final normalized = _normalizeModality(modality);
+    if (normalized == 'remoto') return 'REMOTO';
+    if (normalized == 'presencial') return 'PRESENCIAL';
+
+    return modality;
+  }
+
+  DateTime? _parseDate(String value) {
+    final text = value.trim();
+    if (text.isEmpty) return null;
+
+    final parts = text.split('/');
+    if (parts.length != 3) return null;
+
+    final day = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final year = int.tryParse(parts[2]);
+
+    if (day == null || month == null || year == null) return null;
+
+    final parsedDate = DateTime(year, month, day);
+    if (parsedDate.day != day ||
+        parsedDate.month != month ||
+        parsedDate.year != year) {
+      return null;
+    }
+
+    return _dateOnly(parsedDate);
+  }
+
+  DateTime _dateOnly(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
   }
 
   void _showFiltersModal() {
@@ -101,10 +455,8 @@ class _MainPageState extends State<MainPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => FiltersModal(
-        onApplyFilters: _fetchServices,
-        initialTempoValue: tempoValue,
-        initialAvaliacaoValue: avaliacaoValue,
-        initialOrdenacaoValue: ordenacaoValue,
+        onApplyFilters: _handleFiltersApplied,
+        initialFilters: _activeFilters,
       ),
     );
   }
@@ -117,8 +469,8 @@ class _MainPageState extends State<MainPage> {
 
   void _openWallet() {
     setState(() {
-      _isDrawerOpen = false; // Fecha o side menu
-      _isWalletOpen = true; // Abre a carteira
+      _isDrawerOpen = false;
+      _isWalletOpen = true;
     });
   }
 
@@ -130,14 +482,16 @@ class _MainPageState extends State<MainPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0B0C0C),
       body: Stack(
         children: [
-          // Conteúdo principal
           Column(
             children: [
               Header(
+                key: ValueKey(_walletRefreshVersion),
                 onMenuPressed: _toggleDrawer,
               ),
               Expanded(
@@ -151,15 +505,17 @@ class _MainPageState extends State<MainPage> {
                     ),
                     child: Column(
                       children: [
-                        // Search Bar
                         Container(
                           margin: const EdgeInsets.only(bottom: 16),
                           child: TextField(
                             controller: _searchController,
+                            textInputAction: TextInputAction.search,
+                            onSubmitted: _submitSearch,
                             decoration: InputDecoration(
-                              hintText: 'Pintura de parede, aula de inglês...',
+                              hintText: 'Pintura de parede, aula de ingles...',
                               hintStyle: const TextStyle(
-                                  color: AppColors.textoPlaceholder),
+                                color: AppColors.textoPlaceholder,
+                              ),
                               filled: true,
                               fillColor: AppColors.branco,
                               border: OutlineInputBorder(
@@ -167,18 +523,24 @@ class _MainPageState extends State<MainPage> {
                                 borderSide: BorderSide.none,
                               ),
                               contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              prefixIcon: const Icon(Icons.search,
-                                  color: AppColors.textoPlaceholder),
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              prefixIcon: IconButton(
+                                tooltip: 'Pesquisar',
+                                onPressed: _submitSearch,
+                                icon: const Icon(
+                                  Icons.search,
+                                  color: AppColors.textoPlaceholder,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-
-                        // Make Request Section
                         Column(
                           children: [
                             const Text(
-                              'As horas acumuladas no seu banco representam oportunidades reais de ação.',
+                              'As horas acumuladas no seu banco representam oportunidades reais de acao.',
                               style: TextStyle(
                                 color: AppColors.branco,
                                 fontSize: 16,
@@ -189,20 +551,21 @@ class _MainPageState extends State<MainPage> {
                             ElevatedButton(
                               onPressed: () async {
                                 final result = await Navigator.pushNamed(
-                                  context, 
-                                  '/request-creation'
+                                  context,
+                                  AppRoutes.requestCreation,
                                 );
-                                
-                                // Se retornou true, atualiza os serviços
+
                                 if (result == true) {
-                                  await _fetchServices();
+                                  await _refreshServicesAndWallet();
                                 }
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.branco,
                                 foregroundColor: AppColors.preto,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 12),
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -225,7 +588,7 @@ class _MainPageState extends State<MainPage> {
                             ),
                             const SizedBox(height: 8),
                             const Text(
-                              'ou realize o de alguém',
+                              'ou realize o de alguem',
                               style: TextStyle(
                                 color: AppColors.branco,
                                 fontSize: 14,
@@ -233,27 +596,25 @@ class _MainPageState extends State<MainPage> {
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 24),
                         Align(
-                            alignment: Alignment.center,
-                            child: Container(
-                                width: MediaQuery.of(context).size.width * 0.8,
-                                height: 3,
-                                color: AppColors.branco,
-                            ),
+                          alignment: Alignment.center,
+                          child: Container(
+                            width: screenWidth * 0.8,
+                            height: 3,
+                            color: AppColors.branco,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Align(
-                            alignment: Alignment.center,
-                            child: Container(
-                                width: MediaQuery.of(context).size.width * 0.5,
-                                height: 3,
-                                color: AppColors.branco,
-                            ),
+                          alignment: Alignment.center,
+                          child: Container(
+                            width: screenWidth * 0.5,
+                            height: 3,
+                            color: AppColors.branco,
+                          ),
                         ),
                         const SizedBox(height: 24),
-
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
@@ -262,7 +623,9 @@ class _MainPageState extends State<MainPage> {
                               backgroundColor: AppColors.branco,
                               foregroundColor: AppColors.preto,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 16),
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -277,10 +640,10 @@ class _MainPageState extends State<MainPage> {
                             ),
                           ),
                         ),
-
                         const SizedBox(height: 24),
-
                         _buildServicesList(),
+                        const SizedBox(height: 12),
+                        _buildLoadMoreButton(),
                       ],
                     ),
                   ),
@@ -288,22 +651,23 @@ class _MainPageState extends State<MainPage> {
               ),
             ],
           ),
-
-          // Menu lateral
           if (_isDrawerOpen)
             Positioned(
-              top: kToolbarHeight * 1.5,
+              top: 0,
               left: 0,
               right: 0,
               bottom: 0,
               child: Container(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: Row(
                   children: [
                     SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
+                      width: screenWidth * 0.6,
                       child: SideMenu(
-                        onWalletPressed: _openWallet, // Usa a nova função
+                        onWalletPressed: _openWallet,
+                        userName: _userName,
+                        userRating: _userRating,
+                        userPhotoUrl: _userPhotoUrl,
                       ),
                     ),
                     Expanded(
@@ -318,8 +682,6 @@ class _MainPageState extends State<MainPage> {
                 ),
               ),
             ),
-
-          // Modal da Carteira
           if (_isWalletOpen)
             Positioned(
               top: 0,
@@ -327,12 +689,12 @@ class _MainPageState extends State<MainPage> {
               right: 0,
               bottom: 0,
               child: Container(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
                     child: WalletModal(
-                      onClose: _closeWallet, // Usa a nova função
+                      onClose: _closeWallet,
                     ),
                   ),
                 ),
@@ -371,16 +733,19 @@ class _MainPageState extends State<MainPage> {
       );
     }
 
-    if (services.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 40),
+    if (_visibleServices.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
         child: Center(
           child: Text(
-            'Nenhum serviço encontrado.',
-            style: TextStyle(
+            _isFilterMode
+                ? 'Nenhum serviço corresponde à busca ou aos filtros.'
+                : 'Nenhum serviço encontrado.',
+            style: const TextStyle(
               color: AppColors.branco,
               fontSize: 16,
             ),
+            textAlign: TextAlign.center,
           ),
         ),
       );
@@ -389,35 +754,70 @@ class _MainPageState extends State<MainPage> {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: services.length,
+      itemCount: _visibleServices.length,
       itemBuilder: (context, index) {
+        final service = _visibleServices[index];
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           child: ServiceCard(
-            service: services[index],
-            onEdit: () async {
-              // Navega para a página de edição com o serviço
+            service: service,
+            onView: () async {
               final result = await Navigator.pushNamed(
                 context,
-                '/request-editing',
-                arguments: services[index],
+                AppRoutes.requestViewWithId(service.id),
               );
-              
-              // Se retornou true, atualiza os serviços
+
               if (result == true) {
-                await _fetchServices();
+                await _refreshServicesAndWallet();
               }
             },
             onCardEdited: (edited) async {
-              // Quando o card é editado pelo clique direto
               if (edited) {
-                await _fetchServices();
+                await _refreshServicesAndWallet();
               }
             },
           ),
         );
       },
     );
+  }
+
+  Widget _buildLoadMoreButton() {
+    if (!_shouldShowLoadMoreButton) {
+      return const SizedBox.shrink();
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _isLoadingMore ? null : _loadMoreServices,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.branco,
+          foregroundColor: AppColors.preto,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+        child: _isLoadingMore
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text(
+                'Carregar mais',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+      ),
+    );
+  }
+
+  bool get _shouldShowLoadMoreButton {
+    if (isLoading || errorMessage.isNotEmpty) return false;
+    return _hasMorePages;
+  }
+
+  Future<void> _loadMoreServices() async {
+    if (_isLoadingMore || _isFetching) return;
+    await _fetchServices();
   }
 
   @override

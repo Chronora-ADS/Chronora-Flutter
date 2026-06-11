@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "C:\\Users\\Familia\\Documents\\GitHub\\Chronora-Java\\src\\main\\java\\br\\com\\senai\\service"
+    ],
+    "allow": [
+      "Bash(git -C \"c:\\\\Users\\\\Familia\\\\Documents\\\\GitHub\\\\Chronora-Flutter\" stash)",
+      "Bash(git -C \"c:\\\\Users\\\\Familia\\\\Documents\\\\GitHub\\\\Chronora-Flutter\" checkout genericateste)",
+      "Bash(git -C \"c:\\\\Users\\\\Familia\\\\Documents\\\\GitHub\\\\Chronora-Flutter\" stash pop)"
+    ]
+  }
+}
