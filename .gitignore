@@ -65,3 +65,5 @@ pubspec.lock
 =======
 pubspec.yaml
 >>>>>>> master
+.claude/
+docs/levantamento_funcionalidades.md
