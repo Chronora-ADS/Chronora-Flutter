@@ -30,7 +30,7 @@ class _ReviewPageState extends State<ReviewPage> {
   bool _isWalletOpen = false;
   bool _isLoadingService = true;
   bool _isSubmitting = false;
-  int _selectedRating = 0;
+  double _selectedRating = 0;
   String? _errorMessage;
   Service? _service;
 
@@ -81,7 +81,7 @@ class _ReviewPageState extends State<ReviewPage> {
 
   Future<void> _submit() async {
     if (_isSubmitting) return;
-    if (_selectedRating == 0) {
+    if (_selectedRating <= 0) {
       setState(() => _errorMessage = 'Selecione uma nota antes de enviar.');
       return;
     }
@@ -306,15 +306,18 @@ class _ReviewPageState extends State<ReviewPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(5, (index) {
                       return GestureDetector(
-                        onTap: () =>
-                            setState(() => _selectedRating = index + 1),
+                        onTapDown: (details) {
+                          const iconSize = 44.0;
+                          final isHalf =
+                              details.localPosition.dx < iconSize / 2;
+                          setState(() => _selectedRating =
+                              isHalf ? index + 0.5 : index + 1.0);
+                        },
                         child: Padding(
                           padding:
                               const EdgeInsets.symmetric(horizontal: 4),
                           child: Icon(
-                            index < _selectedRating
-                                ? Icons.star
-                                : Icons.star_border,
+                            _starIcon(index),
                             color: AppColors.amareloUmPoucoEscuro,
                             size: 44,
                           ),
@@ -446,6 +449,12 @@ class _ReviewPageState extends State<ReviewPage> {
         ),
       ],
     );
+  }
+
+  IconData _starIcon(int index) {
+    if (_selectedRating >= index + 1) return Icons.star;
+    if (_selectedRating >= index + 0.5) return Icons.star_half;
+    return Icons.star_border;
   }
 
   String _formatPhone(int phone) {
