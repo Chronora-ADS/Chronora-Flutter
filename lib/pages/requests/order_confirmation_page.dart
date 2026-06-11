@@ -28,6 +28,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
   bool _isLoading = false;
+  String? _errorMessage;
 
   void _toggleDrawer() => setState(() => _isDrawerOpen = !_isDrawerOpen);
   void _openWallet() => setState(() {
@@ -77,16 +78,10 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(
-              error.toString().replaceFirst(RegExp(r'^Exception:\s*'), ''),
-            ),
-            backgroundColor: AppColors.vermelho,
-          ),
-        );
+      setState(() {
+        _errorMessage =
+            error.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+      });
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -102,6 +97,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
           Column(
             children: [
               Header(onMenuPressed: _toggleDrawer),
+              if (_errorMessage != null) _buildErrorBanner(),
               Expanded(child: _buildBody()),
             ],
           ),
@@ -146,6 +142,33 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
     );
   }
 
+  Widget _buildErrorBanner() {
+    return Container(
+      color: AppColors.vermelho,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, color: Colors.white, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _errorMessage!,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => setState(() => _errorMessage = null),
+            child: const Icon(Icons.close, color: Colors.white, size: 20),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBackground() {
     return Positioned(
       top: 150,
@@ -168,7 +191,9 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
     const titleSuffix = ' o pedido?';
 
     final subtitle = isFinish
-        ? 'O solicitante receberá uma notificação para confirmar a conclusão do pedido'
+        ? widget.isProvider
+            ? 'O solicitante receberá uma notificação para confirmar a finalização do pedido'
+            : 'O prestador receberá uma notificação que o pedido foi finalizado'
         : widget.isProvider
             ? 'O solicitante receberá uma notificação para avisar sobre o cancelamento do pedido'
             : 'O prestador receberá uma notificação para avisar sobre o cancelamento do pedido';
