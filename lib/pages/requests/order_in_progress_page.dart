@@ -279,7 +279,7 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const _CancelOrderDialog(),
+      builder: (_) => _CancelOrderDialog(isProvider: _isProvider),
     );
     if (confirmed != true || !mounted) return;
 
@@ -694,7 +694,7 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
               : _isProvider
                   ? (_isAwaitingConfirmation
                       ? 'Aguardando confirmacao...'
-                      : 'Concluir')
+                      : 'Concluir pedido')
                   : 'Finalizar pedido',
           style: const TextStyle(
             fontSize: 20,
@@ -772,11 +772,11 @@ class _FinishOrderDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return _ActionDialog(
       titlePrefix: 'Você deseja ',
-      titleBold: 'finalizar',
+      titleBold: 'concluir',
       titleSuffix: ' o pedido?',
       subtitle:
-          'O solicitante receberá uma notificação para confirmar a finalização do pedido',
-      confirmLabel: 'Finalizar pedido',
+          'O solicitante receberá uma notificação para confirmar a conclusão do pedido',
+      confirmLabel: 'Concluir pedido',
       confirmColor: AppColors.amareloUmPoucoEscuro,
       onConfirm: () => Navigator.of(context).pop(true),
       onCancel: () => Navigator.of(context).pop(false),
@@ -785,7 +785,9 @@ class _FinishOrderDialog extends StatelessWidget {
 }
 
 class _CancelOrderDialog extends StatelessWidget {
-  const _CancelOrderDialog();
+  final bool isProvider;
+
+  const _CancelOrderDialog({required this.isProvider});
 
   @override
   Widget build(BuildContext context) {
@@ -793,8 +795,9 @@ class _CancelOrderDialog extends StatelessWidget {
       titlePrefix: 'Você deseja mesmo ',
       titleBold: 'cancelar',
       titleSuffix: ' o pedido?',
-      subtitle:
-          'O solicitante receberá uma notificação para avisar sobre o cancelamento do pedido',
+      subtitle: isProvider
+          ? 'O solicitante receberá uma notificação para avisar sobre o cancelamento do pedido'
+          : 'O prestador receberá uma notificação para avisar sobre o cancelamento do pedido',
       confirmLabel: 'Cancelar pedido',
       confirmColor: AppColors.vermelho,
       onConfirm: () => Navigator.of(context).pop(true),
