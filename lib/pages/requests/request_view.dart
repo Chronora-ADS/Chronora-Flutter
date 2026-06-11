@@ -149,7 +149,9 @@ class _RequestViewState extends State<RequestView> {
         _isLoading = false;
       });
 
-      if (detail.status.trim().toUpperCase() == 'EM_ANDAMENTO') {
+      final normalizedStatus = detail.status.trim().toUpperCase();
+      if (normalizedStatus == 'EM_ANDAMENTO' ||
+          normalizedStatus == 'AGUARDANDO_CONFIRMACAO') {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           Navigator.pushReplacementNamed(
