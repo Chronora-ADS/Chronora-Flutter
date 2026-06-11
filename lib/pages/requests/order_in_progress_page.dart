@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -36,11 +37,15 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
   ServiceDetailModel? _serviceDetail;
   int? _serviceId;
   int? _currentUserId;
+  Timer? _syncTimer;
 
   bool get _isProvider =>
       _currentUserId != null &&
       _serviceDetail?.userCreator.id != null &&
       _currentUserId != _serviceDetail!.userCreator.id;
+
+  bool get _isAwaitingConfirmation =>
+      _serviceDetail?.status.trim().toUpperCase() == 'AGUARDANDO_CONFIRMACAO';
 
   @override
   void didChangeDependencies() {
@@ -78,6 +83,57 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
     }
 
     _loadCurrentUser();
+    _startSync();
+  }
+
+  @override
+  void dispose() {
+    _syncTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startSync() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _syncStatus();
+    });
+  }
+
+  Future<void> _syncStatus() async {
+    final id = _serviceId ?? _serviceDetail?.id;
+    if (id == null || !mounted) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null) return;
+
+      final response = await ApiService.get('/service/get/$id', token: token);
+      if (response.statusCode != 200 || !mounted) return;
+
+      final decoded = json.decode(response.body);
+      if (decoded is! Map<String, dynamic>) return;
+
+      final updated = ServiceDetailModel.fromJson(decoded);
+      final newStatus = updated.status.trim().toUpperCase();
+
+      if (newStatus == 'CONCLUIDO' || newStatus == 'CANCELADO') {
+        _syncTimer?.cancel();
+        if (!mounted) return;
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.main,
+          (route) => false,
+        );
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _serviceDetail = updated;
+        _serviceId = updated.id ?? _serviceId;
+      });
+    } catch (_) {}
   }
 
   Future<void> _loadCurrentUser() async {
@@ -392,7 +448,10 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
         ),
         const SizedBox(height: 20),
         _buildCard(),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
+        if (_isAwaitingConfirmation && !_isProvider)
+          _buildAwaitingBanner(),
+        const SizedBox(height: 16),
         _buildFinishButton(),
         const SizedBox(height: 12),
         _buildCancelButton(),
@@ -587,11 +646,46 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
     );
   }
 
+  Widget _buildAwaitingBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.green.shade700,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'O prestador concluiu o servico. Confirme para finalizar.',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFinishButton() {
+    // Prestador: bloqueado quando ja concluiu (aguardando confirmacao do solicitante)
+    // Solicitante: bloqueado enquanto prestador nao concluiu
+    final bool canFinish = _isProvider
+        ? !_isAwaitingConfirmation
+        : _isAwaitingConfirmation;
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: (_isFinishing || _isCancelling) ? null : _finishOrder,
+        onPressed: (_isFinishing || _isCancelling || !canFinish)
+            ? null
+            : _finishOrder,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.amareloUmPoucoEscuro,
           foregroundColor: AppColors.branco,
@@ -602,7 +696,13 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
           ),
         ),
         child: Text(
-          _isFinishing ? 'Finalizando...' : (_isProvider ? 'Concluir' : 'Finalizar pedido'),
+          _isFinishing
+              ? 'Finalizando...'
+              : _isProvider
+                  ? (_isAwaitingConfirmation
+                      ? 'Aguardando confirmacao...'
+                      : 'Concluir')
+                  : 'Finalizar pedido',
           style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w700,
