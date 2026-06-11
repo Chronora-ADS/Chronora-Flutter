@@ -11,7 +11,7 @@ import '../../core/services/api_service.dart';
 import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
-import 'order_outcome_page.dart';
+import 'order_confirmation_page.dart';
 
 class OrderInProgressPage extends StatefulWidget {
   final ServiceDetailModel? serviceDetail;
@@ -32,8 +32,7 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
   bool _isWalletOpen = false;
   bool _didLoadArguments = false;
   bool _isLoadingServiceDetail = false;
-  bool _isFinishing = false;
-  bool _isCancelling = false;
+
 
   ServiceDetailModel? _serviceDetail;
   int? _serviceId;
@@ -214,134 +213,34 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
     });
   }
 
-  Future<void> _finishOrder() async {
+  void _finishOrder() {
     final id = _serviceId ?? _serviceDetail?.id;
-    if (id == null || _isFinishing) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const _FinishOrderDialog(),
-    );
-    if (confirmed != true || !mounted) return;
-
-    setState(() {
-      _isFinishing = true;
-    });
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-      if (token == null) throw Exception('Usuario nao autenticado.');
-
-      final response = await ApiService.put(
-        '/service/finishService/$id',
-        const {},
-        token: token,
-      );
-
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(
-          ApiService.extractErrorMessage(
-            response.body,
-            fallback: 'Nao foi possivel finalizar o pedido.',
-          ),
-        );
-      }
-
-      if (!mounted) return;
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (_) => OrderOutcomePage(
-            outcome: OrderOutcome.concluido,
-            isProvider: _isProvider,
-          ),
+    if (id == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OrderConfirmationPage(
+          serviceId: id,
+          isFinish: true,
+          isProvider: _isProvider,
         ),
-        (route) => false,
-      );
-    } catch (error) {
-      if (!mounted) return;
-      _showError(error.toString().replaceFirst(RegExp(r'^Exception:\s*'), ''));
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isFinishing = false;
-        });
-      }
-    }
+      ),
+    );
   }
 
-  Future<void> _cancelOrder() async {
+  void _cancelOrder() {
     final id = _serviceId ?? _serviceDetail?.id;
-    if (id == null || _isCancelling) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => _CancelOrderDialog(isProvider: _isProvider),
+    if (id == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OrderConfirmationPage(
+          serviceId: id,
+          isFinish: false,
+          isProvider: _isProvider,
+        ),
+      ),
     );
-    if (confirmed != true || !mounted) return;
-
-    setState(() {
-      _isCancelling = true;
-    });
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-      if (token == null) throw Exception('Usuario nao autenticado.');
-
-      final response = await ApiService.put(
-        '/service/cancelService/$id',
-        const {},
-        token: token,
-      );
-
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(
-          ApiService.extractErrorMessage(
-            response.body,
-            fallback: 'Nao foi possivel cancelar o pedido.',
-          ),
-        );
-      }
-
-      if (!mounted) return;
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (_) => OrderOutcomePage(
-            outcome: OrderOutcome.cancelado,
-            isProvider: _isProvider,
-          ),
-        ),
-        (route) => false,
-      );
-    } catch (error) {
-      if (!mounted) return;
-      _showError(error.toString().replaceFirst(RegExp(r'^Exception:\s*'), ''));
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isCancelling = false;
-        });
-      }
-    }
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            ApiService.extractErrorMessage(message,
-                fallback: 'Ocorreu um erro inesperado.'),
-          ),
-          backgroundColor: AppColors.vermelho,
-        ),
-      );
   }
 
   @override
@@ -676,9 +575,7 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: (_isFinishing || _isCancelling || !canFinish)
-            ? null
-            : _finishOrder,
+        onPressed: canFinish ? _finishOrder : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.amareloUmPoucoEscuro,
           foregroundColor: AppColors.branco,
@@ -689,9 +586,7 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
           ),
         ),
         child: Text(
-          _isFinishing
-              ? 'Finalizando...'
-              : _isProvider
+          _isProvider
                   ? (_isAwaitingConfirmation
                       ? 'Aguardando confirmacao...'
                       : 'Concluir pedido')
@@ -709,7 +604,7 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton(
-        onPressed: (_isFinishing || _isCancelling) ? null : _cancelOrder,
+        onPressed: _cancelOrder,
         style: OutlinedButton.styleFrom(
           backgroundColor: AppColors.preto,
           foregroundColor: AppColors.branco,
@@ -720,9 +615,9 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
             borderRadius: BorderRadius.circular(20),
           ),
         ),
-        child: Text(
-          _isCancelling ? 'Cancelando...' : 'Cancelar pedido',
-          style: const TextStyle(
+        child: const Text(
+          'Cancelar pedido',
+          style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w700,
           ),
@@ -765,179 +660,3 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
   }
 }
 
-class _FinishOrderDialog extends StatelessWidget {
-  const _FinishOrderDialog();
-
-  @override
-  Widget build(BuildContext context) {
-    return _ActionDialog(
-      titlePrefix: 'Você deseja ',
-      titleBold: 'concluir',
-      titleSuffix: ' o pedido?',
-      subtitle:
-          'O solicitante receberá uma notificação para confirmar a conclusão do pedido',
-      confirmLabel: 'Concluir pedido',
-      confirmColor: AppColors.amareloUmPoucoEscuro,
-      onConfirm: () => Navigator.of(context).pop(true),
-      onCancel: () => Navigator.of(context).pop(false),
-    );
-  }
-}
-
-class _CancelOrderDialog extends StatelessWidget {
-  final bool isProvider;
-
-  const _CancelOrderDialog({required this.isProvider});
-
-  @override
-  Widget build(BuildContext context) {
-    return _ActionDialog(
-      titlePrefix: 'Você deseja mesmo ',
-      titleBold: 'cancelar',
-      titleSuffix: ' o pedido?',
-      subtitle: isProvider
-          ? 'O solicitante receberá uma notificação para avisar sobre o cancelamento do pedido'
-          : 'O prestador receberá uma notificação para avisar sobre o cancelamento do pedido',
-      confirmLabel: 'Cancelar pedido',
-      confirmColor: AppColors.vermelho,
-      onConfirm: () => Navigator.of(context).pop(true),
-      onCancel: () => Navigator.of(context).pop(false),
-    );
-  }
-}
-
-class _ActionDialog extends StatelessWidget {
-  final String titlePrefix;
-  final String titleBold;
-  final String titleSuffix;
-  final String subtitle;
-  final String confirmLabel;
-  final Color confirmColor;
-  final VoidCallback onConfirm;
-  final VoidCallback onCancel;
-
-  const _ActionDialog({
-    required this.titlePrefix,
-    required this.titleBold,
-    required this.titleSuffix,
-    required this.subtitle,
-    required this.confirmLabel,
-    required this.confirmColor,
-    required this.onConfirm,
-    required this.onCancel,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: screenWidth < 560 ? screenWidth - 36 : 520,
-        ),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(22, 16, 22, 22),
-          decoration: BoxDecoration(
-            color: AppColors.branco,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black54,
-                blurRadius: 20,
-                offset: Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: RichText(
-                      textAlign: TextAlign.center,
-                      text: TextSpan(
-                        style: const TextStyle(
-                          color: AppColors.preto,
-                          fontSize: 18,
-                          height: 1.3,
-                        ),
-                        children: [
-                          TextSpan(text: titlePrefix),
-                          TextSpan(
-                            text: titleBold,
-                            style: const TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                          TextSpan(text: titleSuffix),
-                        ],
-                      ),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: onCancel,
-                    child: const Icon(
-                      Icons.close,
-                      size: 22,
-                      color: AppColors.preto,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                subtitle,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.preto,
-                  fontSize: 13,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 22),
-              SizedBox(
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: onConfirm,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: confirmColor,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    confirmLabel,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                height: 48,
-                child: OutlinedButton(
-                  onPressed: onCancel,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.preto,
-                    side: const BorderSide(color: AppColors.preto),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Voltar',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
