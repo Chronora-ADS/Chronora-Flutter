@@ -16,6 +16,8 @@ class Service {
   final DateTime deadline;
   final String modality;
   final String status;
+  final bool ratedByCreator;
+  final bool ratedByProvider;
 
   Service({
     required this.id,
@@ -29,6 +31,8 @@ class Service {
     required this.deadline,
     required this.modality,
     required this.status,
+    this.ratedByCreator = false,
+    this.ratedByProvider = false,
   });
 
   String get serviceImageUrl => serviceImage;
@@ -59,6 +63,8 @@ class Service {
       deadline: _parseDeadline(json['deadline']),
       modality: (json['modality'] ?? '').toString(),
       status: (json['status'] ?? 'CRIADO').toString(),
+      ratedByCreator: json['ratedByCreator'] == true,
+      ratedByProvider: json['ratedByProvider'] == true,
     );
   }
 

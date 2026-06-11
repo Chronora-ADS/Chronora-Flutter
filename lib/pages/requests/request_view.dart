@@ -148,6 +148,25 @@ class _RequestViewState extends State<RequestView> {
         _acceptedRequestInfo = acceptedInfo;
         _isLoading = false;
       });
+
+      final normalizedStatus = detail.status.trim().toUpperCase();
+      if (normalizedStatus == 'EM_ANDAMENTO' ||
+          normalizedStatus == 'AGUARDANDO_CONFIRMACAO') {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          Navigator.pushReplacementNamed(
+            context,
+            AppRoutes.orderInProgress,
+            arguments: detail,
+          );
+        });
+        return;
+      }
+
+      if (normalizedStatus == 'CONCLUIDO' || normalizedStatus == 'CANCELADO') {
+        return;
+      }
+
       _routeToAcceptedRequestIfNeeded(detail, acceptedInfo, isOwner: isOwner);
     } catch (e) {
       if (!mounted) return;
@@ -912,7 +931,10 @@ class _RequestViewState extends State<RequestView> {
   Widget _buildActionButtons(ServiceDetailModel detail) {
     final acceptedInfo = _acceptedRequestInfo ?? detail.acceptedRequestInfo;
     final canOpenAcceptedRequest = _canOpenAcceptedRequest(acceptedInfo);
-    if (_isOwner && detail.id != null && !_isReadOnly) {
+    final normalizedStatus = detail.status.trim().toUpperCase();
+    final isTerminal =
+        normalizedStatus == 'CONCLUIDO' || normalizedStatus == 'CANCELADO';
+    if (_isOwner && detail.id != null && !_isReadOnly && !isTerminal) {
       return Column(
         children: [
           SizedBox(

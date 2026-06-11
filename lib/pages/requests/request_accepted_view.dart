@@ -302,7 +302,13 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   DateTime? _parseDateTime(dynamic value) {
     if (value is DateTime) return value;
     if (value is! String || value.trim().isEmpty) return null;
-    return DateTime.tryParse(value.trim());
+    final raw = value.trim();
+    // Backend retorna LocalDateTime sem timezone — tratar como UTC
+    final hasTimezone = raw.endsWith('Z') ||
+        raw.contains('+') ||
+        RegExp(r'-\d{2}:\d{2}$').hasMatch(raw);
+    final normalized = hasTimezone ? raw : '${raw}Z';
+    return DateTime.tryParse(normalized)?.toLocal();
   }
 
   void _applyAcceptedAt(dynamic value) {
