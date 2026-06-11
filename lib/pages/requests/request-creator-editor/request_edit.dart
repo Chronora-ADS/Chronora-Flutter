@@ -278,7 +278,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       });
     } catch (e) {
       if (!mounted) return;
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Erro ao selecionar imagem'),
