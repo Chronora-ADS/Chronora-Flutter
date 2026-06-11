@@ -35,6 +35,12 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
 
   ServiceDetailModel? _serviceDetail;
   int? _serviceId;
+  int? _currentUserId;
+
+  bool get _isProvider =>
+      _currentUserId != null &&
+      _serviceDetail?.userCreator.id != null &&
+      _currentUserId != _serviceDetail!.userCreator.id;
 
   @override
   void didChangeDependencies() {
@@ -70,6 +76,32 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
     if (_serviceDetail == null && _serviceId != null) {
       _loadServiceDetail();
     }
+
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null) return;
+
+      final response = await ApiService.get('/user/get', token: token);
+      if (response.statusCode != 200) return;
+
+      final decoded = json.decode(response.body);
+      if (decoded is! Map<String, dynamic>) return;
+
+      final data = decoded['user'] is Map<String, dynamic>
+          ? decoded['user'] as Map<String, dynamic>
+          : decoded;
+
+      final id = data['id'];
+      if (!mounted) return;
+      setState(() {
+        _currentUserId = id is int ? id : int.tryParse(id.toString());
+      });
+    } catch (_) {}
   }
 
   Future<void> _loadServiceDetail() async {
@@ -570,7 +602,7 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
           ),
         ),
         child: Text(
-          _isFinishing ? 'Finalizando...' : 'Finalizar pedido',
+          _isFinishing ? 'Finalizando...' : (_isProvider ? 'Concluir' : 'Finalizar pedido'),
           style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w700,
