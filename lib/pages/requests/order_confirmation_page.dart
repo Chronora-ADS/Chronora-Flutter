@@ -72,6 +72,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                 ? OrderOutcome.concluido
                 : OrderOutcome.cancelado,
             isProvider: widget.isProvider,
+            serviceId: widget.serviceId,
           ),
         ),
         (route) => false,

@@ -5,17 +5,20 @@ import '../../core/constants/app_routes.dart';
 import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
+import 'review_page.dart';
 
 enum OrderOutcome { concluido, cancelado }
 
 class OrderOutcomePage extends StatefulWidget {
   final OrderOutcome outcome;
   final bool isProvider;
+  final int serviceId;
 
   const OrderOutcomePage({
     super.key,
     required this.outcome,
     required this.isProvider,
+    required this.serviceId,
   });
 
   @override
@@ -168,9 +171,14 @@ class _OrderOutcomePageState extends State<OrderOutcomePage> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pushNamed(
+                    onPressed: () => Navigator.push(
                       context,
-                      AppRoutes.settings,
+                      MaterialPageRoute(
+                        builder: (_) => ReviewPage(
+                          serviceId: widget.serviceId,
+                          isProvider: widget.isProvider,
+                        ),
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.amareloUmPoucoEscuro,
