@@ -199,7 +199,7 @@ class _MainPageState extends State<MainPage> {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           const SnackBar(
-            content: Text('Justificativa registrada.'),
+            content: Text('Justificativa registrada nas notificacoes.'),
             backgroundColor: Colors.green,
           ),
         );

@@ -70,10 +70,11 @@ class _NotificationPageState extends State<NotificationPage> {
           .map((item) => item.cast<String, dynamic>())
           .map(_extractNotificationMap)
           .map(NotificationEntry.fromJson)
-          .toList()
-        ..sort(
-          (a, b) => b.notificationTime.compareTo(a.notificationTime),
-        );
+          .toList();
+
+      notifications.sort(
+        (a, b) => b.notificationTime.compareTo(a.notificationTime),
+      );
 
       if (!mounted) return;
       setState(() {
@@ -407,6 +408,10 @@ class _NotificationPageState extends State<NotificationPage> {
                     fontSize: 12,
                   ),
                 ),
+                if (notification.hasDetail) ...[
+                  const SizedBox(height: 12),
+                  _buildNotificationDetail(notification),
+                ],
                 if (canRespondToDeadline) ...[
                   const SizedBox(height: 12),
                   Wrap(
@@ -442,6 +447,77 @@ class _NotificationPageState extends State<NotificationPage> {
         );
       },
     );
+  }
+
+  Widget _buildNotificationDetail(NotificationEntry notification) {
+    final actorLabel = _formatActorLabel(notification);
+    final detailTitle = notification.isServiceCancellationJustification
+        ? 'Justificativa do cancelamento'
+        : 'Detalhes';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.amareloClaro.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.amareloUmPoucoEscuro.withValues(alpha: 0.45),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            detailTitle,
+            style: const TextStyle(
+              color: AppColors.preto,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (actorLabel.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              actorLabel,
+              style: const TextStyle(
+                color: Colors.black54,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            notification.detail,
+            style: const TextStyle(
+              color: AppColors.preto,
+              fontSize: 14,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatActorLabel(NotificationEntry notification) {
+    final actorName = notification.actorName.trim();
+    final actorRole = notification.actorRole.trim();
+
+    if (actorName.isEmpty && actorRole.isEmpty) {
+      return '';
+    }
+
+    if (actorName.isEmpty) {
+      return 'Cancelado por: $actorRole';
+    }
+
+    if (actorRole.isEmpty) {
+      return 'Cancelado por: $actorName';
+    }
+
+    return 'Cancelado por: $actorName ($actorRole)';
   }
 
   int get _visibleNotificationCount {
