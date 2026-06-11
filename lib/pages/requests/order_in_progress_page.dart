@@ -11,6 +11,7 @@ import '../../core/services/api_service.dart';
 import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
+import 'order_outcome_page.dart';
 
 class OrderInProgressPage extends StatefulWidget {
   final ServiceDetailModel? serviceDetail;
@@ -249,18 +250,14 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text('Pedido finalizado com sucesso!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-      Navigator.pushNamedAndRemoveUntil(
+      Navigator.pushAndRemoveUntil(
         context,
-        AppRoutes.main,
+        MaterialPageRoute(
+          builder: (_) => OrderOutcomePage(
+            outcome: OrderOutcome.concluido,
+            isProvider: _isProvider,
+          ),
+        ),
         (route) => false,
       );
     } catch (error) {
@@ -311,18 +308,14 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text('Pedido cancelado.'),
-            backgroundColor: AppColors.vermelho,
-          ),
-        );
-
-      Navigator.pushNamedAndRemoveUntil(
+      Navigator.pushAndRemoveUntil(
         context,
-        AppRoutes.main,
+        MaterialPageRoute(
+          builder: (_) => OrderOutcomePage(
+            outcome: OrderOutcome.cancelado,
+            isProvider: _isProvider,
+          ),
+        ),
         (route) => false,
       );
     } catch (error) {
@@ -778,13 +771,13 @@ class _FinishOrderDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _ActionDialog(
-      icon: Icons.check_circle_outline,
-      iconColor: Colors.green,
-      title: 'Finalizar pedido',
-      message:
-          'Confirma que o servico foi concluido? Esta acao nao pode ser desfeita.',
-      confirmLabel: 'Finalizar',
-      confirmColor: Colors.green,
+      titlePrefix: 'Você deseja ',
+      titleBold: 'finalizar',
+      titleSuffix: ' o pedido?',
+      subtitle:
+          'O solicitante receberá uma notificação para confirmar a finalização do pedido',
+      confirmLabel: 'Finalizar pedido',
+      confirmColor: AppColors.amareloUmPoucoEscuro,
       onConfirm: () => Navigator.of(context).pop(true),
       onCancel: () => Navigator.of(context).pop(false),
     );
@@ -797,11 +790,11 @@ class _CancelOrderDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _ActionDialog(
-      icon: Icons.report_problem_outlined,
-      iconColor: AppColors.vermelho,
-      title: 'Cancelar pedido',
-      message:
-          'Deseja cancelar este pedido em andamento? O pedido sera marcado como cancelado.',
+      titlePrefix: 'Você deseja mesmo ',
+      titleBold: 'cancelar',
+      titleSuffix: ' o pedido?',
+      subtitle:
+          'O solicitante receberá uma notificação para avisar sobre o cancelamento do pedido',
       confirmLabel: 'Cancelar pedido',
       confirmColor: AppColors.vermelho,
       onConfirm: () => Navigator.of(context).pop(true),
@@ -811,20 +804,20 @@ class _CancelOrderDialog extends StatelessWidget {
 }
 
 class _ActionDialog extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String message;
+  final String titlePrefix;
+  final String titleBold;
+  final String titleSuffix;
+  final String subtitle;
   final String confirmLabel;
   final Color confirmColor;
   final VoidCallback onConfirm;
   final VoidCallback onCancel;
 
   const _ActionDialog({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.message,
+    required this.titlePrefix,
+    required this.titleBold,
+    required this.titleSuffix,
+    required this.subtitle,
     required this.confirmLabel,
     required this.confirmColor,
     required this.onConfirm,
@@ -843,11 +836,10 @@ class _ActionDialog extends StatelessWidget {
           maxWidth: screenWidth < 560 ? screenWidth - 36 : 520,
         ),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
+          padding: const EdgeInsets.fromLTRB(22, 16, 22, 22),
           decoration: BoxDecoration(
             color: AppColors.branco,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.cinza, width: 1.5),
+            borderRadius: BorderRadius.circular(12),
             boxShadow: const [
               BoxShadow(
                 color: Colors.black54,
@@ -861,86 +853,83 @@ class _ActionDialog extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(icon, color: iconColor, size: 28),
-                  const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        color: AppColors.preto,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
+                    child: RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        style: const TextStyle(
+                          color: AppColors.preto,
+                          fontSize: 18,
+                          height: 1.3,
+                        ),
+                        children: [
+                          TextSpan(text: titlePrefix),
+                          TextSpan(
+                            text: titleBold,
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          TextSpan(text: titleSuffix),
+                        ],
                       ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: onCancel,
+                    child: const Icon(
+                      Icons.close,
+                      size: 22,
+                      color: AppColors.preto,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               Text(
-                message,
+                subtitle,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: AppColors.preto,
-                  fontSize: 15,
-                  height: 1.35,
+                  fontSize: 13,
+                  height: 1.4,
                 ),
               ),
-              const SizedBox(height: 20),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final isCompact = constraints.maxWidth < 360;
-
-                  final backBtn = OutlinedButton(
-                    onPressed: onCancel,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.preto,
-                      side: const BorderSide(color: AppColors.cinza),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+              const SizedBox(height: 22),
+              SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: onConfirm,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: confirmColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Text(
-                      'Voltar',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  child: Text(
+                    confirmLabel,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 48,
+                child: OutlinedButton(
+                  onPressed: onCancel,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.preto,
+                    side: const BorderSide(color: AppColors.preto),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  );
-
-                  final confirmBtn = ElevatedButton(
-                    onPressed: onConfirm,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: confirmColor,
-                      foregroundColor: AppColors.branco,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      confirmLabel,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  );
-
-                  if (isCompact) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        backBtn,
-                        const SizedBox(height: 10),
-                        confirmBtn,
-                      ],
-                    );
-                  }
-
-                  return Row(
-                    children: [
-                      Expanded(child: backBtn),
-                      const SizedBox(width: 12),
-                      Expanded(child: confirmBtn),
-                    ],
-                  );
-                },
+                  ),
+                  child: const Text(
+                    'Voltar',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
               ),
             ],
           ),
