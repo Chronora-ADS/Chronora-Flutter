@@ -9,12 +9,8 @@ class ServiceDetailModel {
   final String deadline;
   final List<CategoryEntity> categoryEntities;
   final String modality;
-<<<<<<< HEAD
-  final String? serviceImageUrl;
-=======
   final String status;
   final String? serviceImage;
->>>>>>> master
   final UserCreator userCreator;
   final String postedAt;
   final int verificationCodeCallCount;
@@ -28,12 +24,8 @@ class ServiceDetailModel {
     required this.deadline,
     required this.categoryEntities,
     required this.modality,
-<<<<<<< HEAD
-    this.serviceImageUrl,
-=======
     this.status = 'CRIADO',
     this.serviceImage,
->>>>>>> master
     required this.userCreator,
     this.postedAt = '',
     this.verificationCodeCallCount = 0,
@@ -44,17 +36,6 @@ class ServiceDetailModel {
 
   factory ServiceDetailModel.fromJson(Map<String, dynamic> json) {
     return ServiceDetailModel(
-<<<<<<< HEAD
-      id: json['id'] as int?,
-      title: json['title'] ?? '',
-      description: json['description'] ?? '',
-      timeChronos: json['timeChronos'] ?? 0,
-      deadline: json['deadline'] ?? '',
-      categoryEntities: _parseCategories(json['categoryEntities']),
-      modality: json['modality'] ?? '',
-      serviceImageUrl: json['serviceImageUrl'] ?? json['serviceImage'],
-      userCreator: UserCreator.fromJson(json['userCreator'] ?? {}),
-=======
       id: _toNullableInt(json['id']),
       title: (json['title'] ?? '').toString(),
       description: (json['description'] ?? '').toString(),
@@ -77,7 +58,6 @@ class ServiceDetailModel {
             json['startCallCount'],
       ),
       acceptedRequestInfo: AcceptedRequestInfo.fromJson(json),
->>>>>>> master
     );
   }
 
@@ -126,12 +106,6 @@ class ServiceDetailModel {
       'categoryEntities': categoryEntities.map((e) => e.toJson()).toList(),
       'categories': categoryEntities.map((e) => e.name).toList(),
       'modality': modality,
-<<<<<<< HEAD
-      if (serviceImageUrl != null) 'serviceImage': serviceImageUrl,
-    };
-  }
-}
-=======
       'status': status,
       if (serviceImage != null) 'serviceImage': serviceImage,
       if (postedAt.isNotEmpty) 'postedAt': postedAt,
@@ -299,4 +273,3 @@ class AcceptedRequestInfo {
     return null;
   }
 }
->>>>>>> master

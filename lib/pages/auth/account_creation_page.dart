@@ -1,10 +1,8 @@
 import 'dart:convert';
-<<<<<<< HEAD
-=======
 import 'dart:io';
 
->>>>>>> master
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -46,7 +44,6 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
-        withData: true,
       );
 
       if (result != null) {
@@ -64,11 +61,6 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
   }
 
   Future<String> _convertToBase64(PlatformFile file) async {
-<<<<<<< HEAD
-    final bytes = file.bytes;
-    if (bytes == null) throw Exception('Arquivo vazio');
-    return base64Encode(bytes);
-=======
     if (kIsWeb) {
       final bytes = file.bytes;
       if (bytes == null) {
@@ -118,7 +110,6 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
       _isFeedbackError = isError;
     });
     _showSnackBar(message, isError: isError);
->>>>>>> master
   }
 
   String? _validateName(String? value) {
@@ -207,18 +198,8 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
       final response = await ApiService.post('/auth/register', payload);
       if (!mounted) return;
 
-<<<<<<< HEAD
-      if (response.statusCode == 200) {
-        final token = _extractToken(response.body);
-        await _saveToken(token);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cadastro realizado com sucesso!')),
-        );
-=======
       if (response.statusCode == 200 || response.statusCode == 201) {
         _setFeedback('Cadastro realizado com sucesso!', isError: false);
->>>>>>> master
         Navigator.pushReplacementNamed(context, AppRoutes.login);
       } else {
         final message = resolveRegistrationErrorMessage(
@@ -236,28 +217,6 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
         });
       }
     }
-  }
-
-  String _extractToken(String responseBody) {
-    try {
-      final decoded = jsonDecode(responseBody);
-
-      if (decoded is Map<String, dynamic>) {
-        final token = decoded['access_token'] ?? decoded['token'];
-        if (token is String && token.isNotEmpty) {
-          return token;
-        }
-      }
-    } catch (_) {
-      // Se o backend retornar o token puro em texto, usamos a resposta bruta.
-    }
-
-    final trimmedBody = responseBody.trim();
-    if (trimmedBody.isEmpty) {
-      throw Exception('Token não encontrado na resposta do cadastro');
-    }
-
-    return trimmedBody;
   }
 
   @override
