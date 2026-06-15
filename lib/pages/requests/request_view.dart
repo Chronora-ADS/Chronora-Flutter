@@ -9,6 +9,7 @@ import '../../core/models/main_page_requests_model.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/services/auth_session_service.dart';
 import '../../widgets/header.dart';
+import '../../widgets/pending_service_cancellation_obligations.dart';
 import '../../widgets/service_image.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
@@ -283,6 +284,15 @@ class _RequestViewState extends State<RequestView> {
   }
 
   Future<void> _acceptRequest() async {
+    final canContinue =
+        await PendingServiceCancellationObligations.ensureCanContinue(
+      context,
+      actionLabel: 'aceitar pedido',
+    );
+    if (!canContinue || !mounted) {
+      return;
+    }
+
     final detail = _serviceDetail;
     if (detail?.id == null) return;
     final serviceId = detail!.id!;

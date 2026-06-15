@@ -15,6 +15,7 @@ import 'package:chronora/pages/requests/request_accepted_view.dart';
 import 'package:chronora/pages/requests/request_view.dart';
 import 'package:chronora/pages/sell_chronos/sell_chronos_page.dart';
 import 'package:chronora/widgets/auth_guard.dart';
+import 'package:chronora/widgets/pending_service_cancellation_obligations.dart';
 import 'package:flutter/material.dart';
 
 class AppRoutes {
@@ -43,19 +44,28 @@ class AppRoutes {
       login: (context) => const LoginPage(),
       accountCreation: (context) => const AccountCreationPage(),
       main: (context) => _protected(const MainPage()),
-      buyChronos: (context) => _protected(const BuyChronosPage()),
+      buyChronos: (context) => _protected(
+            const PendingActionGate(
+              actionLabel: 'comprar Chronos',
+              child: BuyChronosPage(),
+            ),
+          ),
       sellChronos: (context) => _protected(const SellChronosPage()),
       forgotPassword: (context) => const ForgotPasswordPage(),
       resetPassword: (context) => const ResetPasswordPage(),
-      requestCreation: (context) => _protected(const RequestCreationPage()),
+      requestCreation: (context) => _protected(
+            const PendingActionGate(
+              actionLabel: 'criar pedido',
+              child: RequestCreationPage(),
+            ),
+          ),
       requestView: (context) => _protected(const RequestView()),
       requestAcceptedView: (context) => _protected(const RequestAcceptedView()),
       requestEditing: (context) => _protected(const RequestEditingPage()),
       notifications: (context) => _protected(const NotificationPage()),
       profile: (context) => _protected(const ProfilePage()),
       myOrders: (context) => _protected(const MeusPedidosPage()),
-      orderInProgress: (context) =>
-          _protected(const OrderInProgressPage()),
+      orderInProgress: (context) => _protected(const OrderInProgressPage()),
       settings: (context) => _protected(const ComingSoonPage(
             title: 'Configuracoes',
             description:

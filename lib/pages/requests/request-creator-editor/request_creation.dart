@@ -7,6 +7,7 @@ import 'dart:convert';
 
 // Importe os widgets da main_page
 import '../../../widgets/header.dart';
+import '../../../widgets/pending_service_cancellation_obligations.dart';
 import '../../../widgets/side_menu.dart';
 import '../../../widgets/wallet_modal.dart';
 import '../../../core/api/api_service.dart';
@@ -202,6 +203,15 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
 
   // Método para criar o pedido no backend - CORRIGIDO
   Future<void> _createRequest() async {
+    final canContinue =
+        await PendingServiceCancellationObligations.ensureCanContinue(
+      context,
+      actionLabel: 'criar pedido',
+    );
+    if (!canContinue || !mounted) {
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
     if (_categoriesTags.isEmpty) {

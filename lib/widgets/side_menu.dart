@@ -5,6 +5,7 @@ import '../core/api/api_service.dart';
 import '../core/constants/app_colors.dart';
 import '../core/constants/app_routes.dart';
 import '../core/services/auth_session_service.dart';
+import 'pending_service_cancellation_obligations.dart';
 
 class SideMenu extends StatelessWidget {
   final VoidCallback onWalletPressed;
@@ -50,7 +51,17 @@ class SideMenu extends StatelessWidget {
                       _buildMenuItem(
                         icon: 'assets/img/PlusWhite.png',
                         title: 'Crie um pedido',
-                        onTap: () {
+                        onTap: () async {
+                          final canContinue =
+                              await PendingServiceCancellationObligations
+                                  .ensureCanContinue(
+                            context,
+                            actionLabel: 'criar pedido',
+                          );
+                          if (!canContinue || !context.mounted) {
+                            return;
+                          }
+
                           Navigator.pushNamed(
                             context,
                             AppRoutes.requestCreation,

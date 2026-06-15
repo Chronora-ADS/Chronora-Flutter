@@ -9,6 +9,7 @@ import '../../core/constants/app_routes.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/services/api_service.dart';
+import '../../core/services/pending_service_cancellation_service.dart';
 import '../../widgets/header.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
@@ -303,12 +304,11 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     if (value is DateTime) return value;
     if (value is! String || value.trim().isEmpty) return null;
     final raw = value.trim();
-    // Backend retorna LocalDateTime sem timezone — tratar como UTC
-    final hasTimezone = raw.endsWith('Z') ||
-        raw.contains('+') ||
-        RegExp(r'-\d{2}:\d{2}$').hasMatch(raw);
-    final normalized = hasTimezone ? raw : '${raw}Z';
-    return DateTime.tryParse(normalized)?.toLocal();
+    // Backend sends Java LocalDateTime without offset, so keep it local.
+    final parsed = DateTime.tryParse(raw);
+    if (parsed == null) return null;
+
+    return parsed.isUtc ? parsed.toLocal() : parsed;
   }
 
   void _applyAcceptedAt(dynamic value) {
@@ -705,10 +705,16 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         );
       }
 
+      final pendingJustification = _buildPendingCancellationJustification(
+        serviceId,
+      );
+      await PendingServiceCancellationStore.upsert(pendingJustification);
+
       await _leaveAcceptedView(
         null,
         {
-          'pendingServiceCancellationJustificationServiceId': serviceId,
+          'pendingServiceCancellationJustification':
+              pendingJustification.toJson(),
         },
       );
     } catch (error) {
@@ -728,6 +734,17 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         _isCancellingService = false;
       }
     }
+  }
+
+  PendingServiceCancellationJustification
+      _buildPendingCancellationJustification(int serviceId) {
+    final detail = _resolvedServiceDetail;
+    return PendingServiceCancellationJustification(
+      serviceId: serviceId,
+      serviceTitle: detail?.title.trim() ?? '',
+      requesterName: detail?.userCreator.name.trim() ?? '',
+      createdAt: DateTime.now(),
+    );
   }
 
   void _showSnackBar(String message,
@@ -1785,8 +1802,29 @@ class _InfoCard extends StatelessWidget {
   }
 }
 
-class _TimeExpiredActionDialog extends StatelessWidget {
+class _TimeExpiredActionDialog extends StatefulWidget {
   const _TimeExpiredActionDialog();
+
+  @override
+  State<_TimeExpiredActionDialog> createState() =>
+      _TimeExpiredActionDialogState();
+}
+
+class _TimeExpiredActionDialogState extends State<_TimeExpiredActionDialog> {
+  bool _didSelectAction = false;
+
+  void _selectAction(_ExpiredCodeAction action) {
+    if (_didSelectAction) return;
+
+    setState(() {
+      _didSelectAction = true;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).pop(action);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1850,8 +1888,11 @@ class _TimeExpiredActionDialog extends StatelessWidget {
                 builder: (context, constraints) {
                   final isCompact = constraints.maxWidth < 380;
                   final cancelButton = OutlinedButton(
-                    onPressed: () => Navigator.of(context)
-                        .pop(_ExpiredCodeAction.cancelService),
+                    onPressed: _didSelectAction
+                        ? null
+                        : () => _selectAction(
+                              _ExpiredCodeAction.cancelService,
+                            ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.vermelho,
                       side: const BorderSide(
@@ -1870,8 +1911,11 @@ class _TimeExpiredActionDialog extends StatelessWidget {
                   );
 
                   final secondCallButton = ElevatedButton(
-                    onPressed: () => Navigator.of(context)
-                        .pop(_ExpiredCodeAction.secondCall),
+                    onPressed: _didSelectAction
+                        ? null
+                        : () => _selectAction(
+                              _ExpiredCodeAction.secondCall,
+                            ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.amareloUmPoucoEscuro,
                       foregroundColor: AppColors.branco,

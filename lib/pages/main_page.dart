@@ -8,10 +8,11 @@ import '../core/api/service_catalog_service.dart';
 import '../core/constants/app_colors.dart';
 import '../core/constants/app_routes.dart';
 import '../core/services/auth_session_service.dart';
+import '../core/services/pending_service_cancellation_service.dart';
 import '../widgets/backgrounds/background_default_widget.dart';
 import '../widgets/filters_modal.dart';
 import '../widgets/header.dart';
-import '../widgets/service_cancellation_reason_modal.dart';
+import '../widgets/pending_service_cancellation_obligations.dart';
 import '../widgets/service_card.dart';
 import '../widgets/side_menu.dart';
 import '../widgets/wallet_modal.dart';
@@ -42,7 +43,6 @@ class _MainPageState extends State<MainPage> {
   bool _isFetching = false;
   bool _isLoadingMore = false;
   bool _didHandleRouteArguments = false;
-  bool _isSubmittingCancellationJustification = false;
   static const int _pageSize = 10;
   int _nextPage = 0;
   bool _hasMorePages = true;
@@ -70,21 +70,19 @@ class _MainPageState extends State<MainPage> {
       return;
     }
 
-    final rawServiceId =
-        arguments['pendingServiceCancellationJustificationServiceId'];
-    final serviceId = rawServiceId is int
-        ? rawServiceId
-        : rawServiceId is String
-            ? int.tryParse(rawServiceId)
-            : null;
-
-    if (serviceId == null) {
+    final pendingJustification = _parsePendingJustification(arguments);
+    if (pendingJustification == null) {
       return;
     }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      _openCancellationJustificationModal(serviceId);
+      await PendingServiceCancellationStore.upsert(pendingJustification);
+      if (!mounted) return;
+      await PendingServiceCancellationObligations.resolvePending(
+        context,
+        pendingJustification,
+      );
     });
   }
 
@@ -125,113 +123,39 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
-  Future<void> _openCancellationJustificationModal(int serviceId) async {
-    if (_isSubmittingCancellationJustification) {
-      return;
+  PendingServiceCancellationJustification? _parsePendingJustification(
+    Map<dynamic, dynamic> arguments,
+  ) {
+    final pendingData = arguments['pendingServiceCancellationJustification'];
+    if (pendingData is Map) {
+      try {
+        return PendingServiceCancellationJustification.fromJson(
+          pendingData.cast<String, dynamic>(),
+        );
+      } catch (_) {}
     }
 
-    while (mounted) {
-      final justification = await _showCancellationJustificationDialog();
+    final rawServiceId =
+        arguments['pendingServiceCancellationJustificationServiceId'];
+    final serviceId = rawServiceId is int
+        ? rawServiceId
+        : rawServiceId is String
+            ? int.tryParse(rawServiceId)
+            : null;
 
-      if (!mounted) {
-        return;
-      }
-
-      if (justification == null || justification.trim().isEmpty) {
-        continue;
-      }
-
-      final didSubmit = await _submitCancellationJustification(
-        serviceId: serviceId,
-        justification: justification.trim(),
-      );
-
-      if (didSubmit) {
-        return;
-      }
+    if (serviceId == null) {
+      return null;
     }
-  }
 
-  Future<String?> _showCancellationJustificationDialog() {
-    return showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const ServiceCancellationReasonModal(),
+    return PendingServiceCancellationJustification(
+      serviceId: serviceId,
+      serviceTitle:
+          (arguments['pendingServiceCancellationTitle'] ?? '').toString(),
+      requesterName:
+          (arguments['pendingServiceCancellationRequesterName'] ?? '')
+              .toString(),
+      createdAt: DateTime.now(),
     );
-  }
-
-  Future<bool> _submitCancellationJustification({
-    required int serviceId,
-    required String justification,
-  }) async {
-    if (_isSubmittingCancellationJustification) {
-      return false;
-    }
-
-    _isSubmittingCancellationJustification = true;
-
-    try {
-      final token = await AuthSessionService.getValidAccessToken();
-      if (token == null) {
-        throw Exception('Usuario nao autenticado.');
-      }
-
-      final response = await ApiService.put(
-        '/service/cancelAcceptedService/$serviceId/justification',
-        {'justification': justification},
-        token: token,
-      );
-
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(
-          ApiService.extractErrorMessage(
-            response.body,
-            fallback: 'Nao foi possivel registrar a justificativa.',
-          ),
-        );
-      }
-
-      if (!mounted) {
-        return true;
-      }
-
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text('Justificativa registrada nas notificacoes.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      return true;
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(
-                _friendlyErrorMessage(
-                  error,
-                  fallback: 'Nao foi possivel registrar a justificativa.',
-                ),
-              ),
-              backgroundColor: AppColors.vermelho,
-            ),
-          );
-      }
-      return false;
-    } finally {
-      _isSubmittingCancellationJustification = false;
-    }
-  }
-
-  String _friendlyErrorMessage(Object error, {required String fallback}) {
-    final rawMessage = error.toString().replaceFirst(
-          RegExp(r'^Exception:\s*'),
-          '',
-        );
-    return ApiService.extractErrorMessage(rawMessage, fallback: fallback);
   }
 
   Future<void> _reloadServices() async {
@@ -550,6 +474,16 @@ class _MainPageState extends State<MainPage> {
                             const SizedBox(height: 16),
                             ElevatedButton(
                               onPressed: () async {
+                                final canContinue =
+                                    await PendingServiceCancellationObligations
+                                        .ensureCanContinue(
+                                  context,
+                                  actionLabel: 'criar pedido',
+                                );
+                                if (!canContinue || !context.mounted) {
+                                  return;
+                                }
+
                                 final result = await Navigator.pushNamed(
                                   context,
                                   AppRoutes.requestCreation,

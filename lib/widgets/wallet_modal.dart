@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/api/api_service.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/services/auth_session_service.dart';
+import 'pending_service_cancellation_obligations.dart';
 
 class WalletModal extends StatefulWidget {
   final VoidCallback onClose;
@@ -153,7 +154,16 @@ class _WalletModalState extends State<WalletModal> {
               color: AppColors.amareloUmPoucoEscuro,
             ),
             child: InkWell(
-              onTap: () {
+              onTap: () async {
+                final canContinue = await PendingServiceCancellationObligations
+                    .ensureCanContinue(
+                  context,
+                  actionLabel: 'comprar Chronos',
+                );
+                if (!canContinue || !context.mounted) {
+                  return;
+                }
+
                 widget.onClose();
                 Navigator.pushNamed(context, AppRoutes.buyChronos);
               },

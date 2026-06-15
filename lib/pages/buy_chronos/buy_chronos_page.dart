@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/chronos_wallet_service.dart';
 import '../../widgets/header.dart';
+import '../../widgets/pending_service_cancellation_obligations.dart';
 import '../../widgets/side_menu.dart';
 import '../../widgets/wallet_modal.dart';
 import 'pix_buy_page.dart';
@@ -569,7 +570,8 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
     );
   }
 
-  Widget _buildPendingPaymentCard(BuildContext context, BuyChronosController controller) {
+  Widget _buildPendingPaymentCard(
+      BuildContext context, BuyChronosController controller) {
     final pending = controller.pendingPayment!;
     final remaining = pending.expiresAt.difference(DateTime.now());
     final expired = remaining.isNegative;
@@ -586,7 +588,8 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
         children: [
           Row(
             children: [
-              const Icon(Icons.payment, color: AppColors.amareloClaro, size: 18),
+              const Icon(Icons.payment,
+                  color: AppColors.amareloClaro, size: 18),
               const SizedBox(width: 8),
               const Text(
                 'Pagamento PIX pendente',
@@ -636,14 +639,16 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
                 ),
                 child: const Text(
                   'Retomar pagamento',
-                  style: TextStyle(color: AppColors.preto, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      color: AppColors.preto, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
           ],
           TextButton(
             onPressed: controller.clearPendingPayment,
-            child: const Text('Ignorar', style: TextStyle(color: AppColors.cinza, fontSize: 12)),
+            child: const Text('Ignorar',
+                style: TextStyle(color: AppColors.cinza, fontSize: 12)),
           ),
         ],
       ),
@@ -909,6 +914,16 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
                   child: TextButton(
                     onPressed: controller.canProceed
                         ? () async {
+                            final canContinue =
+                                await PendingServiceCancellationObligations
+                                    .ensureCanContinue(
+                              context,
+                              actionLabel: 'comprar Chronos',
+                            );
+                            if (!canContinue || !context.mounted) {
+                              return;
+                            }
+
                             int amount = int.tryParse(
                                     controller.amountController.text) ??
                                 0;
