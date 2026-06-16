@@ -28,6 +28,8 @@ class RequestEditingPage extends StatefulWidget {
 }
 
 class _RequestEditingPageState extends State<RequestEditingPage> {
+  static const int _maxCategories = 10;
+
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -319,12 +321,20 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   }
 
   void _addCategory(String category) {
-    if (category.trim().isNotEmpty) {
-      setState(() {
-        _categoriesTags.add(category.trim());
-        _categoriesController.clear();
-      });
+    final trimmedCategory = category.trim();
+    if (trimmedCategory.isEmpty) {
+      return;
     }
+
+    if (_categoriesTags.length >= _maxCategories) {
+      _showFeedback('Limite de $_maxCategories categorias atingido');
+      return;
+    }
+
+    setState(() {
+      _categoriesTags.add(trimmedCategory);
+      _categoriesController.clear();
+    });
   }
 
   void _removeCategory(String category) {
@@ -399,6 +409,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           backgroundColor: Colors.red,
         ),
       );
+      return;
+    }
+
+    if (_categoriesTags.length > _maxCategories) {
+      _showFeedback('Limite de $_maxCategories categorias atingido');
       return;
     }
 
@@ -969,7 +984,6 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          height: 46,
           decoration: BoxDecoration(
             color: const Color(0xFFE9EAEC),
             borderRadius: BorderRadius.circular(8),
@@ -989,7 +1003,8 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
               hintStyle: TextStyle(
                 color: Colors.black.withValues(alpha: 0.7),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide.none,
