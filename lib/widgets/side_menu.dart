@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -7,19 +9,78 @@ import '../core/constants/app_routes.dart';
 import '../core/services/auth_session_service.dart';
 import 'pending_service_cancellation_obligations.dart';
 
-class SideMenu extends StatelessWidget {
+class SideMenu extends StatefulWidget {
   final VoidCallback onWalletPressed;
-  final String userName;
-  final double userRating;
+  final String? userName;
+  final double? userRating;
   final String? userPhotoUrl;
 
   const SideMenu({
     super.key,
     required this.onWalletPressed,
-    this.userName = 'Usuario',
-    this.userRating = 0.0,
+    this.userName,
+    this.userRating,
     this.userPhotoUrl,
   });
+
+  @override
+  State<SideMenu> createState() => _SideMenuState();
+}
+
+class _SideMenuState extends State<SideMenu> {
+  String _loadedUserName = 'Usuario';
+  double _loadedUserRating = 0.0;
+  String? _loadedUserPhotoUrl;
+
+  String get _displayUserName {
+    final name = widget.userName?.trim();
+    return name != null && name.isNotEmpty ? name : _loadedUserName;
+  }
+
+  double get _displayUserRating => widget.userRating ?? _loadedUserRating;
+
+  String? get _displayUserPhotoUrl {
+    final photo = widget.userPhotoUrl?.trim();
+    return photo != null && photo.isNotEmpty ? photo : _loadedUserPhotoUrl;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    try {
+      final token = await AuthSessionService.getValidAccessToken();
+      if (token == null) return;
+
+      final response = await ApiService.get('/user/get', token: token);
+      if (response.statusCode != 200) return;
+
+      final decoded = json.decode(response.body);
+      if (decoded is! Map<String, dynamic> || !mounted) return;
+
+      final ratingRaw =
+          decoded['rating'] ?? decoded['userRating'] ?? decoded['avaliacao'];
+      final photo = decoded['profileImageUrl'] ??
+          decoded['profileImage'] ??
+          decoded['photoUrl'];
+
+      setState(() {
+        final name = (decoded['name'] ?? 'Usuario').toString().trim();
+        _loadedUserName = name.isEmpty ? 'Usuario' : name;
+        if (ratingRaw is num) {
+          _loadedUserRating = ratingRaw.toDouble();
+        } else if (ratingRaw is String) {
+          _loadedUserRating = double.tryParse(ratingRaw) ?? 0.0;
+        }
+        _loadedUserPhotoUrl = photo?.toString();
+      });
+    } catch (_) {
+      // Mantem os dados de fallback sem quebrar o menu.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +139,7 @@ class SideMenu extends StatelessWidget {
                       _buildMenuItem(
                         icon: 'assets/img/CoinWhite.png',
                         title: 'Carteira',
-                        onTap: onWalletPressed,
+                        onTap: widget.onWalletPressed,
                       ),
                       _buildMenuItem(
                         icon: 'assets/img/NotificationsWhite.png',
@@ -172,6 +233,8 @@ class SideMenu extends StatelessWidget {
   }
 
   Widget _buildUserHeader() {
+    final photoUrl = _displayUserPhotoUrl;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
       child: Row(
@@ -179,10 +242,10 @@ class SideMenu extends StatelessWidget {
           CircleAvatar(
             radius: 26,
             backgroundColor: Colors.white24,
-            backgroundImage: (userPhotoUrl != null && userPhotoUrl!.isNotEmpty)
-                ? NetworkImage(userPhotoUrl!)
+            backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                ? NetworkImage(photoUrl)
                 : null,
-            child: (userPhotoUrl == null || userPhotoUrl!.isEmpty)
+            child: (photoUrl == null || photoUrl.isEmpty)
                 ? const Icon(Icons.person, size: 30, color: Colors.white)
                 : null,
           ),
@@ -192,7 +255,7 @@ class SideMenu extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  userName,
+                  _displayUserName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -211,7 +274,7 @@ class SideMenu extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      userRating.toStringAsFixed(1),
+                      _displayUserRating.toStringAsFixed(1),
                       style: const TextStyle(
                         color: AppColors.branco,
                         fontSize: 14,

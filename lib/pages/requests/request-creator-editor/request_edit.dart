@@ -1,5 +1,5 @@
 import 'package:chronora/widgets/header.dart';
-import 'package:chronora/widgets/side_menu.dart';
+import 'package:chronora/widgets/animated_side_menu_overlay.dart';
 import 'package:chronora/widgets/wallet_modal.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
@@ -1342,36 +1342,12 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           ),
 
           // Menu lateral
-          if (_isDrawerOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(
-                        onWalletPressed: _openWallet,
-                      ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(
-                          color: Colors.transparent,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // Modal da Carteira
+          AnimatedSideMenuOverlay(
+            isOpen: _isDrawerOpen,
+            onClose: _toggleDrawer,
+            onWalletPressed: _openWallet,
+            top: 0,
+          ),
           if (_isWalletOpen)
             Positioned(
               top: 0,

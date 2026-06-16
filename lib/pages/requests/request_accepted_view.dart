@@ -11,7 +11,7 @@ import '../../core/models/service_detail_model.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/pending_service_cancellation_service.dart';
 import '../../widgets/header.dart';
-import '../../widgets/side_menu.dart';
+import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
 
 enum RequestAcceptedAudience { provider, requester }
@@ -927,30 +927,12 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
               ),
             ],
           ),
-          if (_isDrawerOpen)
-            Positioned(
-              top: kToolbarHeight * 1.5,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: AppColors.preto.withValues(alpha: 0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(onWalletPressed: _openWallet),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(color: Colors.transparent),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          AnimatedSideMenuOverlay(
+            isOpen: _isDrawerOpen,
+            onClose: _toggleDrawer,
+            onWalletPressed: _openWallet,
+            top: 0,
+          ),
           if (_isWalletOpen)
             Positioned.fill(
               child: Container(

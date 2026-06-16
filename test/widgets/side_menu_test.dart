@@ -66,6 +66,35 @@ void main() {
     });
 
     testWidgets(
+        'Cenario: Dado menu lateral sem dados locais, quando abre, entao busca usuario logado',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({'auth_token': 'token-local'});
+      ApiService.setClientForTesting(
+        MockClient(
+          (request) async => http.Response(
+            '{"name":"Rebeca Boneca Fonseca","rating":4.8,"timeChronos":12}',
+            200,
+          ),
+        ),
+      );
+      addTearDown(() => ApiService.setClientForTesting(null));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SideMenu(onWalletPressed: () {}),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Rebeca Boneca Fonseca'), findsOneWidget);
+      expect(find.text('4.8'), findsOneWidget);
+      expect(find.text('Usuario'), findsNothing);
+    });
+
+    testWidgets(
         'Cenario: Dado usuario autenticado, quando faz logout, entao limpa sessao local e volta ao login',
         (tester) async {
       SharedPreferences.setMockInitialValues({'auth_token': 'token-local'});

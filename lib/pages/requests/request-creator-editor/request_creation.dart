@@ -8,7 +8,7 @@ import 'dart:convert';
 // Importe os widgets da main_page
 import '../../../widgets/header.dart';
 import '../../../widgets/pending_service_cancellation_obligations.dart';
-import '../../../widgets/side_menu.dart';
+import '../../../widgets/animated_side_menu_overlay.dart';
 import '../../../widgets/wallet_modal.dart';
 import '../../../core/api/api_service.dart';
 import '../../../core/constants/modality_options.dart';
@@ -524,34 +524,12 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
               ),
             ],
           ),
-          if (_isDrawerOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(
-                        onWalletPressed: _openWallet,
-                      ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(
-                          color: Colors.transparent,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          AnimatedSideMenuOverlay(
+            isOpen: _isDrawerOpen,
+            onClose: _toggleDrawer,
+            onWalletPressed: _openWallet,
+            top: 0,
+          ),
           if (_isWalletOpen)
             Positioned(
               top: 0,

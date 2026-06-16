@@ -9,12 +9,12 @@ import '../core/constants/app_colors.dart';
 import '../core/constants/app_routes.dart';
 import '../core/services/auth_session_service.dart';
 import '../core/services/pending_service_cancellation_service.dart';
+import '../widgets/animated_side_menu_overlay.dart';
 import '../widgets/backgrounds/background_default_widget.dart';
 import '../widgets/filters_modal.dart';
 import '../widgets/header.dart';
 import '../widgets/pending_service_cancellation_obligations.dart';
 import '../widgets/service_card.dart';
-import '../widgets/side_menu.dart';
 import '../widgets/wallet_modal.dart';
 
 class MainPage extends StatefulWidget {
@@ -585,37 +585,15 @@ class _MainPageState extends State<MainPage> {
               ),
             ],
           ),
-          if (_isDrawerOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: screenWidth * 0.6,
-                      child: SideMenu(
-                        onWalletPressed: _openWallet,
-                        userName: _userName,
-                        userRating: _userRating,
-                        userPhotoUrl: _userPhotoUrl,
-                      ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(
-                          color: Colors.transparent,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          AnimatedSideMenuOverlay(
+            isOpen: _isDrawerOpen,
+            onClose: _toggleDrawer,
+            onWalletPressed: _openWallet,
+            userName: _userName,
+            userRating: _userRating,
+            userPhotoUrl: _userPhotoUrl,
+            top: 0,
+          ),
           if (_isWalletOpen)
             Positioned(
               top: 0,

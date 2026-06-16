@@ -11,7 +11,7 @@ import '../../core/services/service_deadline_controller.dart';
 import '../../widgets/backgrounds/background_default_widget.dart';
 import '../../widgets/header.dart';
 import '../../widgets/notification_card.dart';
-import '../../widgets/side_menu.dart';
+import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
 
 class NotificationPage extends StatefulWidget {
@@ -281,8 +281,6 @@ class _NotificationPageState extends State<NotificationPage> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-
     return Scaffold(
       backgroundColor: AppColors.preto,
       body: Stack(
@@ -297,30 +295,12 @@ class _NotificationPageState extends State<NotificationPage> {
               ),
             ],
           ),
-          if (_isDrawerOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: screenWidth * 0.6,
-                      child: SideMenu(onWalletPressed: _openWallet),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(color: Colors.transparent),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          AnimatedSideMenuOverlay(
+            isOpen: _isDrawerOpen,
+            onClose: _toggleDrawer,
+            onWalletPressed: _openWallet,
+            top: 0,
+          ),
           if (_isWalletOpen)
             Positioned(
               top: 0,

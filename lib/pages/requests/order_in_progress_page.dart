@@ -9,7 +9,7 @@ import '../../core/constants/app_routes.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/services/api_service.dart';
 import '../../widgets/header.dart';
-import '../../widgets/side_menu.dart';
+import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
 import 'order_confirmation_page.dart';
 
@@ -32,7 +32,6 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
   bool _isWalletOpen = false;
   bool _didLoadArguments = false;
   bool _isLoadingServiceDetail = false;
-
 
   ServiceDetailModel? _serviceDetail;
   int? _serviceId;
@@ -261,30 +260,12 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
               ),
             ],
           ),
-          if (_isDrawerOpen)
-            Positioned(
-              top: kToolbarHeight * 1.5,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: AppColors.preto.withValues(alpha: 0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(onWalletPressed: _openWallet),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(color: Colors.transparent),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          AnimatedSideMenuOverlay(
+            isOpen: _isDrawerOpen,
+            onClose: _toggleDrawer,
+            onWalletPressed: _openWallet,
+            top: 0,
+          ),
           if (_isWalletOpen)
             Positioned.fill(
               child: Container(
@@ -320,8 +301,7 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
         child: Padding(
           padding: EdgeInsets.only(top: 60),
           child: CircularProgressIndicator(
-            valueColor:
-                AlwaysStoppedAnimation<Color>(AppColors.amareloClaro),
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.amareloClaro),
           ),
         ),
       );
@@ -341,8 +321,7 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
         const SizedBox(height: 20),
         _buildCard(),
         const SizedBox(height: 16),
-        if (_isAwaitingConfirmation && !_isProvider)
-          _buildAwaitingBanner(),
+        if (_isAwaitingConfirmation && !_isProvider) _buildAwaitingBanner(),
         const SizedBox(height: 16),
         _buildFinishButton(),
         const SizedBox(height: 12),
@@ -568,9 +547,8 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
   Widget _buildFinishButton() {
     // Prestador: bloqueado quando ja concluiu (aguardando confirmacao do solicitante)
     // Solicitante: bloqueado enquanto prestador nao concluiu
-    final bool canFinish = _isProvider
-        ? !_isAwaitingConfirmation
-        : _isAwaitingConfirmation;
+    final bool canFinish =
+        _isProvider ? !_isAwaitingConfirmation : _isAwaitingConfirmation;
 
     return SizedBox(
       width: double.infinity,
@@ -587,10 +565,10 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
         ),
         child: Text(
           _isProvider
-                  ? (_isAwaitingConfirmation
-                      ? 'Aguardando confirmacao...'
-                      : 'Concluir pedido')
-                  : 'Finalizar pedido',
+              ? (_isAwaitingConfirmation
+                  ? 'Aguardando confirmacao...'
+                  : 'Concluir pedido')
+              : 'Finalizar pedido',
           style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w700,
@@ -659,4 +637,3 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
     return '--:--';
   }
 }
-

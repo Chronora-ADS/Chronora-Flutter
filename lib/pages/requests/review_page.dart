@@ -8,7 +8,7 @@ import '../../core/constants/app_routes.dart';
 import '../../core/models/main_page_requests_model.dart';
 import '../../core/services/api_service.dart';
 import '../../widgets/header.dart';
-import '../../widgets/side_menu.dart';
+import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
 
 class ReviewPage extends StatefulWidget {
@@ -142,30 +142,12 @@ class _ReviewPageState extends State<ReviewPage> {
               Expanded(child: _buildBody()),
             ],
           ),
-          if (_isDrawerOpen)
-            Positioned(
-              top: kToolbarHeight * 1.5,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: AppColors.preto.withValues(alpha: 0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(onWalletPressed: _openWallet),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(color: Colors.transparent),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          AnimatedSideMenuOverlay(
+            isOpen: _isDrawerOpen,
+            onClose: _toggleDrawer,
+            onWalletPressed: _openWallet,
+            top: 0,
+          ),
           if (_isWalletOpen)
             Positioned.fill(
               child: Container(
@@ -243,9 +225,8 @@ class _ReviewPageState extends State<ReviewPage> {
       );
     }
 
-    final reviewee = widget.isProvider
-        ? _service!.userCreator
-        : _service!.userAccepted;
+    final reviewee =
+        widget.isProvider ? _service!.userCreator : _service!.userAccepted;
 
     if (reviewee == null) {
       return Center(
@@ -314,8 +295,7 @@ class _ReviewPageState extends State<ReviewPage> {
                               isHalf ? index + 0.5 : index + 1.0);
                         },
                         child: Padding(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
                           child: Icon(
                             _starIcon(index),
                             color: AppColors.amareloUmPoucoEscuro,
