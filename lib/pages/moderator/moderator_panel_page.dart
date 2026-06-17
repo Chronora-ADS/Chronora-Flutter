@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/constants/app_colors.dart';
@@ -666,172 +667,358 @@ class _TransacoesTabState extends State<_TransacoesTab>
         }
 
         if (snapshot.hasError) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.error_outline,
-                      size: 48, color: AppColors.vermelho),
-                  const SizedBox(height: 12),
-                  Text(
-                    snapshot.error.toString().replaceFirst('Exception: ', ''),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.branco),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _reload,
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.amareloUmPoucoEscuro),
-                    child: const Text('Tentar novamente',
-                        style: TextStyle(color: AppColors.branco)),
-                  ),
-                ],
-              ),
-            ),
+          return _ErrorView(
+            message: snapshot.error.toString().replaceFirst('Exception: ', ''),
+            onRetry: _reload,
           );
         }
 
         final transactions = snapshot.data ?? [];
 
-        if (transactions.isEmpty) {
-          return const Center(
-            child: Text(
-              'Nenhuma transação encontrada.',
-              style: TextStyle(color: AppColors.cinza, fontSize: 16),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Barra de filtros
+            Container(
+              color: const Color(0xFF111214),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  _FilterChipLabel(label: 'Estado', value: 'Todos'),
+                  const SizedBox(width: 8),
+                  _FilterChipLabel(label: 'Ambiente', value: 'Produção'),
+                  const Spacer(),
+                  Text(
+                    '${transactions.length} evento${transactions.length != 1 ? 's' : ''}',
+                    style: const TextStyle(
+                        color: AppColors.cinza, fontSize: 12),
+                  ),
+                ],
+              ),
             ),
-          );
-        }
-
-        return RefreshIndicator(
-          color: AppColors.amareloClaro,
-          onRefresh: () async => _reload(),
-          child: ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: transactions.length,
-            itemBuilder: (context, index) =>
-                _TransactionCard(transaction: transactions[index]),
-          ),
+            // Cabeçalho das colunas
+            Container(
+              color: const Color(0xFF16181B),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: const Row(
+                children: [
+                  SizedBox(
+                      width: 140,
+                      child: Text('Status da entrega',
+                          style: TextStyle(
+                              color: AppColors.cinza,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600))),
+                  SizedBox(
+                      width: 130,
+                      child: Text('Ação',
+                          style: TextStyle(
+                              color: AppColors.cinza,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600))),
+                  SizedBox(
+                      width: 80,
+                      child: Text('Evento',
+                          style: TextStyle(
+                              color: AppColors.cinza,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600))),
+                  Expanded(
+                      child: Text('ID do recurso',
+                          style: TextStyle(
+                              color: AppColors.cinza,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600))),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: Color(0xFF2A2D31)),
+            // Lista de eventos
+            Expanded(
+              child: transactions.isEmpty
+                  ? const Center(
+                      child: Text('Nenhum evento encontrado.',
+                          style: TextStyle(
+                              color: AppColors.cinza, fontSize: 16)))
+                  : RefreshIndicator(
+                      color: AppColors.amareloClaro,
+                      onRefresh: () async => _reload(),
+                      child: ListView.separated(
+                        itemCount: transactions.length,
+                        separatorBuilder: (_, __) => const Divider(
+                            height: 1, color: Color(0xFF2A2D31)),
+                        itemBuilder: (context, index) =>
+                            _WebhookRow(transaction: transactions[index]),
+                      ),
+                    ),
+            ),
+          ],
         );
       },
     );
   }
 }
 
-class _TransactionCard extends StatelessWidget {
+class _FilterChipLabel extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _FilterChipLabel({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E2024),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF2A2D31)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('$label  ',
+              style: const TextStyle(color: AppColors.cinza, fontSize: 12)),
+          Text(value,
+              style: const TextStyle(
+                  color: AppColors.branco,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(width: 4),
+          const Icon(Icons.keyboard_arrow_down,
+              size: 14, color: AppColors.cinza),
+        ],
+      ),
+    );
+  }
+}
+
+class _WebhookRow extends StatelessWidget {
   final PaymentTransactionSummary transaction;
 
-  const _TransactionCard({required this.transaction});
-
-  String _timeAgo(DateTime date) {
-    final diff = DateTime.now().difference(date);
-    if (diff.inMinutes < 1) return 'agora mesmo';
-    if (diff.inMinutes < 60) return 'há ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'há ${diff.inHours}h';
-    if (diff.inDays < 7) return 'há ${diff.inDays} dia${diff.inDays > 1 ? 's' : ''}';
-    return DateFormat('dd/MM/yyyy').format(date.toLocal());
-  }
+  const _WebhookRow({required this.transaction});
 
   @override
   Widget build(BuildContext context) {
     final t = transaction;
 
     Color statusColor;
-    IconData statusIcon;
-    String title;
+    String statusLabel;
+    int statusCode;
 
     if (t.isPaid) {
       statusColor = Colors.greenAccent;
-      statusIcon = t.isBuy ? Icons.arrow_circle_down : Icons.arrow_circle_up;
-      title = t.isBuy
-          ? 'Compra de ${t.chronosAmount} Chronos aprovada'
-          : 'Venda de ${t.chronosAmount} Chronos concluída';
+      statusLabel = 'Entregue';
+      statusCode = 200;
     } else if (t.isPending) {
       statusColor = Colors.orangeAccent;
-      statusIcon = Icons.hourglass_top_rounded;
-      title = t.isBuy
-          ? 'Compra de ${t.chronosAmount} Chronos aguardando pagamento'
-          : 'Venda de ${t.chronosAmount} Chronos pendente';
+      statusLabel = 'Pendente';
+      statusCode = 202;
     } else {
       statusColor = AppColors.vermelho;
-      statusIcon = Icons.cancel_outlined;
-      title = t.isBuy
-          ? 'Compra de ${t.chronosAmount} Chronos falhou'
-          : 'Venda de ${t.chronosAmount} Chronos recusada';
+      statusLabel = 'Falhou';
+      statusCode = 400;
     }
 
-    final paymentLabel = t.isPix ? 'PIX' : 'Cartão';
+    final dateFormatted = DateFormat('dd/MM/yyyy, HH:mm:ss')
+        .format(t.createdAt.toLocal());
+    final resourceId = t.mpPaymentId?.toString() ?? '#${t.id}';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1B1E),
-        borderRadius: BorderRadius.circular(12),
-        border: Border(
-          left: BorderSide(color: statusColor, width: 4),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Row(
+    return InkWell(
+      onTap: () => _showDetail(context, t),
+      child: Container(
+        color: Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(statusIcon, color: statusColor, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: AppColors.branco,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    t.userName,
-                    style: const TextStyle(
-                        color: AppColors.cinza, fontSize: 12),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
+            Row(
+              children: [
+                // Status da entrega
+                SizedBox(
+                  width: 140,
+                  child: Row(
                     children: [
-                      _Chip(label: paymentLabel, color: AppColors.amareloClaro),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: statusColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                       const SizedBox(width: 6),
                       Text(
-                        'R\$ ${t.totalAmount.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          color: AppColors.branco,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        '$statusCode - $statusLabel',
+                        style: TextStyle(
+                            color: statusColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+                // Ação
+                SizedBox(
+                  width: 130,
+                  child: Text(
+                    'payment.created',
+                    style: TextStyle(
+                        color: Colors.orange.shade300,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                // Evento
+                const SizedBox(
+                  width: 80,
+                  child: Text(
+                    'payment',
+                    style: TextStyle(color: Colors.blueAccent, fontSize: 12),
+                  ),
+                ),
+                // ID do recurso
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          resourceId,
+                          style: const TextStyle(
+                              color: AppColors.branco, fontSize: 12),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(
+                              ClipboardData(text: resourceId));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('ID copiado'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        },
+                        child: const Icon(Icons.copy_outlined,
+                            size: 14, color: AppColors.cinza),
+                      ),
+                      const Spacer(),
+                      const Icon(Icons.chevron_right,
+                          size: 18, color: AppColors.cinza),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            Text(
-              _timeAgo(t.createdAt),
-              style: const TextStyle(color: AppColors.cinza, fontSize: 11),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(left: 14),
+              child: Text(
+                '$dateFormatted (UTC${DateTime.now().timeZoneOffset.isNegative ? '' : '+'}${DateTime.now().timeZoneOffset.inHours}:00)  •  ${t.userName}',
+                style: const TextStyle(color: AppColors.cinza, fontSize: 11),
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showDetail(BuildContext context, PaymentTransactionSummary t) {
+    final dateFormatted = DateFormat('dd/MM/yyyy, HH:mm:ss')
+        .format(t.createdAt.toLocal());
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF16181B),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: t.isPaid
+                        ? Colors.greenAccent
+                        : t.isPending
+                            ? Colors.orangeAccent
+                            : AppColors.vermelho,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  t.isPaid
+                      ? '200 - Entregue'
+                      : t.isPending
+                          ? '202 - Pendente'
+                          : '400 - Falhou',
+                  style: const TextStyle(
+                      color: AppColors.branco,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _DetailRow(label: 'Ação', value: 'payment.created'),
+            _DetailRow(label: 'Evento', value: 'payment'),
+            _DetailRow(
+                label: 'ID do recurso',
+                value: t.mpPaymentId?.toString() ?? '#${t.id}'),
+            _DetailRow(label: 'Usuário', value: t.userName),
+            _DetailRow(
+                label: 'Valor',
+                value:
+                    '${t.chronosAmount} Chronos  •  R\$ ${t.totalAmount.toStringAsFixed(2)}'),
+            _DetailRow(
+                label: 'Método', value: t.isPix ? 'PIX' : 'Cartão de crédito'),
+            _DetailRow(label: 'Data e hora', value: dateFormatted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _DetailRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(label,
+                style:
+                    const TextStyle(color: AppColors.cinza, fontSize: 13)),
+          ),
+          Expanded(
+            child: Text(value,
+                style: const TextStyle(
+                    color: AppColors.branco,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600)),
+          ),
+        ],
       ),
     );
   }
