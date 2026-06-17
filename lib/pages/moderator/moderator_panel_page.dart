@@ -640,6 +640,9 @@ class _TransacoesTabState extends State<_TransacoesTab>
   final _service = ModeratorService();
   late Future<List<PaymentTransactionSummary>> _future;
 
+  // null = Todos, 'PAID', 'PENDING', 'FAILED'
+  String? _statusFilter;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -649,10 +652,92 @@ class _TransacoesTabState extends State<_TransacoesTab>
     _future = _service.getAllTransactions();
   }
 
-  void _reload() {
-    setState(() {
-      _future = _service.getAllTransactions();
-    });
+  void _reload() => setState(() => _future = _service.getAllTransactions());
+
+  List<PaymentTransactionSummary> _applyFilter(
+      List<PaymentTransactionSummary> all) {
+    if (_statusFilter == null) return all;
+    return all.where((t) {
+      if (_statusFilter == 'PAID') return t.isPaid;
+      if (_statusFilter == 'PENDING') return t.isPending;
+      if (_statusFilter == 'FAILED') return !t.isPaid && !t.isPending;
+      return true;
+    }).toList();
+  }
+
+  String get _statusLabel {
+    switch (_statusFilter) {
+      case 'PAID':
+        return 'Entregue';
+      case 'PENDING':
+        return 'Pendente';
+      case 'FAILED':
+        return 'Falhou';
+      default:
+        return 'Todos';
+    }
+  }
+
+  void _showStatusPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF16181B),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Text('Filtrar por estado',
+                  style: TextStyle(
+                      color: AppColors.branco,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700)),
+            ),
+            const Divider(height: 1, color: Color(0xFF2A2D31)),
+            _StatusOption(
+              label: 'Todos',
+              selected: _statusFilter == null,
+              onTap: () {
+                setState(() => _statusFilter = null);
+                Navigator.pop(context);
+              },
+            ),
+            _StatusOption(
+              label: 'Entregue',
+              dotColor: Colors.greenAccent,
+              selected: _statusFilter == 'PAID',
+              onTap: () {
+                setState(() => _statusFilter = 'PAID');
+                Navigator.pop(context);
+              },
+            ),
+            _StatusOption(
+              label: 'Pendente',
+              dotColor: Colors.orangeAccent,
+              selected: _statusFilter == 'PENDING',
+              onTap: () {
+                setState(() => _statusFilter = 'PENDING');
+                Navigator.pop(context);
+              },
+            ),
+            _StatusOption(
+              label: 'Falhou',
+              dotColor: AppColors.vermelho,
+              selected: _statusFilter == 'FAILED',
+              onTap: () {
+                setState(() => _statusFilter = 'FAILED');
+                Navigator.pop(context);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -674,7 +759,8 @@ class _TransacoesTabState extends State<_TransacoesTab>
           );
         }
 
-        final transactions = snapshot.data ?? [];
+        final all = snapshot.data ?? [];
+        final filtered = _applyFilter(all);
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -686,12 +772,17 @@ class _TransacoesTabState extends State<_TransacoesTab>
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
                 children: [
-                  _FilterChipLabel(label: 'Estado', value: 'Todos'),
+                  _FilterChipLabel(
+                    label: 'Estado',
+                    value: _statusLabel,
+                    onTap: _showStatusPicker,
+                    active: _statusFilter != null,
+                  ),
                   const SizedBox(width: 8),
-                  _FilterChipLabel(label: 'Ambiente', value: 'Produção'),
+                  const _FilterChipLabel(label: 'Ambiente', value: 'Produção'),
                   const Spacer(),
                   Text(
-                    '${transactions.length} evento${transactions.length != 1 ? 's' : ''}',
+                    '${filtered.length} evento${filtered.length != 1 ? 's' : ''}',
                     style: const TextStyle(
                         color: AppColors.cinza, fontSize: 12),
                   ),
@@ -738,20 +829,26 @@ class _TransacoesTabState extends State<_TransacoesTab>
             const Divider(height: 1, color: Color(0xFF2A2D31)),
             // Lista de eventos
             Expanded(
-              child: transactions.isEmpty
-                  ? const Center(
-                      child: Text('Nenhum evento encontrado.',
-                          style: TextStyle(
-                              color: AppColors.cinza, fontSize: 16)))
+              child: filtered.isEmpty
+                  ? Center(
+                      child: Text(
+                        _statusFilter != null
+                            ? 'Nenhum evento com status "$_statusLabel".'
+                            : 'Nenhum evento encontrado.',
+                        style: const TextStyle(
+                            color: AppColors.cinza, fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                    )
                   : RefreshIndicator(
                       color: AppColors.amareloClaro,
                       onRefresh: () async => _reload(),
                       child: ListView.separated(
-                        itemCount: transactions.length,
+                        itemCount: filtered.length,
                         separatorBuilder: (_, __) => const Divider(
                             height: 1, color: Color(0xFF2A2D31)),
                         itemBuilder: (context, index) =>
-                            _WebhookRow(transaction: transactions[index]),
+                            _WebhookRow(transaction: filtered[index]),
                       ),
                     ),
             ),
@@ -762,35 +859,101 @@ class _TransacoesTabState extends State<_TransacoesTab>
   }
 }
 
-class _FilterChipLabel extends StatelessWidget {
+class _StatusOption extends StatelessWidget {
   final String label;
-  final String value;
+  final Color? dotColor;
+  final bool selected;
+  final VoidCallback onTap;
 
-  const _FilterChipLabel({required this.label, required this.value});
+  const _StatusOption({
+    required this.label,
+    this.dotColor,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E2024),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF2A2D31)),
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: Row(
+          children: [
+            if (dotColor != null) ...[
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                    color: dotColor, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: Text(label,
+                  style: TextStyle(
+                      color: selected
+                          ? AppColors.amareloClaro
+                          : AppColors.branco,
+                      fontSize: 14,
+                      fontWeight: selected
+                          ? FontWeight.w700
+                          : FontWeight.normal)),
+            ),
+            if (selected)
+              const Icon(Icons.check,
+                  size: 18, color: AppColors.amareloClaro),
+          ],
+        ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('$label  ',
-              style: const TextStyle(color: AppColors.cinza, fontSize: 12)),
-          Text(value,
-              style: const TextStyle(
-                  color: AppColors.branco,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700)),
-          const SizedBox(width: 4),
-          const Icon(Icons.keyboard_arrow_down,
-              size: 14, color: AppColors.cinza),
-        ],
+    );
+  }
+}
+
+class _FilterChipLabel extends StatelessWidget {
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+  final bool active;
+
+  const _FilterChipLabel({
+    required this.label,
+    required this.value,
+    this.onTap,
+    this.active = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor =
+        active ? AppColors.amareloClaro : const Color(0xFF2A2D31);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E2024),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: borderColor),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('$label  ',
+                style: const TextStyle(color: AppColors.cinza, fontSize: 12)),
+            Text(value,
+                style: TextStyle(
+                    color: active
+                        ? AppColors.amareloClaro
+                        : AppColors.branco,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700)),
+            const SizedBox(width: 4),
+            Icon(Icons.keyboard_arrow_down,
+                size: 14,
+                color: active ? AppColors.amareloClaro : AppColors.cinza),
+          ],
+        ),
       ),
     );
   }
