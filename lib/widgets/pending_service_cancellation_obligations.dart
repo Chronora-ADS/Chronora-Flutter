@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/constants/app_colors.dart';
 import '../core/services/api_service.dart';
+import '../core/utils/app_snackbar.dart';
 import '../core/services/auth_session_service.dart';
 import '../core/services/pending_service_cancellation_service.dart';
 import 'service_cancellation_reason_modal.dart';
@@ -182,30 +183,18 @@ class PendingServiceCancellationObligations {
         return true;
       }
 
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text('Justificativa registrada nas notificacoes.'),
-            backgroundColor: Colors.green,
-          ),
-        );
+      AppSnackBar.show(context, 'Justificativa registrada nas notificacoes.');
       return true;
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(
-                _friendlyErrorMessage(
-                  error,
-                  fallback: 'Nao foi possivel registrar a justificativa.',
-                ),
-              ),
-              backgroundColor: AppColors.vermelho,
-            ),
-          );
+        AppSnackBar.show(
+          context,
+          _friendlyErrorMessage(
+            error,
+            fallback: 'Nao foi possivel registrar a justificativa.',
+          ),
+          isError: true,
+        );
       }
       return false;
     }

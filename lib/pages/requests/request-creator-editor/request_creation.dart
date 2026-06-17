@@ -14,6 +14,7 @@ import '../../../core/api/api_service.dart';
 import '../../../core/constants/modality_options.dart';
 import '../../../core/models/create_request_model.dart';
 import '../../../core/services/auth_session_service.dart';
+import '../../../core/utils/app_snackbar.dart';
 
 class RequestCreationPage extends StatefulWidget {
   const RequestCreationPage({super.key});
@@ -107,26 +108,13 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Erro ao selecionar imagem'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.show(context, 'Erro ao selecionar imagem', isError: true);
     }
   }
 
-  void _showFeedback(
-    String message, {
-    Color backgroundColor = Colors.red,
-  }) {
+  void _showFeedback(String message, {bool isError = true}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: backgroundColor,
-      ),
-    );
+    AppSnackBar.show(context, message, isError: isError);
   }
 
   void _stopLoading() {
@@ -225,12 +213,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_categoriesTags.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Adicione pelo menos uma categoria'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.show(context, 'Adicione pelo menos uma categoria', isError: true);
       return;
     }
 
@@ -240,22 +223,12 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     }
 
     if (_selectedImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Selecione uma imagem para o pedido'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.show(context, 'Selecione uma imagem para o pedido', isError: true);
       return;
     }
 
     if (_selectedModality == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Selecione uma modalidade'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.show(context, 'Selecione uma modalidade', isError: true);
       return;
     }
 
@@ -268,12 +241,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       final token = await AuthSessionService.getValidAccessToken();
 
       if (token == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Usuário não autenticado. Faça login novamente.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.show(context, 'Usuário não autenticado. Faça login novamente.', isError: true);
         setState(() {
           _isLoading = false;
         });
@@ -286,12 +254,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         base64Image = await _convertImageToBase64();
       }
       if (base64Image == null || base64Image.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Nao foi possivel processar a imagem do pedido'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.show(context, 'Nao foi possivel processar a imagem do pedido', isError: true);
         setState(() {
           _isLoading = false;
         });
@@ -301,12 +264,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       // VALIDAÇÃO E FORMATAÇÃO CORRETA DA DATA
       final deadlineText = _deadlineController.text.trim();
       if (deadlineText.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Data de prazo é obrigatória'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.show(context, 'Data de prazo é obrigatória', isError: true);
         setState(() {
           _isLoading = false;
         });
@@ -316,12 +274,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       // Converter data do formato DD/MM/YYYY para YYYY-MM-DD
       final deadlineParts = deadlineText.split('/');
       if (deadlineParts.length != 3) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Formato de data inválido. Use DD/MM/YYYY'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.show(context, 'Formato de data inválido. Use DD/MM/YYYY', isError: true);
         setState(() {
           _isLoading = false;
         });
@@ -337,12 +290,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         // Validar se é uma data válida
         final date = DateTime.parse('$year-$month-$day');
         if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('A data não pode ser no passado'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          AppSnackBar.show(context, 'A data não pode ser no passado', isError: true);
           setState(() {
             _isLoading = false;
           });
@@ -351,12 +299,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
 
         formattedDeadline = '$year-$month-$day';
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Data inválida'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.show(context, 'Data inválida', isError: true);
         setState(() {
           _isLoading = false;
         });
@@ -366,12 +309,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       // VALIDAÇÃO DO TEMPO EM CHRONOS
       final chronosText = _chronosController.text.trim();
       if (chronosText.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Tempo em Chronos é obrigatório'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.show(context, 'Tempo em Chronos é obrigatório', isError: true);
         setState(() {
           _isLoading = false;
         });
@@ -382,36 +320,21 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       try {
         timeChronos = int.parse(chronosText);
         if (timeChronos <= 0) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Tempo em Chronos deve ser maior que zero'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          AppSnackBar.show(context, 'Tempo em Chronos deve ser maior que zero', isError: true);
           setState(() {
             _isLoading = false;
           });
           return;
         }
         if (timeChronos > 100) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Tempo em Chronos deve ser no maximo 100'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          AppSnackBar.show(context, 'Tempo em Chronos deve ser no maximo 100', isError: true);
           setState(() {
             _isLoading = false;
           });
           return;
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Tempo em Chronos deve ser um número válido'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.show(context, 'Tempo em Chronos deve ser um número válido', isError: true);
         setState(() {
           _isLoading = false;
         });
@@ -437,10 +360,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       if (!mounted) return;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        _showFeedback(
-          'Pedido criado com sucesso!',
-          backgroundColor: Colors.green,
-        );
+        _showFeedback('Pedido criado com sucesso!', isError: false);
 
         // Limpar formulário após sucesso
         _formKey.currentState!.reset();
@@ -458,32 +378,10 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           response.body,
           fallback: 'Erro ao criar pedido.',
         );
-        _showFeedback(
-          '$errorMessage (${response.statusCode})',
-          backgroundColor: Colors.red,
-        );
-        /*
-        
-          errorMessage = 'Dados inválidos. Verifique as informações preenchidas.';
-        } else if (response.statusCode == 401) {
-          errorMessage = 'Não autorizado. Faça login novamente.';
-        } else if (response.statusCode == 500) {
-          errorMessage = 'Erro interno do servidor. Tente novamente.';
-        }
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$errorMessage (${response.statusCode})'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        */
+        _showFeedback('$errorMessage (${response.statusCode})');
       }
     } catch (e) {
-      _showFeedback(
-        'Erro: ${e.toString()}',
-        backgroundColor: Colors.red,
-      );
+      _showFeedback('Erro: ${e.toString()}');
     } finally {
       _stopLoading();
     }

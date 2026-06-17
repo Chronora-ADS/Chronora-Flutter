@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/auth_session_service.dart';
+import '../../core/utils/app_snackbar.dart';
 import '../../widgets/auth_text_field.dart';
 import '../../widgets/backgrounds/background_auth_widget.dart';
 
@@ -47,9 +48,7 @@ class _LoginPageState extends State<LoginPage> {
 
   void _showSnackBar(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    AppSnackBar.show(context, message);
   }
 
   Future<void> _login() async {
