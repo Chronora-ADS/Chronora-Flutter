@@ -45,10 +45,31 @@ class _SideMenuState extends State<SideMenu> {
     return photo != null && photo.isNotEmpty ? photo : _loadedUserPhotoUrl;
   }
 
+  static const _kName = 'side_menu_user_name';
+  static const _kRating = 'side_menu_user_rating';
+  static const _kPhoto = 'side_menu_user_photo';
+  static const _kIsMod = 'side_menu_is_moderator';
+
   @override
   void initState() {
     super.initState();
+    _loadCached();
     _fetchUserData();
+  }
+
+  Future<void> _loadCached() async {
+    final prefs = await SharedPreferences.getInstance();
+    final name = prefs.getString(_kName);
+    final rating = prefs.getDouble(_kRating);
+    final photo = prefs.getString(_kPhoto);
+    final isMod = prefs.getBool(_kIsMod) ?? false;
+    if (!mounted) return;
+    setState(() {
+      if (name != null && name.isNotEmpty) _loadedUserName = name;
+      if (rating != null) _loadedUserRating = rating;
+      _loadedUserPhotoUrl = photo;
+      _isModerator = isMod;
+    });
   }
 
   Future<void> _fetchUserData() async {
@@ -71,15 +92,31 @@ class _SideMenuState extends State<SideMenu> {
       final roles = decoded['roles'];
       final isMod = roles is List && roles.contains('ROLE_MODERATOR');
 
+      final name = (decoded['name'] ?? 'Usuario').toString().trim();
+      final resolvedName = name.isEmpty ? 'Usuario' : name;
+      double resolvedRating = 0.0;
+      if (ratingRaw is num) {
+        resolvedRating = ratingRaw.toDouble();
+      } else if (ratingRaw is String) {
+        resolvedRating = double.tryParse(ratingRaw) ?? 0.0;
+      }
+      final resolvedPhoto = photo?.toString();
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kName, resolvedName);
+      await prefs.setDouble(_kRating, resolvedRating);
+      if (resolvedPhoto != null) {
+        await prefs.setString(_kPhoto, resolvedPhoto);
+      } else {
+        await prefs.remove(_kPhoto);
+      }
+      await prefs.setBool(_kIsMod, isMod);
+
+      if (!mounted) return;
       setState(() {
-        final name = (decoded['name'] ?? 'Usuario').toString().trim();
-        _loadedUserName = name.isEmpty ? 'Usuario' : name;
-        if (ratingRaw is num) {
-          _loadedUserRating = ratingRaw.toDouble();
-        } else if (ratingRaw is String) {
-          _loadedUserRating = double.tryParse(ratingRaw) ?? 0.0;
-        }
-        _loadedUserPhotoUrl = photo?.toString();
+        _loadedUserName = resolvedName;
+        _loadedUserRating = resolvedRating;
+        _loadedUserPhotoUrl = resolvedPhoto;
         _isModerator = isMod;
       });
     } catch (_) {
