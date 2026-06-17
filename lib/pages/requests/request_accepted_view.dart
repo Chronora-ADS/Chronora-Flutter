@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -10,6 +10,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/models/user_creator.dart';
 import '../../core/utils/app_snackbar.dart';
+import '../../core/utils/backend_date_time_parser.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/pending_service_cancellation_service.dart';
 import '../../widgets/header.dart';
@@ -328,14 +329,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   }
 
   DateTime? _parseDateTime(dynamic value) {
-    if (value is DateTime) return value;
-    if (value is! String || value.trim().isEmpty) return null;
-    final raw = value.trim();
-    // Backend sends Java LocalDateTime without offset, so keep it local.
-    final parsed = DateTime.tryParse(raw);
-    if (parsed == null) return null;
-
-    return parsed.isUtc ? parsed.toLocal() : parsed;
+    return BackendDateTimeParser.parse(value);
   }
 
   void _applyAcceptedAt(dynamic value) {
@@ -688,7 +682,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       _startAuthenticationCodeCountdown();
       _startAcceptedRequestSync();
 
-      AppSnackBar.show(context, 'Segunda chamada iniciada. Um novo codigo foi gerado.');
+      AppSnackBar.show(
+          context, 'Segunda chamada iniciada. Um novo codigo foi gerado.');
     } catch (error) {
       if (!mounted) return;
 
@@ -948,7 +943,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     if (!mounted) return;
 
     if (leaveMessage != null) {
-      AppSnackBar.show(context, leaveMessage.text, isError: leaveMessage.isError);
+      AppSnackBar.show(context, leaveMessage.text,
+          isError: leaveMessage.isError);
     }
 
     Navigator.pushNamedAndRemoveUntil(
@@ -2611,4 +2607,3 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
     );
   }
 }
-
