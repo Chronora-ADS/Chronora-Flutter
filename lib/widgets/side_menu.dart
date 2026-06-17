@@ -31,6 +31,7 @@ class _SideMenuState extends State<SideMenu> {
   String _loadedUserName = 'Usuario';
   double _loadedUserRating = 0.0;
   String? _loadedUserPhotoUrl;
+  bool _isModerator = false;
 
   String get _displayUserName {
     final name = widget.userName?.trim();
@@ -67,6 +68,9 @@ class _SideMenuState extends State<SideMenu> {
           decoded['profileImage'] ??
           decoded['photoUrl'];
 
+      final roles = decoded['roles'];
+      final isMod = roles is List && roles.contains('ROLE_MODERATOR');
+
       setState(() {
         final name = (decoded['name'] ?? 'Usuario').toString().trim();
         _loadedUserName = name.isEmpty ? 'Usuario' : name;
@@ -76,6 +80,7 @@ class _SideMenuState extends State<SideMenu> {
           _loadedUserRating = double.tryParse(ratingRaw) ?? 0.0;
         }
         _loadedUserPhotoUrl = photo?.toString();
+        _isModerator = isMod;
       });
     } catch (_) {
       // Mantem os dados de fallback sem quebrar o menu.
@@ -148,6 +153,15 @@ class _SideMenuState extends State<SideMenu> {
                           Navigator.pushNamed(context, AppRoutes.notifications);
                         },
                       ),
+                      if (_isModerator)
+                        _buildMenuItem(
+                          icon: 'assets/img/SettingsWhite.png',
+                          title: 'Painel',
+                          onTap: () {
+                            Navigator.pushNamed(
+                                context, AppRoutes.moderatorPanel);
+                          },
+                        ),
                     ],
                   ),
                 ],
