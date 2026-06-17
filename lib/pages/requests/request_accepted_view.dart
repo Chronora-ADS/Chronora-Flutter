@@ -586,16 +586,12 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       // A interface ainda deve voltar ao estado inicial mesmo se a chamada falhar.
     }
 
-<<<<<<< Updated upstream
     await _leaveAcceptedView(
       const _LeaveMessage(
         'A segunda chamada expirou. O servico foi cancelado e o pedido voltou para aberto.',
         isError: true,
       ),
     );
-=======
-    await _leaveAcceptedView(snackBar);
->>>>>>> Stashed changes
   }
 
   Future<void> _openSecondCallPrompt() async {
