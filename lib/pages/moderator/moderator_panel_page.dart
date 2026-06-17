@@ -779,7 +779,7 @@ class _TransacoesTabState extends State<_TransacoesTab>
                     active: _statusFilter != null,
                   ),
                   const SizedBox(width: 8),
-                  const _FilterChipLabel(label: 'Ambiente', value: 'Produção'),
+                  const _FilterChipLabel(label: 'Ambiente', value: 'Teste'),
                   const Spacer(),
                   Text(
                     '${filtered.length} evento${filtered.length != 1 ? 's' : ''}',
