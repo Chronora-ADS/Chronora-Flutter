@@ -11,23 +11,21 @@ import 'pix_sell_page.dart';
 /// Controller para vender Chronos
 /// - Preço fixo de venda: R$2,00 por Chronos
 /// - Taxa de 10% sobre o subtotal
-/// - Validações: quantidade inteira >=1, <= saldo atual; chave PIX não vazia e formato básico
+/// - Validações: quantidade inteira >=1, <= saldo disponível (descontando Chronos reservados em pedidos EM_ANDAMENTO como solicitante)
 class SellChronosController extends ChangeNotifier {
-  static const double CHRONOS_SELL_PRICE = 2.00; // R$ por Chronos
-  static const double TAX_PERCENTAGE = 0.10; // 10%
-  static const int MIN_CHRONOS_KEEP =
-      0; // Backend permite vender ate zerar a carteira
+  static const double CHRONOS_SELL_PRICE = 2.00;
+  static const double TAX_PERCENTAGE = 0.10;
   static const String TOOLTIP_TEXT =
       'O valor de venda de Chronos é equivalente a R\$2,00 reais. No final, é aplicada uma taxa de 10% sobre o total.';
 
-  int currentBalance = 0; // Inicializa com 0, será carregado do backend
+  int currentBalance = 0;
+  int reservedChronos = 0; // Chronos comprometidos em pedidos EM_ANDAMENTO como solicitante
   int sellAmount = 0;
   String pixKey = '';
   String errorMessage = '';
   bool isLoading = false;
-  bool isLoadingBalance = true; // Novo estado para carregamento do saldo
+  bool isLoadingBalance = true;
 
-  // Controllers
   late TextEditingController amountController;
   late TextEditingController pixKeyController;
 
@@ -41,7 +39,7 @@ class SellChronosController extends ChangeNotifier {
       currentBalance = initialBalance;
       isLoadingBalance = false;
     } else if (autoloadBalance) {
-      _loadCurrentBalance(); // Carrega saldo ao criar controller
+      _loadCurrentBalance();
     } else {
       isLoadingBalance = false;
     }
@@ -58,38 +56,70 @@ class SellChronosController extends ChangeNotifier {
     return AuthSessionService.getValidAccessToken();
   }
 
-  /// Carrega o saldo atual do usuário do backend
   Future<void> _loadCurrentBalance() async {
     try {
       final String? token = await _getToken();
-
       if (token == null) {
-        _updateState(() {
-          isLoadingBalance = false;
-          currentBalance = 0;
-        });
+        _updateState(() { isLoadingBalance = false; currentBalance = 0; });
         return;
       }
 
-      final response = await ApiService.get('/user/get', token: token);
-
-      if (response.statusCode == 200) {
-        final userData = _parseResponse(response.body);
-        _updateState(() {
-          currentBalance = userData['timeChronos'] ?? 0;
-          isLoadingBalance = false;
-        });
-      } else {
-        _updateState(() {
-          isLoadingBalance = false;
-          currentBalance = 0;
-        });
+      final userResponse = await ApiService.get('/user/get', token: token);
+      if (userResponse.statusCode != 200) {
+        _updateState(() { isLoadingBalance = false; currentBalance = 0; });
+        return;
       }
-    } catch (error) {
+
+      final userData = _parseResponse(userResponse.body);
+      final userId = userData['id'] as int?;
+      final balance = userData['timeChronos'] as int? ?? 0;
+
+      int reserved = 0;
+      if (userId != null) {
+        reserved = await _loadReservedChronos(userId, token);
+      }
+
       _updateState(() {
+        currentBalance = balance;
+        reservedChronos = reserved;
         isLoadingBalance = false;
-        currentBalance = 0;
       });
+    } catch (_) {
+      _updateState(() { isLoadingBalance = false; currentBalance = 0; });
+    }
+  }
+
+  Future<int> _loadReservedChronos(int userId, String token) async {
+    try {
+      final response = await ApiService.get(
+        '/service/get/all/EM_ANDAMENTO?page=0&size=100',
+        token: token,
+      );
+      if (response.statusCode != 200) return 0;
+
+      final body = json.decode(response.body);
+      List<dynamic> items = const [];
+      if (body is Map) {
+        items = (body['content'] ?? body['services'] ?? body['data'] ?? []) as List;
+      } else if (body is List) {
+        items = body;
+      }
+
+      int total = 0;
+      for (final item in items) {
+        if (item is! Map<String, dynamic>) continue;
+        final creator = item['userCreator'];
+        if (creator is! Map<String, dynamic>) continue;
+        final creatorId = creator['id'];
+        final id = creatorId is int ? creatorId : int.tryParse(creatorId?.toString() ?? '');
+        if (id == userId) {
+          final chronos = item['timeChronos'];
+          total += chronos is int ? chronos : int.tryParse(chronos?.toString() ?? '') ?? 0;
+        }
+      }
+      return total;
+    } catch (_) {
+      return 0;
     }
   }
 
@@ -98,11 +128,15 @@ class SellChronosController extends ChangeNotifier {
       final jsonData = json.decode(responseBody);
       if (jsonData is Map<String, dynamic>) {
         final chronos = jsonData['timeChronos'] ?? 0;
-        return {'timeChronos': chronos};
+        final id = jsonData['id'];
+        return {
+          'timeChronos': chronos is int ? chronos : int.tryParse(chronos.toString()) ?? 0,
+          'id': id is int ? id : int.tryParse(id?.toString() ?? ''),
+        };
       }
-      return {'timeChronos': 0};
-    } catch (e) {
-      return {'timeChronos': 0};
+      return {'timeChronos': 0, 'id': null};
+    } catch (_) {
+      return {'timeChronos': 0, 'id': null};
     }
   }
 
@@ -123,14 +157,13 @@ class SellChronosController extends ChangeNotifier {
   double get subtotal => sellAmount * CHRONOS_SELL_PRICE;
   double get tax => subtotal * TAX_PERCENTAGE;
   double get taxAmount => tax;
-  double get totalAmount => subtotal - tax; // valor a receber pelo usuário
+  double get totalAmount => subtotal - tax;
   int get chronosAfterSale => currentBalance - sellAmount;
+  int get maxSellAmount => currentBalance - reservedChronos;
 
-  // REGRA: Não pode vender todos os Chronos - deve manter pelo menos MIN_CHRONOS_KEEP
   bool get isAmountValid =>
       sellAmount > 0 &&
-      sellAmount <= currentBalance &&
-      chronosAfterSale >= MIN_CHRONOS_KEEP;
+      sellAmount <= maxSellAmount;
 
   bool get isPixValid => true; // PIX será validado em outra tela
   bool get canProceed => isAmountValid && !isLoading && !isLoadingBalance;
@@ -155,8 +188,10 @@ class SellChronosController extends ChangeNotifier {
       } else if (amount > currentBalance) {
         errorMessage = 'Saldo insuficiente para vender $amount Chronos.';
         sellAmount = amount;
-      } else if (chronosAfterSale < MIN_CHRONOS_KEEP) {
-        errorMessage = 'Voce nao pode vender mais Chronos do que possui.';
+      } else if (amount > maxSellAmount) {
+        errorMessage = reservedChronos > 0
+            ? 'Você tem $reservedChronos Chronos reservados em pedidos em andamento. Máximo disponível: $maxSellAmount.'
+            : 'Você não pode vender mais Chronos do que possui.';
         sellAmount = amount;
       } else {
         sellAmount = amount;
@@ -194,8 +229,10 @@ class SellChronosController extends ChangeNotifier {
       return;
     }
 
-    if (chronosAfterSale < MIN_CHRONOS_KEEP) {
-      onError('Voce nao pode vender mais Chronos do que possui.');
+    if (amount > maxSellAmount) {
+      onError(reservedChronos > 0
+          ? 'Você tem $reservedChronos Chronos reservados em pedidos em andamento.'
+          : 'Você não pode vender mais Chronos do que possui.');
       return;
     }
 
@@ -595,8 +632,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
                   Text(
                     '${_controller.chronosAfterSale}',
                     style: TextStyle(
-                      color: _controller.chronosAfterSale <
-                              SellChronosController.MIN_CHRONOS_KEEP
+                      color: _controller.chronosAfterSale < _controller.reservedChronos
                           ? Colors.red
                           : Colors.black,
                       fontWeight: FontWeight.bold,
@@ -605,14 +641,31 @@ class _SellChronosPageState extends State<SellChronosPage> {
                 ],
               ),
 
-              // Mensagem informativa sobre o mínimo
-              if (_controller.chronosAfterSale >= 0) ...{
+              // Aviso de Chronos reservados em pedidos em andamento
+              if (_controller.reservedChronos > 0) ...{
                 const SizedBox(height: 8),
-                Text(
-                  'O backend permite vender ate zerar seu saldo de Chronos.',
-                  style: TextStyle(
-                    color: Colors.black.withOpacity(0.6),
-                    fontSize: 11,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade300),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.lock_outline, size: 14, color: Colors.orange.shade700),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '${_controller.reservedChronos} Chronos reservados em pedidos em andamento. '
+                          'Máximo disponível para venda: ${_controller.maxSellAmount}.',
+                          style: TextStyle(
+                            color: Colors.orange.shade800,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               },
