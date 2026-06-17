@@ -10,6 +10,7 @@ import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/utils/auth_error_messages.dart';
+import '../../core/utils/app_snackbar.dart';
 import '../../widgets/auth_text_field.dart';
 import '../../widgets/backgrounds/background_auth_widget.dart';
 
@@ -54,9 +55,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao selecionar arquivo: $e')),
-      );
+      AppSnackBar.show(context, 'Erro ao selecionar arquivo: $e', isError: true);
     }
   }
 
@@ -90,17 +89,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
 
   void _showSnackBar(String message, {bool isError = false}) {
     if (!mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor:
-            isError ? AppColors.vermelho : AppColors.amareloUmPoucoEscuro,
-        duration: const Duration(seconds: 5),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    AppSnackBar.show(context, message, isError: isError);
   }
 
   void _setFeedback(String message, {required bool isError}) {

@@ -7,6 +7,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/services/chronos_wallet_service.dart';
+import '../../core/utils/app_snackbar.dart';
 import 'buy_success_page.dart';
 
 class PixBuyPage extends StatefulWidget {
@@ -113,9 +114,7 @@ class _PixBuyPageState extends State<PixBuyPage> {
 
   void _copyCode() {
     Clipboard.setData(ClipboardData(text: widget.qrCode));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Código PIX copiado!')),
-    );
+    AppSnackBar.show(context, 'Código PIX copiado!');
   }
 
   @override

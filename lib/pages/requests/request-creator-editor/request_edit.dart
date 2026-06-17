@@ -12,6 +12,7 @@ import 'package:chronora/core/constants/modality_options.dart';
 import 'package:chronora/core/models/service_detail_model.dart';
 import 'package:chronora/core/models/main_page_requests_model.dart';
 import 'package:chronora/core/services/auth_session_service.dart';
+import 'package:chronora/core/utils/app_snackbar.dart';
 
 class RequestEditingPage extends StatefulWidget {
   final Service? service;
@@ -183,12 +184,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         _errorMessage = 'Erro ao carregar dados do serviço: $e';
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erro ao carregar dados: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.show(context, 'Erro ao carregar dados: $e', isError: true);
     } finally {
       if (mounted) {
         setState(() {
@@ -280,26 +276,13 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Erro ao selecionar imagem'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.show(context, 'Erro ao selecionar imagem', isError: true);
     }
   }
 
-  void _showFeedback(
-    String message, {
-    Color backgroundColor = Colors.red,
-  }) {
+  void _showFeedback(String message, {bool isError = true}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: backgroundColor,
-      ),
-    );
+    AppSnackBar.show(context, message, isError: isError);
   }
 
   void _stopLoading() {
@@ -403,12 +386,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_categoriesTags.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Adicione pelo menos uma categoria'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.show(context, 'Adicione pelo menos uma categoria', isError: true);
       return;
     }
 
@@ -418,12 +396,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     }
 
     if (_selectedModality == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Selecione uma modalidade'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.show(context, 'Selecione uma modalidade', isError: true);
       return;
     }
 
@@ -437,12 +410,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       if (!mounted) return;
 
       if (token == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Usuário não autenticado. Faça login novamente.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.show(context, 'Usuário não autenticado. Faça login novamente.', isError: true);
         setState(() {
           _isLoading = false;
         });
@@ -460,12 +428,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       // Formatação da data
       final deadlineText = _deadlineController.text.trim();
       if (deadlineText.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Data de prazo é obrigatória'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.show(context, 'Data de prazo é obrigatória', isError: true);
         setState(() {
           _isLoading = false;
         });
@@ -474,12 +437,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
       final deadlineParts = deadlineText.split('/');
       if (deadlineParts.length != 3) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Formato de data inválido. Use DD/MM/YYYY'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.show(context, 'Formato de data inválido. Use DD/MM/YYYY', isError: true);
         setState(() {
           _isLoading = false;
         });
@@ -494,12 +452,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
         final date = DateTime.parse('$year-$month-$day');
         if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('A data não pode ser no passado'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          AppSnackBar.show(context, 'A data não pode ser no passado', isError: true);
           setState(() {
             _isLoading = false;
           });
@@ -508,12 +461,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
         formattedDeadline = '$year-$month-$day';
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Data inválida'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.show(context, 'Data inválida', isError: true);
         setState(() {
           _isLoading = false;
         });
@@ -523,12 +471,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       // Validação do tempo em Chronos
       final chronosText = _chronosController.text.trim();
       if (chronosText.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Tempo em Chronos é obrigatório'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.show(context, 'Tempo em Chronos é obrigatório', isError: true);
         setState(() {
           _isLoading = false;
         });
@@ -539,36 +482,21 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       try {
         timeChronos = int.parse(chronosText);
         if (timeChronos <= 0) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Tempo em Chronos deve ser maior que zero'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          AppSnackBar.show(context, 'Tempo em Chronos deve ser maior que zero', isError: true);
           setState(() {
             _isLoading = false;
           });
           return;
         }
         if (timeChronos > 100) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Tempo em Chronos deve ser no maximo 100'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          AppSnackBar.show(context, 'Tempo em Chronos deve ser no maximo 100', isError: true);
           setState(() {
             _isLoading = false;
           });
           return;
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Tempo em Chronos deve ser um número válido'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackBar.show(context, 'Tempo em Chronos deve ser um número válido', isError: true);
         setState(() {
           _isLoading = false;
         });
@@ -600,10 +528,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       if (!mounted) return;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        _showFeedback(
-          'Pedido editado com sucesso!',
-          backgroundColor: Colors.green,
-        );
+        _showFeedback('Pedido editado com sucesso!', isError: false);
 
         // Limpar formulário após sucesso
         _formKey.currentState!.reset();
@@ -633,17 +558,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           errorMessage = 'Erro interno do servidor. Tente novamente.';
         }
 
-        _showFeedback(
-          '$errorMessage (${response.statusCode})',
-          backgroundColor: Colors.red,
-        );
+        _showFeedback('$errorMessage (${response.statusCode})');
         Navigator.pop(context, false);
       }
     } catch (e) {
-      _showFeedback(
-        'Erro: ${e.toString()}',
-        backgroundColor: Colors.red,
-      );
+      _showFeedback('Erro: ${e.toString()}');
     } finally {
       _stopLoading();
     }

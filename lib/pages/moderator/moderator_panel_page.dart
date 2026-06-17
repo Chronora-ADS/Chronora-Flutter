@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/services/moderator_service.dart';
+import '../../core/utils/app_snackbar.dart';
 
 class ModeratorPanelPage extends StatelessWidget {
   const ModeratorPanelPage({super.key});
@@ -897,12 +898,7 @@ class _WebhookRow extends StatelessWidget {
                         onTap: () {
                           Clipboard.setData(
                               ClipboardData(text: resourceId));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('ID copiado'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
+                          AppSnackBar.show(context, 'ID copiado');
                         },
                         child: const Icon(Icons.copy_outlined,
                             size: 14, color: AppColors.cinza),

@@ -7,6 +7,7 @@ import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/services/auth_session_service.dart';
+import '../../core/utils/app_snackbar.dart';
 import '../../core/services/service_deadline_controller.dart';
 import '../../widgets/backgrounds/background_default_widget.dart';
 import '../../widgets/header.dart';
@@ -89,11 +90,10 @@ class _NotificationPageState extends State<NotificationPage> {
         _visibleNotificationsLimit = _pageSize;
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
-        ),
+      AppSnackBar.show(
+        context,
+        e.toString().replaceFirst('Exception: ', ''),
+        isError: true,
       );
     }
   }
@@ -258,17 +258,14 @@ class _NotificationPageState extends State<NotificationPage> {
     try {
       await action();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(successMessage)),
-      );
+      AppSnackBar.show(context, successMessage);
       await _loadNotifications();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
-        ),
+      AppSnackBar.show(
+        context,
+        e.toString().replaceFirst('Exception: ', ''),
+        isError: true,
       );
     } finally {
       if (mounted) {

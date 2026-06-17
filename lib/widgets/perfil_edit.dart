@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/user_model.dart';
 import '../../core/services/profile_controller.dart';
+import '../../core/utils/app_snackbar.dart';
 
 class PerfilEdit extends StatefulWidget {
   const PerfilEdit({super.key});
@@ -89,9 +90,8 @@ class _PerfilEditState extends State<PerfilEdit> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao selecionar arquivo: $e')),
-      );
+      if (!mounted) return;
+      AppSnackBar.show(context, 'Erro ao selecionar arquivo: $e', isError: true);
     }
   }
 
@@ -128,13 +128,9 @@ class _PerfilEditState extends State<PerfilEdit> {
       
       if (success) {
         Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Conta deletada com sucesso')),
-        );
+        AppSnackBar.show(context, 'Conta deletada com sucesso');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao deletar conta: ${_controller.errorMessage}')),
-        );
+        AppSnackBar.show(context, 'Erro ao deletar conta: ${_controller.errorMessage}', isError: true);
       }
     }
   }
@@ -530,30 +526,22 @@ class _PerfilEditState extends State<PerfilEdit> {
 
   Future<void> _updateProfile() async {
     if (currentPasswordController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Digite sua senha atual para atualizar o perfil')),
-      );
+      AppSnackBar.show(context, 'Digite sua senha atual para atualizar o perfil', isError: true);
       return;
     }
 
     if (nameController.text.isEmpty || emailController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preencha todos os campos obrigatórios')),
-      );
+      AppSnackBar.show(context, 'Preencha todos os campos obrigatórios', isError: true);
       return;
     }
 
     if (newPasswordController.text.isNotEmpty) {
       if (newPasswordController.text != confirmPasswordController.text) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('As senhas não coincidem')),
-        );
+        AppSnackBar.show(context, 'As senhas não coincidem', isError: true);
         return;
       }
       if (currentPasswordController.text.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Digite sua senha atual para mudar a senha')),
-        );
+        AppSnackBar.show(context, 'Digite sua senha atual para mudar a senha', isError: true);
         return;
       }
     }
@@ -571,15 +559,11 @@ class _PerfilEditState extends State<PerfilEdit> {
     setState(() => _isLoading = false);
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Perfil atualizado com sucesso!')),
-      );
+      AppSnackBar.show(context, 'Perfil atualizado com sucesso!');
       _onProfileUpdated();
       Navigator.pop(context);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro: ${_controller.errorMessage}')),
-      );
+      AppSnackBar.show(context, 'Erro: ${_controller.errorMessage}', isError: true);
     }
   }
 

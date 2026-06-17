@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/service_detail_model.dart';
+import '../../core/utils/app_snackbar.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/pending_service_cancellation_service.dart';
 import '../../widgets/header.dart';
@@ -17,6 +18,12 @@ import '../../widgets/wallet_modal.dart';
 enum RequestAcceptedAudience { provider, requester }
 
 enum _ExpiredCodeAction { cancelService, secondCall }
+
+class _LeaveMessage {
+  final String text;
+  final bool isError;
+  const _LeaveMessage(this.text, {this.isError = false});
+}
 
 class RequestAcceptedView extends StatefulWidget {
   final ServiceDetailModel? serviceDetail;
@@ -332,15 +339,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   Future<void> _copyPhoneNumber(String phone) async {
     await Clipboard.setData(ClipboardData(text: phone));
     if (!mounted) return;
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text('Numero copiado para a area de transferencia'),
-          backgroundColor: Colors.green,
-        ),
-      );
+    AppSnackBar.show(context, 'Numero copiado para a area de transferencia');
   }
 
   void _updateRequestCardHeight() {
@@ -481,16 +480,11 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     if (_didShowProviderExpiredMessage || !mounted) return;
     _didShowProviderExpiredMessage = true;
 
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text(
-            'O tempo expirou. Aguardando o solicitante decidir a segunda chamada.',
-          ),
-          backgroundColor: AppColors.vermelho,
-        ),
-      );
+    AppSnackBar.show(
+      context,
+      'O tempo expirou. Aguardando o solicitante decidir a segunda chamada.',
+      isError: true,
+    );
   }
 
   Future<void> _expireAcceptedRequestAfterSecondCall() async {
@@ -519,11 +513,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     }
 
     await _leaveAcceptedView(
-      const SnackBar(
-        content: Text(
-          'A segunda chamada expirou. O servico foi cancelado e o pedido voltou para aberto.',
-        ),
-        backgroundColor: AppColors.vermelho,
+      const _LeaveMessage(
+        'A segunda chamada expirou. O servico foi cancelado e o pedido voltou para aberto.',
+        isError: true,
       ),
     );
   }
@@ -571,7 +563,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
     final serviceId = _resolvedServiceDetail?.id;
     if (serviceId == null) {
-      _showSnackBar('Servico nao encontrado.');
+      AppSnackBar.show(context, 'Servico nao encontrado.', isError: true);
       return;
     }
 
@@ -615,18 +607,17 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       _startAuthenticationCodeCountdown();
       _startAcceptedRequestSync();
 
-      _showSnackBar(
-        'Segunda chamada iniciada. Um novo codigo foi gerado.',
-        backgroundColor: Colors.green,
-      );
+      AppSnackBar.show(context, 'Segunda chamada iniciada. Um novo codigo foi gerado.');
     } catch (error) {
       if (!mounted) return;
 
-      _showSnackBar(
+      AppSnackBar.show(
+        context,
         _friendlyErrorMessage(
           error,
           fallback: 'Nao foi possivel iniciar a segunda chamada.',
         ),
+        isError: true,
       );
     } finally {
       _isHandlingExpiration = false;
@@ -675,7 +666,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
     final serviceId = _resolvedServiceDetail?.id;
     if (serviceId == null) {
-      _showSnackBar('Servico nao encontrado.');
+      AppSnackBar.show(context, 'Servico nao encontrado.', isError: true);
       return;
     }
 
@@ -719,11 +710,13 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       );
     } catch (error) {
       if (!mounted) return;
-      _showSnackBar(
+      AppSnackBar.show(
+        context,
         _friendlyErrorMessage(
           error,
           fallback: 'Nao foi possivel cancelar o servico.',
         ),
+        isError: true,
       );
     } finally {
       if (mounted && !_isLeavingAcceptedView) {
@@ -747,20 +740,6 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     );
   }
 
-  void _showSnackBar(String message,
-      {Color backgroundColor = AppColors.vermelho}) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: backgroundColor,
-        ),
-      );
-  }
-
   String _friendlyErrorMessage(Object error, {required String fallback}) {
     final rawMessage = error.toString().replaceFirst(
           RegExp(r'^Exception:\s*'),
@@ -782,16 +761,10 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
           authenticationCode: _authenticationCode,
           authenticationCodeExpiresAt: _authenticationCodeExpiresAt,
           onSuccess: () async {
-            ScaffoldMessenger.of(pageContext)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Codigo validado. Retornando para a pagina inicial.',
-                  ),
-                  backgroundColor: Colors.green,
-                ),
-              );
+            AppSnackBar.show(
+              pageContext,
+              'Codigo validado. Retornando para a pagina inicial.',
+            );
 
             await _leaveAcceptedView();
           },
@@ -851,13 +824,11 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         final normalizedStatus = latestDetail.status.trim().toUpperCase();
         final wasReopened = normalizedStatus == 'CRIADO';
         await _leaveAcceptedView(
-          SnackBar(
-            content: Text(
-              wasReopened
-                  ? 'O servico foi cancelado e o pedido voltou para aberto.'
-                  : 'Pedido confirmado. Retornando para a pagina inicial.',
-            ),
-            backgroundColor: wasReopened ? AppColors.vermelho : Colors.green,
+          _LeaveMessage(
+            wasReopened
+                ? 'O servico foi cancelado e o pedido voltou para aberto.'
+                : 'Pedido confirmado. Retornando para a pagina inicial.',
+            isError: wasReopened,
           ),
         );
         return;
@@ -878,7 +849,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   }
 
   Future<void> _leaveAcceptedView([
-    SnackBar? snackBar,
+    _LeaveMessage? leaveMessage,
     Object? mainArguments,
   ]) async {
     if (_isLeavingAcceptedView) return;
@@ -895,10 +866,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
     if (!mounted) return;
 
-    if (snackBar != null) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(snackBar);
+    if (leaveMessage != null) {
+      AppSnackBar.show(context, leaveMessage.text, isError: leaveMessage.isError);
     }
 
     Navigator.pushNamedAndRemoveUntil(

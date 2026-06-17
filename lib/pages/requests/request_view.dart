@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
+import '../../core/utils/app_snackbar.dart';
 import '../../core/models/main_page_requests_model.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/services/auth_session_service.dart';
@@ -254,15 +255,11 @@ class _RequestViewState extends State<RequestView> {
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pedido cancelado com sucesso.')),
-      );
+      AppSnackBar.show(context, 'Pedido cancelado com sucesso.');
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-      );
+      AppSnackBar.show(context, e.toString().replaceFirst('Exception: ', ''), isError: true);
     }
   }
 
@@ -353,10 +350,7 @@ class _RequestViewState extends State<RequestView> {
       setState(() {
         _isLoading = false;
       });
-      _showSnackBar(
-        _buildAcceptRequestErrorMessage(e),
-        backgroundColor: AppColors.vermelho,
-      );
+      AppSnackBar.show(context, _buildAcceptRequestErrorMessage(e), isError: true);
     }
   }
 
@@ -412,10 +406,7 @@ class _RequestViewState extends State<RequestView> {
     final acceptedInfo = _acceptedRequestInfo ?? detail?.acceptedRequestInfo;
 
     if (detail == null || acceptedInfo?.hasAcceptedUser != true) {
-      _showSnackBar(
-        'O pedido ainda nao foi aceito.',
-        backgroundColor: AppColors.vermelho,
-      );
+      AppSnackBar.show(context, 'O pedido ainda nao foi aceito.', isError: true);
       return;
     }
 
@@ -531,16 +522,6 @@ class _RequestViewState extends State<RequestView> {
     }
 
     return error.toString().replaceFirst('Exception: ', '');
-  }
-
-  void _showSnackBar(String message, {required Color backgroundColor}) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: backgroundColor),
-      );
   }
 
   void _toggleDrawer() {
