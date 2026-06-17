@@ -6,6 +6,7 @@ import '../../widgets/header.dart';
 import '../../widgets/pending_service_cancellation_obligations.dart';
 import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
+import 'card_buy_page.dart';
 import 'pix_buy_page.dart';
 
 /// Controller para gerenciar a compra de Chronos
@@ -31,7 +32,7 @@ class BuyChronosController extends ChangeNotifier {
   bool isLoading = false;
   bool isLoadingBalance = true;
   final ChronosWalletService _walletService;
-  String selectedPaymentMethod = 'Cartão de Crédito';
+  String selectedPaymentMethod = 'PIX';
   BuyPaymentResponse? pendingPayment;
 
   // Controllers
@@ -870,6 +871,22 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
             ],
           ),
 
+          const SizedBox(height: 16),
+
+          // Seletor de método de pagamento
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Expanded(child: _buildMethodOption('PIX', Icons.pix, controller)),
+                Expanded(child: _buildMethodOption('Cartão', Icons.credit_card, controller)),
+              ],
+            ),
+          ),
+
           const SizedBox(height: 25),
 
           // Botões
@@ -920,13 +937,25 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
                               context,
                               actionLabel: 'comprar Chronos',
                             );
-                            if (!canContinue || !context.mounted) {
+                            if (!canContinue || !context.mounted) return;
+
+                            final amount = int.tryParse(
+                                    controller.amountController.text) ??
+                                0;
+
+                            if (controller.selectedPaymentMethod == 'Cartão') {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => CardBuyPage(
+                                    chronosAmount: amount,
+                                    totalAmount: controller.totalAmount,
+                                  ),
+                                ),
+                              );
                               return;
                             }
 
-                            int amount = int.tryParse(
-                                    controller.amountController.text) ??
-                                0;
                             await controller.purchaseChronos(
                               amount: amount,
                               onSuccess: (response) {
@@ -964,6 +993,38 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMethodOption(
+      String method, IconData icon, BuyChronosController controller) {
+    final selected = controller.selectedPaymentMethod == method;
+    return GestureDetector(
+      onTap: () => controller.setPaymentMethod(method),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFC29503) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon,
+                size: 18,
+                color: selected ? Colors.white : Colors.black54),
+            const SizedBox(width: 6),
+            Text(
+              method,
+              style: TextStyle(
+                color: selected ? Colors.white : Colors.black54,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
