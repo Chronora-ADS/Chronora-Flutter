@@ -153,15 +153,6 @@ class _SideMenuState extends State<SideMenu> {
                           Navigator.pushNamed(context, AppRoutes.notifications);
                         },
                       ),
-                      if (_isModerator)
-                        _buildMenuItem(
-                          icon: 'assets/img/SettingsWhite.png',
-                          title: 'Painel',
-                          onTap: () {
-                            Navigator.pushNamed(
-                                context, AppRoutes.moderatorPanel);
-                          },
-                        ),
                     ],
                   ),
                 ],
@@ -184,6 +175,15 @@ class _SideMenuState extends State<SideMenu> {
                         Navigator.pushNamed(context, AppRoutes.profile);
                       },
                     ),
+                    if (_isModerator)
+                      _buildMenuItem(
+                        icon: 'assets/img/SettingsWhite.png',
+                        title: 'Painel',
+                        onTap: () {
+                          Navigator.pushNamed(
+                              context, AppRoutes.moderatorPanel);
+                        },
+                      ),
                     _buildMenuItem(
                       icon: 'assets/img/SettingsWhite.png',
                       title: 'Configurações',
