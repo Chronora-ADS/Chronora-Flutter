@@ -40,13 +40,13 @@ class ModeratorPanelPage extends StatelessWidget {
             ],
           ),
         ),
-        body: const TabBarView(
+        body: TabBarView(
           children: [
-            _PlaceholderTab(label: 'Usuários'),
-            _PlaceholderTab(label: 'Pedidos'),
-            _PlaceholderTab(label: 'Denúncias'),
-            _PlaceholderTab(label: 'Estatísticas'),
-            _TransacoesTab(),
+            const _PlaceholderTab(label: 'Usuários'),
+            const _PlaceholderTab(label: 'Pedidos'),
+            const _PlaceholderTab(label: 'Denúncias'),
+            const _EstatisticasTab(),
+            const _TransacoesTab(),
           ],
         ),
       ),
@@ -80,6 +80,185 @@ class _PlaceholderTab extends StatelessWidget {
             'Esta aba ainda está sendo implementada.',
             style: TextStyle(color: AppColors.cinza, fontSize: 14),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EstatisticasTab extends StatefulWidget {
+  const _EstatisticasTab();
+
+  @override
+  State<_EstatisticasTab> createState() => _EstatisticasTabState();
+}
+
+class _EstatisticasTabState extends State<_EstatisticasTab>
+    with AutomaticKeepAliveClientMixin {
+  final _service = ModeratorService();
+  late Future<PlatformStats> _future;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _service.getStats();
+  }
+
+  void _reload() => setState(() => _future = _service.getStats());
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return FutureBuilder<PlatformStats>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+              child: CircularProgressIndicator(color: AppColors.amareloClaro));
+        }
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline,
+                      size: 48, color: AppColors.vermelho),
+                  const SizedBox(height: 12),
+                  Text(
+                    snapshot.error.toString().replaceFirst('Exception: ', ''),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.branco),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _reload,
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.amareloUmPoucoEscuro),
+                    child: const Text('Tentar novamente',
+                        style: TextStyle(color: AppColors.branco)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final s = snapshot.data!;
+        return RefreshIndicator(
+          color: AppColors.amareloClaro,
+          onRefresh: () async => _reload(),
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _StatSection(title: 'Usuários', children: [
+                _StatTile(label: 'Total de usuários', value: '${s.totalUsuarios}',
+                    icon: Icons.people),
+              ]),
+              const SizedBox(height: 16),
+              _StatSection(title: 'Pedidos', children: [
+                _StatTile(label: 'Total', value: '${s.totalPedidos}',
+                    icon: Icons.list_alt),
+                _StatTile(label: 'Criados', value: '${s.pedidosCriados}',
+                    icon: Icons.pending_outlined, color: Colors.blueAccent),
+                _StatTile(label: 'Em andamento', value: '${s.pedidosEmAndamento}',
+                    icon: Icons.autorenew, color: Colors.orangeAccent),
+                _StatTile(label: 'Concluídos', value: '${s.pedidosConcluidos}',
+                    icon: Icons.check_circle_outline, color: Colors.greenAccent),
+                _StatTile(label: 'Cancelados', value: '${s.pedidosCancelados}',
+                    icon: Icons.cancel_outlined, color: AppColors.vermelho),
+              ]),
+              const SizedBox(height: 16),
+              _StatSection(title: 'Transações', children: [
+                _StatTile(label: 'Total', value: '${s.totalTransacoes}',
+                    icon: Icons.receipt_long),
+                _StatTile(label: 'Pagas', value: '${s.transacoesPagas}',
+                    icon: Icons.check_circle_outline, color: Colors.greenAccent),
+                _StatTile(label: 'Pendentes', value: '${s.transacoesPendentes}',
+                    icon: Icons.hourglass_empty, color: Colors.orangeAccent),
+                _StatTile(label: 'Falhas', value: '${s.transacoesFalhas}',
+                    icon: Icons.error_outline, color: AppColors.vermelho),
+              ]),
+              const SizedBox(height: 16),
+              _StatSection(title: 'Chronos', children: [
+                _StatTile(label: 'Comprados', value: '${s.totalChronosComprados}',
+                    icon: Icons.arrow_downward, color: Colors.greenAccent),
+                _StatTile(label: 'Vendidos', value: '${s.totalChronosVendidos}',
+                    icon: Icons.arrow_upward, color: Colors.blueAccent),
+                _StatTile(
+                    label: 'Volume financeiro',
+                    value: 'R\$ ${s.volumeFinanceiroTotal.toStringAsFixed(2)}',
+                    icon: Icons.attach_money,
+                    color: AppColors.amareloClaro),
+              ]),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _StatSection extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+
+  const _StatSection({required this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title,
+            style: const TextStyle(
+                color: AppColors.amareloClaro,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2)),
+        const SizedBox(height: 8),
+        ...children,
+      ],
+    );
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _StatTile({
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.color = AppColors.branco,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1B1E),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(width: 12),
+          Expanded(
+              child: Text(label,
+                  style: const TextStyle(color: AppColors.cinza, fontSize: 14))),
+          Text(value,
+              style: TextStyle(
+                  color: color, fontSize: 16, fontWeight: FontWeight.w700)),
         ],
       ),
     );
