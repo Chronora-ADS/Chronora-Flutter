@@ -36,7 +36,7 @@ class ModeratorPanelPage extends StatelessWidget {
               Tab(text: 'Pedidos'),
               Tab(text: 'Denúncias'),
               Tab(text: 'Estatísticas'),
-              Tab(text: 'Transações'),
+              Tab(text: 'Webhooks'),
             ],
           ),
         ),
@@ -725,112 +725,110 @@ class _TransactionCard extends StatelessWidget {
 
   const _TransactionCard({required this.transaction});
 
+  String _timeAgo(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 1) return 'agora mesmo';
+    if (diff.inMinutes < 60) return 'há ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'há ${diff.inHours}h';
+    if (diff.inDays < 7) return 'há ${diff.inDays} dia${diff.inDays > 1 ? 's' : ''}';
+    return DateFormat('dd/MM/yyyy').format(date.toLocal());
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = transaction;
-    final dateFormatted =
-        DateFormat('dd/MM/yyyy HH:mm').format(t.createdAt.toLocal());
 
     Color statusColor;
-    String statusLabel;
-    switch (t.status) {
-      case 'PAID':
-        statusColor = Colors.greenAccent;
-        statusLabel = 'Pago';
-      case 'PENDING':
-        statusColor = Colors.orangeAccent;
-        statusLabel = 'Pendente';
-      default:
-        statusColor = AppColors.vermelho;
-        statusLabel = 'Falhou';
+    IconData statusIcon;
+    String title;
+
+    if (t.isPaid) {
+      statusColor = Colors.greenAccent;
+      statusIcon = t.isBuy ? Icons.arrow_circle_down : Icons.arrow_circle_up;
+      title = t.isBuy
+          ? 'Compra de ${t.chronosAmount} Chronos aprovada'
+          : 'Venda de ${t.chronosAmount} Chronos concluída';
+    } else if (t.isPending) {
+      statusColor = Colors.orangeAccent;
+      statusIcon = Icons.hourglass_top_rounded;
+      title = t.isBuy
+          ? 'Compra de ${t.chronosAmount} Chronos aguardando pagamento'
+          : 'Venda de ${t.chronosAmount} Chronos pendente';
+    } else {
+      statusColor = AppColors.vermelho;
+      statusIcon = Icons.cancel_outlined;
+      title = t.isBuy
+          ? 'Compra de ${t.chronosAmount} Chronos falhou'
+          : 'Venda de ${t.chronosAmount} Chronos recusada';
     }
 
-    final typeLabel = t.isBuy ? 'Compra' : 'Venda';
-    final typeColor = t.isBuy ? Colors.blueAccent : Colors.greenAccent;
     final paymentLabel = t.isPix ? 'PIX' : 'Cartão';
 
-    return Card(
-      color: const Color(0xFF1A1B1E),
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1B1E),
+        borderRadius: BorderRadius.circular(12),
+        border: Border(
+          left: BorderSide(color: statusColor, width: 4),
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    _Chip(label: typeLabel, color: typeColor),
-                    const SizedBox(width: 6),
-                    _Chip(label: paymentLabel, color: AppColors.amareloClaro),
-                  ],
-                ),
-                _Chip(label: statusLabel, color: statusColor),
-              ],
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(statusIcon, color: statusColor, size: 22),
             ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Icon(Icons.person, size: 16, color: AppColors.cinza),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    t.userName,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
                     style: const TextStyle(
                       color: AppColors.branco,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    t.userName,
+                    style: const TextStyle(
+                        color: AppColors.cinza, fontSize: 12),
                     overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                Text(
-                  '#${t.id}',
-                  style: const TextStyle(color: AppColors.cinza, fontSize: 12),
-                ),
-              ],
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      _Chip(label: paymentLabel, color: AppColors.amareloClaro),
+                      const SizedBox(width: 6),
+                      Text(
+                        'R\$ ${t.totalAmount.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          color: AppColors.branco,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 6),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.access_time,
-                        size: 14, color: AppColors.cinza),
-                    const SizedBox(width: 4),
-                    Text(
-                      dateFormatted,
-                      style: const TextStyle(
-                          color: AppColors.cinza, fontSize: 12),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Text(
-                      '${t.chronosAmount} Chronos',
-                      style: const TextStyle(
-                        color: AppColors.amareloClaro,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'R\$ ${t.totalAmount.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        color: AppColors.branco,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            const SizedBox(width: 8),
+            Text(
+              _timeAgo(t.createdAt),
+              style: const TextStyle(color: AppColors.cinza, fontSize: 11),
             ),
           ],
         ),
