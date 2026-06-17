@@ -313,8 +313,8 @@ class _PixSellPageState extends State<PixSellPage> {
                           setState(() {
                             _isProcessing = false;
                           });
-                          showErrorDialog(
-                              'Erro ao processar venda: ${e.toString()}');
+                          final msg = e.toString().replaceFirst('Exception: ', '');
+                          showErrorDialog(msg);
                         }
                       } else {
                         showErrorDialog(
