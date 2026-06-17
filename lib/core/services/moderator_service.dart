@@ -22,6 +22,40 @@ class ModeratorService {
         .toList();
   }
 
+  Future<List<ModeratorUser>> getAllUsers() async {
+    final token = await AuthSessionService.getValidAccessToken();
+    if (token == null) throw Exception('Nao autenticado.');
+
+    final response = await ApiService.get('/moderator/users', token: token);
+
+    if (response.statusCode != 200) {
+      throw Exception(ApiService.extractErrorMessage(response.body,
+          fallback: 'Erro ao carregar usuarios.'));
+    }
+
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => ModeratorUser.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<ModeratorService2>> getAllServices() async {
+    final token = await AuthSessionService.getValidAccessToken();
+    if (token == null) throw Exception('Nao autenticado.');
+
+    final response = await ApiService.get('/moderator/services', token: token);
+
+    if (response.statusCode != 200) {
+      throw Exception(ApiService.extractErrorMessage(response.body,
+          fallback: 'Erro ao carregar pedidos.'));
+    }
+
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => ModeratorService2.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<PlatformStats> getStats() async {
     final token = await AuthSessionService.getValidAccessToken();
     if (token == null) throw Exception('Nao autenticado.');
@@ -127,6 +161,93 @@ class PlatformStats {
       totalChronosComprados: json['totalChronosComprados'] as int,
       totalChronosVendidos: json['totalChronosVendidos'] as int,
       volumeFinanceiroTotal: (json['volumeFinanceiroTotal'] as num).toDouble(),
+    );
+  }
+}
+
+class ModeratorUser {
+  final int id;
+  final String name;
+  final String email;
+  final int timeChronos;
+  final double rating;
+  final String? profileImage;
+  final List<String> roles;
+
+  const ModeratorUser({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.timeChronos,
+    required this.rating,
+    this.profileImage,
+    required this.roles,
+  });
+
+  bool get isModerator => roles.contains('ROLE_MODERATOR');
+
+  factory ModeratorUser.fromJson(Map<String, dynamic> json) {
+    return ModeratorUser(
+      id: json['id'] as int,
+      name: json['name'] as String? ?? 'Sem nome',
+      email: json['email'] as String? ?? '',
+      timeChronos: json['timeChronos'] as int? ?? 0,
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+      profileImage: json['profileImage'] as String?,
+      roles: (json['roles'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+    );
+  }
+}
+
+class ModeratorService2 {
+  final int id;
+  final String title;
+  final String status;
+  final String modality;
+  final int timeChronos;
+  final DateTime deadline;
+  final DateTime postedAt;
+  final String creatorName;
+  final int? creatorId;
+  final String? acceptedName;
+  final int? acceptedId;
+  final List<String> categories;
+
+  const ModeratorService2({
+    required this.id,
+    required this.title,
+    required this.status,
+    required this.modality,
+    required this.timeChronos,
+    required this.deadline,
+    required this.postedAt,
+    required this.creatorName,
+    this.creatorId,
+    this.acceptedName,
+    this.acceptedId,
+    required this.categories,
+  });
+
+  factory ModeratorService2.fromJson(Map<String, dynamic> json) {
+    return ModeratorService2(
+      id: json['id'] as int,
+      title: json['title'] as String,
+      status: json['status'] as String,
+      modality: json['modality'] as String,
+      timeChronos: json['timeChronos'] as int,
+      deadline: DateTime.parse(json['deadline'] as String),
+      postedAt: DateTime.parse(json['postedAt'] as String),
+      creatorName: json['creatorName'] as String? ?? 'Desconhecido',
+      creatorId: json['creatorId'] as int?,
+      acceptedName: json['acceptedName'] as String?,
+      acceptedId: json['acceptedId'] as int?,
+      categories: (json['categories'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
     );
   }
 }

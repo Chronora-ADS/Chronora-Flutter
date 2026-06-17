@@ -29,7 +29,7 @@ class ModeratorPanelPage extends StatelessWidget {
             tabAlignment: TabAlignment.start,
             indicatorColor: AppColors.branco,
             labelColor: AppColors.branco,
-            unselectedLabelColor: AppColors.amareloMuitoEscura,
+            unselectedLabelColor: Color(0xAAE9EAEC),
             labelStyle: TextStyle(fontWeight: FontWeight.w700),
             tabs: [
               Tab(text: 'Usuários'),
@@ -42,8 +42,8 @@ class ModeratorPanelPage extends StatelessWidget {
         ),
         body: TabBarView(
           children: [
-            const _PlaceholderTab(label: 'Usuários'),
-            const _PlaceholderTab(label: 'Pedidos'),
+            const _UsuariosTab(),
+            const _PedidosTab(),
             const _PlaceholderTab(label: 'Denúncias'),
             const _EstatisticasTab(),
             const _TransacoesTab(),
@@ -81,6 +81,367 @@ class _PlaceholderTab extends StatelessWidget {
             style: TextStyle(color: AppColors.cinza, fontSize: 14),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _UsuariosTab extends StatefulWidget {
+  const _UsuariosTab();
+
+  @override
+  State<_UsuariosTab> createState() => _UsuariosTabState();
+}
+
+class _UsuariosTabState extends State<_UsuariosTab>
+    with AutomaticKeepAliveClientMixin {
+  final _service = ModeratorService();
+  late Future<List<ModeratorUser>> _future;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _service.getAllUsers();
+  }
+
+  void _reload() => setState(() => _future = _service.getAllUsers());
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return FutureBuilder<List<ModeratorUser>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+              child: CircularProgressIndicator(color: AppColors.amareloClaro));
+        }
+        if (snapshot.hasError) {
+          return _ErrorView(
+              message: snapshot.error.toString().replaceFirst('Exception: ', ''),
+              onRetry: _reload);
+        }
+        final users = snapshot.data ?? [];
+        if (users.isEmpty) {
+          return const Center(
+              child: Text('Nenhum usuário encontrado.',
+                  style: TextStyle(color: AppColors.cinza, fontSize: 16)));
+        }
+        return RefreshIndicator(
+          color: AppColors.amareloClaro,
+          onRefresh: () async => _reload(),
+          child: ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: users.length,
+            itemBuilder: (context, index) =>
+                _UserCard(user: users[index]),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _UserCard extends StatelessWidget {
+  final ModeratorUser user;
+  const _UserCard({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = user.name.isNotEmpty ? user.name[0].toUpperCase() : '?';
+    final hasPhoto = user.profileImage != null && user.profileImage!.isNotEmpty;
+
+    return Card(
+      color: const Color(0xFF1A1B1E),
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: AppColors.amareloUmPoucoEscuro,
+              backgroundImage: hasPhoto ? NetworkImage(user.profileImage!) : null,
+              child: !hasPhoto
+                  ? Text(initial,
+                      style: const TextStyle(
+                          color: AppColors.branco,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18))
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(user.name,
+                            style: const TextStyle(
+                                color: AppColors.branco,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700),
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                      if (user.isModerator)
+                        const _Chip(label: 'Mod', color: AppColors.amareloClaro),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(user.email,
+                      style: const TextStyle(
+                          color: AppColors.cinza, fontSize: 12),
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.star,
+                          size: 14, color: AppColors.amareloClaro),
+                      const SizedBox(width: 4),
+                      Text(user.rating.toStringAsFixed(1),
+                          style: const TextStyle(
+                              color: AppColors.branco, fontSize: 12)),
+                      const SizedBox(width: 12),
+                      const Icon(Icons.access_time,
+                          size: 14, color: AppColors.cinza),
+                      const SizedBox(width: 4),
+                      Text('${user.timeChronos} Chronos',
+                          style: const TextStyle(
+                              color: AppColors.cinza, fontSize: 12)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PedidosTab extends StatefulWidget {
+  const _PedidosTab();
+
+  @override
+  State<_PedidosTab> createState() => _PedidosTabState();
+}
+
+class _PedidosTabState extends State<_PedidosTab>
+    with AutomaticKeepAliveClientMixin {
+  final _service = ModeratorService();
+  late Future<List<ModeratorService2>> _future;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _service.getAllServices();
+  }
+
+  void _reload() => setState(() => _future = _service.getAllServices());
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return FutureBuilder<List<ModeratorService2>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+              child: CircularProgressIndicator(color: AppColors.amareloClaro));
+        }
+        if (snapshot.hasError) {
+          return _ErrorView(
+              message: snapshot.error.toString().replaceFirst('Exception: ', ''),
+              onRetry: _reload);
+        }
+        final services = snapshot.data ?? [];
+        if (services.isEmpty) {
+          return const Center(
+              child: Text('Nenhum pedido encontrado.',
+                  style: TextStyle(color: AppColors.cinza, fontSize: 16)));
+        }
+        return RefreshIndicator(
+          color: AppColors.amareloClaro,
+          onRefresh: () async => _reload(),
+          child: ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: services.length,
+            itemBuilder: (context, index) =>
+                _ServiceCard(service: services[index]),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ServiceCard extends StatelessWidget {
+  final ModeratorService2 service;
+  const _ServiceCard({required this.service});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = service;
+    final deadlineFormatted =
+        DateFormat('dd/MM/yyyy').format(s.deadline.toLocal());
+
+    Color statusColor;
+    String statusLabel;
+    switch (s.status) {
+      case 'CRIADO':
+        statusColor = Colors.blueAccent;
+        statusLabel = 'Criado';
+      case 'ACEITO':
+        statusColor = Colors.purpleAccent;
+        statusLabel = 'Aceito';
+      case 'EM_ANDAMENTO':
+        statusColor = Colors.orangeAccent;
+        statusLabel = 'Em andamento';
+      case 'CONCLUIDO':
+        statusColor = Colors.greenAccent;
+        statusLabel = 'Concluído';
+      case 'CANCELADO':
+        statusColor = AppColors.vermelho;
+        statusLabel = 'Cancelado';
+      default:
+        statusColor = AppColors.cinza;
+        statusLabel = s.status;
+    }
+
+    final isRemote = s.modality == 'REMOTO';
+
+    return Card(
+      color: const Color(0xFF1A1B1E),
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    _Chip(label: statusLabel, color: statusColor),
+                    const SizedBox(width: 6),
+                    _Chip(
+                      label: isRemote ? 'Remoto' : 'Presencial',
+                      color: isRemote ? Colors.blueAccent : Colors.tealAccent,
+                    ),
+                  ],
+                ),
+                Text('#${s.id}',
+                    style: const TextStyle(
+                        color: AppColors.cinza, fontSize: 12)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(s.title,
+                style: const TextStyle(
+                    color: AppColors.branco,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.person_outline,
+                    size: 14, color: AppColors.cinza),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text('Criador: ${s.creatorName}',
+                      style: const TextStyle(
+                          color: AppColors.cinza, fontSize: 12),
+                      overflow: TextOverflow.ellipsis),
+                ),
+              ],
+            ),
+            if (s.acceptedName != null) ...[
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  const Icon(Icons.handshake_outlined,
+                      size: 14, color: AppColors.cinza),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text('Prestador: ${s.acceptedName}',
+                        style: const TextStyle(
+                            color: AppColors.cinza, fontSize: 12),
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.calendar_today,
+                        size: 13, color: AppColors.cinza),
+                    const SizedBox(width: 4),
+                    Text('Prazo: $deadlineFormatted',
+                        style: const TextStyle(
+                            color: AppColors.cinza, fontSize: 12)),
+                  ],
+                ),
+                Text('${s.timeChronos} Chronos',
+                    style: const TextStyle(
+                        color: AppColors.amareloClaro,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorView extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorView({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: AppColors.vermelho),
+            const SizedBox(height: 12),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.branco)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: onRetry,
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.amareloUmPoucoEscuro),
+              child: const Text('Tentar novamente',
+                  style: TextStyle(color: AppColors.branco)),
+            ),
+          ],
+        ),
       ),
     );
   }
