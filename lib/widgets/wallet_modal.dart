@@ -182,36 +182,6 @@ class _WalletModalState extends State<WalletModal> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: AppColors.branco,
-              border: Border.all(
-                color: AppColors.amareloUmPoucoEscuro,
-                width: 4,
-              ),
-            ),
-            child: InkWell(
-              onTap: () {
-                widget.onClose();
-                Navigator.pushNamed(context, AppRoutes.sellChronos);
-              },
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                child: const Center(
-                  child: Text(
-                    'Vender Chronos',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: AppColors.amareloUmPoucoEscuro,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
