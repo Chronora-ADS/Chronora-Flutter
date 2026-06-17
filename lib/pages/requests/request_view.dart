@@ -37,6 +37,7 @@ class _RequestViewState extends State<RequestView> {
   int? _currentUserId;
   String? _currentUserName;
   int? _currentUserPhone;
+  double? _currentUserRating;
   AcceptedRequestInfo? _acceptedRequestInfo;
   bool _isReadOnly = false;
   bool _showAcceptAction = true;
@@ -144,6 +145,7 @@ class _RequestViewState extends State<RequestView> {
         _currentUserId = currentUser?.id;
         _currentUserName = currentUser?.name;
         _currentUserPhone = currentUser?.phoneNumber;
+        _currentUserRating = currentUser?.rating;
         _serviceDetail = detail;
         _isOwner = isOwner;
         _acceptedRequestInfo = acceptedInfo;
@@ -400,6 +402,7 @@ class _RequestViewState extends State<RequestView> {
             ? _currentUserName!.trim()
             : 'Prestador',
         phoneNumber: _currentUserPhone,
+        rating: _currentUserRating,
       ),
       acceptedAt: DateTime.now().toIso8601String(),
       authenticationCode: backendInfo?.authenticationCode,
@@ -438,6 +441,7 @@ class _RequestViewState extends State<RequestView> {
       'audience': audience,
       'acceptedUserName': acceptedInfo.acceptedUser?.name,
       'acceptedUserPhone': acceptedInfo.acceptedUser?.phoneNumber,
+      'acceptedUserRating': acceptedInfo.acceptedUser?.rating,
       'acceptedAt': acceptedInfo.acceptedAt,
       'authenticationCode': acceptedInfo.authenticationCode,
       'authenticationCodeExpiresAt': acceptedInfo.expiresAt,
@@ -891,23 +895,7 @@ class _RequestViewState extends State<RequestView> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Row(
-                      children: [
-                        Text(
-                          '5.0',
-                          style: TextStyle(
-                            color: AppColors.preto,
-                            fontSize: 14,
-                          ),
-                        ),
-                        SizedBox(width: 4),
-                        Icon(
-                          Icons.star,
-                          color: AppColors.amareloClaro,
-                          size: 16,
-                        ),
-                      ],
-                    ),
+                    _buildRatingRow(detail.userCreator.rating),
                   ],
                 ),
               ),
@@ -915,6 +903,26 @@ class _RequestViewState extends State<RequestView> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildRatingRow(double? rating) {
+    return Row(
+      children: [
+        Text(
+          (rating ?? 0.0).toStringAsFixed(1),
+          style: const TextStyle(
+            color: AppColors.preto,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(width: 4),
+        const Icon(
+          Icons.star,
+          color: AppColors.amareloClaro,
+          size: 16,
+        ),
+      ],
     );
   }
 
@@ -1224,11 +1232,13 @@ class _CurrentUser {
   final int? id;
   final String? name;
   final int? phoneNumber;
+  final double? rating;
 
   const _CurrentUser({
     this.id,
     this.name,
     this.phoneNumber,
+    this.rating,
   });
 
   factory _CurrentUser.fromJson(Map<String, dynamic> json) {
@@ -1236,6 +1246,8 @@ class _CurrentUser {
       id: _toInt(json['id']),
       name: json['name']?.toString(),
       phoneNumber: _toInt(json['phoneNumber']),
+      rating:
+          _toDouble(json['rating'] ?? json['userRating'] ?? json['avaliacao']),
     );
   }
 
@@ -1243,6 +1255,12 @@ class _CurrentUser {
     if (value is int) return value;
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  static double? _toDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value.replaceAll(',', '.'));
     return null;
   }
 }

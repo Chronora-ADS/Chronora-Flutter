@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/service_detail_model.dart';
+import '../../core/models/user_creator.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/pending_service_cancellation_service.dart';
 import '../../widgets/header.dart';
@@ -50,6 +51,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
   String _acceptedUserName = 'Prestador';
   int? _acceptedUserPhone;
+  double? _acceptedUserRating;
+  double? _requesterUserRating;
   DateTime _acceptedAt = DateTime.now();
   String _authenticationCode = '';
   DateTime? _authenticationCodeExpiresAt;
@@ -126,6 +129,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       final acceptedUserName =
           (arguments['acceptedUserName'] as String?)?.trim();
       final acceptedUserPhone = arguments['acceptedUserPhone'];
+      final acceptedUserRating = arguments['acceptedUserRating'];
       final audience = arguments['audience'];
       final isRequesterView = arguments['isRequesterView'] == true;
       final authenticationCode =
@@ -145,6 +149,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
       _acceptedUserPhone =
           _toNullableInt(acceptedUserPhone) ?? _acceptedUserPhone;
+      _acceptedUserRating =
+          _toNullableDouble(acceptedUserRating) ?? _acceptedUserRating;
 
       if (audience is RequestAcceptedAudience) {
         _resolvedAudience = audience;
@@ -179,7 +185,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     _startAuthenticationCodeCountdown();
     _startAcceptedRequestSync();
 
-    if (!_isRequesterView) {
+    if (_isRequesterView) {
+      _loadRequesterUser();
+    } else {
       _loadAcceptedUser();
     }
 
@@ -197,6 +205,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         _acceptedUserName = acceptedUser.name.trim();
       }
       _acceptedUserPhone = acceptedUser.phoneNumber ?? _acceptedUserPhone;
+      _acceptedUserRating = acceptedUser.rating ?? _acceptedUserRating;
     }
 
     final acceptedCode = acceptedRequestInfo?.authenticationCode?.trim();
@@ -256,7 +265,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       _startAuthenticationCodeCountdown();
       _startAcceptedRequestSync();
 
-      if (!_isRequesterView) {
+      if (_isRequesterView) {
+        await _loadRequesterUser();
+      } else {
         await _loadAcceptedUser();
       }
     } catch (_) {
@@ -296,6 +307,14 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     if (value is num) return value.toInt();
     if (value is String) {
       return int.tryParse(value.replaceAll(RegExp(r'\D'), ''));
+    }
+    return null;
+  }
+
+  double? _toNullableDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      return double.tryParse(value.replaceAll(',', '.'));
     }
     return null;
   }
@@ -381,6 +400,38 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             name != null && name.isNotEmpty ? name : _acceptedUserName;
         _acceptedUserPhone = _toNullableInt(resolvedUserData['phoneNumber']) ??
             _acceptedUserPhone;
+        _acceptedUserRating = _toNullableDouble(
+              resolvedUserData['rating'] ??
+                  resolvedUserData['userRating'] ??
+                  resolvedUserData['avaliacao'],
+            ) ??
+            _acceptedUserRating;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _loadRequesterUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null) return;
+
+      final response = await ApiService.get('/user/get', token: token);
+      if (response.statusCode != 200) return;
+
+      final userData = json.decode(response.body) as Map<String, dynamic>;
+      final resolvedUserData = userData['user'] is Map<String, dynamic>
+          ? userData['user'] as Map<String, dynamic>
+          : userData;
+      if (!mounted) return;
+
+      setState(() {
+        _requesterUserRating = _toNullableDouble(
+              resolvedUserData['rating'] ??
+                  resolvedUserData['userRating'] ??
+                  resolvedUserData['avaliacao'],
+            ) ??
+            _requesterUserRating;
       });
     } catch (_) {}
   }
@@ -1236,16 +1287,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Row(
-                  children: [
-                    Text(
-                      '4.9',
-                      style: TextStyle(fontSize: 16, color: AppColors.preto),
-                    ),
-                    SizedBox(width: 3),
-                    Icon(Icons.star, size: 19, color: AppColors.preto),
-                  ],
-                ),
+                _buildRatingRow(_resolveRequesterRating(creator)),
                 if (_isRequesterView) ...[
                   const SizedBox(height: 6),
                   Row(
@@ -1360,7 +1402,12 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   }
 
   Widget _buildAcceptedProviderCard() {
-    final acceptedPhone = _formatPhoneNumber(_acceptedUserPhone);
+    final acceptedUser =
+        _resolvedServiceDetail?.acceptedRequestInfo?.acceptedUser;
+    final acceptedName = _resolveAcceptedUserName(acceptedUser);
+    final acceptedPhone = _formatPhoneNumber(
+      acceptedUser?.phoneNumber ?? _acceptedUserPhone,
+    );
 
     return _InfoCard(
       header: 'Aceito as ${_formatTimeFromDateTime(_acceptedAt)} por:',
@@ -1374,7 +1421,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _acceptedUserName,
+                  acceptedName,
                   style: const TextStyle(
                     fontSize: 18,
                     color: AppColors.preto,
@@ -1382,16 +1429,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Row(
-                  children: [
-                    Text(
-                      '5.0',
-                      style: TextStyle(fontSize: 16, color: AppColors.preto),
-                    ),
-                    SizedBox(width: 3),
-                    Icon(Icons.star, size: 19, color: AppColors.preto),
-                  ],
-                ),
+                _buildRatingRow(_resolveAcceptedUserRating(acceptedUser)),
                 const SizedBox(height: 6),
                 Row(
                   children: [
@@ -1416,6 +1454,40 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         ],
       ),
     );
+  }
+
+  Widget _buildRatingRow(double? rating) {
+    return Row(
+      children: [
+        Text(
+          (rating ?? 0.0).toStringAsFixed(1),
+          style: const TextStyle(fontSize: 16, color: AppColors.preto),
+        ),
+        const SizedBox(width: 3),
+        const Icon(Icons.star, size: 19, color: AppColors.preto),
+      ],
+    );
+  }
+
+  double? _resolveRequesterRating(UserCreator? creator) {
+    if (_isRequesterView) {
+      return _requesterUserRating ?? creator?.rating;
+    }
+
+    return creator?.rating;
+  }
+
+  String _resolveAcceptedUserName(UserCreator? acceptedUser) {
+    final acceptedUserName = acceptedUser?.name.trim();
+    if (acceptedUserName != null && acceptedUserName.isNotEmpty) {
+      return acceptedUserName;
+    }
+
+    return _acceptedUserName;
+  }
+
+  double? _resolveAcceptedUserRating(UserCreator? acceptedUser) {
+    return _acceptedUserRating ?? acceptedUser?.rating;
   }
 
   Widget _buildAuthenticationCodeCard() {
