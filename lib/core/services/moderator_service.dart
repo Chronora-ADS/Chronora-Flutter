@@ -82,6 +82,7 @@ class PaymentTransactionSummary {
   final double totalAmount;
   final DateTime createdAt;
   final bool isPix;
+  final int? mpPaymentId;
 
   const PaymentTransactionSummary({
     required this.id,
@@ -93,6 +94,7 @@ class PaymentTransactionSummary {
     required this.totalAmount,
     required this.createdAt,
     required this.isPix,
+    this.mpPaymentId,
   });
 
   factory PaymentTransactionSummary.fromJson(Map<String, dynamic> json) {
@@ -106,6 +108,7 @@ class PaymentTransactionSummary {
       totalAmount: (json['totalAmount'] as num).toDouble(),
       createdAt: DateTime.parse(json['createdAt'] as String),
       isPix: json['isPix'] as bool? ?? false,
+      mpPaymentId: json['mpPaymentId'] as int?,
     );
   }
 
