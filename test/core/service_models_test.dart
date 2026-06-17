@@ -25,6 +25,7 @@ void main() {
           'id': '9',
           'name': 'Bruno',
           'email': 'bruno@example.com',
+          'rating': 4.2,
         },
         'categories': [
           'Musica',
@@ -38,6 +39,7 @@ void main() {
       expect(service.serviceImageUrl, '/uploads/aula.png');
       expect(service.status, 'ACEITO');
       expect(service.userAccepted?.id, 9);
+      expect(service.userAccepted?.rating, 4.2);
       expect(service.userCreator.rating, 4.5);
       expect(
         service.categoryEntities.map((category) => category.name),
@@ -95,19 +97,47 @@ void main() {
           'id': 7,
           'name': 'Ana',
           'phoneNumber': 47999999999,
+          'rating': 3.8,
         },
         'userAccepted': {
           'id': 9,
           'name': 'Bruno',
           'phoneNumber': 47988888888,
+          'rating': '4,7',
         },
         'verificationCode': '1234',
         'verificationCodeExpiresAt': '2026-05-29T10:02:00',
       });
 
       expect(service.verificationCodeCallCount, 2);
+      expect(service.userCreator.rating, 3.8);
       expect(service.acceptedRequestInfo?.authenticationCode, '1234');
       expect(service.acceptedRequestInfo?.acceptedUser?.name, 'Bruno');
+      expect(service.acceptedRequestInfo?.acceptedUser?.rating, 4.7);
+    });
+
+    test('parseia rating de usuario aceito em payload plano', () {
+      final service = ServiceDetailModel.fromJson({
+        'id': 42,
+        'title': 'Aula de violao',
+        'description': 'Aula introdutoria',
+        'timeChronos': 3,
+        'deadline': '2026-05-30',
+        'modality': 'REMOTO',
+        'status': 'ACEITO',
+        'userCreator': {
+          'id': 7,
+          'name': 'Ana',
+        },
+        'acceptedUserId': 9,
+        'acceptedUserName': 'Bruno',
+        'acceptedUserPhone': 47988888888,
+        'acceptedUserRating': '4,6',
+      });
+
+      expect(service.acceptedRequestInfo?.acceptedUser?.id, 9);
+      expect(service.acceptedRequestInfo?.acceptedUser?.name, 'Bruno');
+      expect(service.acceptedRequestInfo?.acceptedUser?.rating, 4.6);
     });
   });
 }
