@@ -110,10 +110,22 @@ class ChronosWalletService {
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final paymentMethodId = data['payment_method_id'] as String?
+        ?? _inferPaymentMethod(cardNumber);
+
     return CardTokenResult(
       token: data['id'] as String,
-      paymentMethodId: data['payment_method_id'] as String,
+      paymentMethodId: paymentMethodId,
     );
+  }
+
+  String _inferPaymentMethod(String cardNumber) {
+    final firstDigit = cardNumber.replaceAll(' ', '')[0];
+    switch (firstDigit) {
+      case '4': return 'visa';
+      case '3': return 'amex';
+      default:  return 'master';
+    }
   }
 
   Future<CardBuyResponse> createCardBuyPayment({
