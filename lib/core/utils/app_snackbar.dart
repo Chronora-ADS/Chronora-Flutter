@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 
@@ -20,6 +22,7 @@ class AppSnackBar {
       builder: (_) => _TopBanner(
         message: message,
         isError: isError,
+        duration: duration,
         onDismiss: () {
           entry.remove();
           if (_current == entry) _current = null;
@@ -29,24 +32,19 @@ class AppSnackBar {
 
     _current = entry;
     overlay.insert(entry);
-
-    Future.delayed(duration, () {
-      if (_current == entry) {
-        entry.remove();
-        _current = null;
-      }
-    });
   }
 }
 
 class _TopBanner extends StatefulWidget {
   final String message;
   final bool isError;
+  final Duration duration;
   final VoidCallback onDismiss;
 
   const _TopBanner({
     required this.message,
     required this.isError,
+    required this.duration,
     required this.onDismiss,
   });
 
@@ -58,6 +56,7 @@ class _TopBannerState extends State<_TopBanner>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Offset> _slide;
+  Timer? _dismissTimer;
 
   @override
   void initState() {
@@ -71,10 +70,12 @@ class _TopBannerState extends State<_TopBanner>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
     _controller.forward();
+    _dismissTimer = Timer(widget.duration, widget.onDismiss);
   }
 
   @override
   void dispose() {
+    _dismissTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
