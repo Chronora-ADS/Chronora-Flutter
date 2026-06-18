@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/services/chronos_wallet_service.dart';
+import '../../core/utils/app_snackbar.dart';
 import 'buy_success_page.dart';
 
 class CardBuyPage extends StatefulWidget {
@@ -81,34 +82,15 @@ class _CardBuyPageState extends State<CardBuyPage> {
           ),
         );
       } else {
-        _showError('Pagamento em processamento. Aguarde a confirmação.');
+        if (mounted) AppSnackBar.show(context, 'Pagamento em processamento. Aguarde a confirmação.');
       }
     } catch (e) {
-      if (mounted) _showError(e.toString().replaceFirst('Exception: ', ''));
+      if (mounted) AppSnackBar.show(context, e.toString().replaceFirst('Exception: ', ''), isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _showError(String message) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        title: const Text('Erro no pagamento',
-            style: TextStyle(color: AppColors.branco)),
-        content: Text(message,
-            style: const TextStyle(color: AppColors.branco, fontSize: 14)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK',
-                style: TextStyle(color: AppColors.amareloClaro)),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
