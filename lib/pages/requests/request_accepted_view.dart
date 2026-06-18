@@ -464,7 +464,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     }
 
     if (_isAuthenticationCodeExpired) {
-      _handleAuthenticationCodeExpired();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _handleAuthenticationCodeExpired();
+      });
       return;
     }
 

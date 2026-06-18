@@ -232,7 +232,7 @@ class _RequestViewState extends State<RequestView> {
         throw Exception('Usuario nao autenticado.');
       }
 
-      final response = detail?.acceptedRequestInfo?.hasAcceptedUser != null
+      final response = detail?.acceptedRequestInfo?.hasAcceptedUser == true
           ? await ApiService.put(
               '/service/cancelService/${detail!.id}',
               {},
