@@ -6,7 +6,6 @@ import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/utils/app_snackbar.dart';
-import '../../core/utils/backend_date_time_parser.dart';
 import '../../core/models/main_page_requests_model.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/services/auth_session_service.dart';
@@ -493,21 +492,7 @@ class _RequestViewState extends State<RequestView> {
   }
 
   bool _canOpenAcceptedRequest(AcceptedRequestInfo? acceptedInfo) {
-    if (acceptedInfo?.hasAcceptedUser != true) {
-      return false;
-    }
-
-    final code = acceptedInfo?.authenticationCode?.trim();
-    final expiresAt = acceptedInfo?.expiresAt?.trim();
-    if (code == null ||
-        !RegExp(r'^\d{4}$').hasMatch(code) ||
-        expiresAt == null ||
-        expiresAt.isEmpty) {
-      return false;
-    }
-
-    final parsedExpiresAt = BackendDateTimeParser.parse(expiresAt);
-    return parsedExpiresAt == null || parsedExpiresAt.isAfter(DateTime.now());
+    return acceptedInfo?.hasAcceptedUser == true;
   }
 
   String _buildAcceptRequestErrorMessage(Object error) {
