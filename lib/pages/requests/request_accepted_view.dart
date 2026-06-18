@@ -459,6 +459,13 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     }
 
     if (_isAuthenticationCodeExpired) {
+      // Se o service detail ainda será carregado do backend, aguardar o
+      // carregamento para ter o verificationCodeCallCount atualizado antes
+      // de tratar a expiração (evita abrir o dialog de 1ª chamada quando
+      // já foi feita a 2ª chamada).
+      if (_resolvedServiceDetail == null && _serviceId != null) {
+        return;
+      }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _handleAuthenticationCodeExpired();
       });
@@ -920,7 +927,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       });
       _syncRemainingAuthenticationCodeTime();
 
-      if (_isAuthenticationCodeExpired) {
+      if (_isAuthenticationCodeExpired &&
+          !_isHandlingExpiration &&
+          !_isSecondCallPromptOpen) {
         await _handleAuthenticationCodeExpired();
       }
     } catch (_) {}
