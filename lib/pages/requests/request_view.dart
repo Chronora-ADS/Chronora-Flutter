@@ -489,21 +489,7 @@ class _RequestViewState extends State<RequestView> {
   }
 
   bool _canOpenAcceptedRequest(AcceptedRequestInfo? acceptedInfo) {
-    if (acceptedInfo?.hasAcceptedUser != true) {
-      return false;
-    }
-
-    final code = acceptedInfo?.authenticationCode?.trim();
-    final expiresAt = acceptedInfo?.expiresAt?.trim();
-    if (code == null ||
-        !RegExp(r'^\d{4}$').hasMatch(code) ||
-        expiresAt == null ||
-        expiresAt.isEmpty) {
-      return false;
-    }
-
-    final parsedExpiresAt = DateTime.tryParse(expiresAt);
-    return parsedExpiresAt == null || parsedExpiresAt.isAfter(DateTime.now());
+    return acceptedInfo?.hasAcceptedUser == true;
   }
 
   String _buildAcceptRequestErrorMessage(Object error) {
