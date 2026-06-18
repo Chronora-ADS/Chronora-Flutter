@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/chronos_wallet_service.dart';
+import '../../core/utils/app_snackbar.dart';
 import '../../widgets/header.dart';
 import '../../widgets/pending_service_cancellation_obligations.dart';
 import '../../widgets/animated_side_menu_overlay.dart';
@@ -462,33 +463,6 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
     });
   }
 
-  void showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: AppColors.preto,
-          title: const Text(
-            'Erro',
-            style: TextStyle(color: AppColors.branco),
-          ),
-          content: Text(
-            message,
-            style: const TextStyle(color: AppColors.branco),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'OK',
-                style: TextStyle(color: AppColors.amareloClaro),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   Widget _buildBackgroundImages() {
     return Stack(
@@ -973,7 +947,7 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
                                 );
                               },
                               onError: (err) {
-                                showErrorDialog(err);
+                                AppSnackBar.show(context, err, isError: true);
                               },
                             );
                           }

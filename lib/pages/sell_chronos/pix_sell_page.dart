@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/chronos_wallet_service.dart';
+import '../../core/utils/app_snackbar.dart';
 import '../../widgets/header.dart';
 import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
@@ -63,34 +64,6 @@ class _PixSellPageState extends State<PixSellPage> {
     setState(() {
       _isWalletOpen = false;
     });
-  }
-
-  void showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: AppColors.preto,
-          title: const Text(
-            'Erro',
-            style: TextStyle(color: AppColors.branco),
-          ),
-          content: Text(
-            message,
-            style: const TextStyle(color: AppColors.branco),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'OK',
-                style: TextStyle(color: AppColors.amareloClaro),
-              ),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   Widget _buildBackgroundImages() {
@@ -314,11 +287,10 @@ class _PixSellPageState extends State<PixSellPage> {
                             _isProcessing = false;
                           });
                           final msg = e.toString().replaceFirst('Exception: ', '');
-                          showErrorDialog(msg);
+                          if (mounted) AppSnackBar.show(context, msg, isError: true);
                         }
                       } else {
-                        showErrorDialog(
-                            'Chave PIX inválida. Verifique os dados informados.');
+                        AppSnackBar.show(context, 'Chave PIX inválida. Verifique os dados informados.', isError: true);
                       }
                     },
               style: ElevatedButton.styleFrom(

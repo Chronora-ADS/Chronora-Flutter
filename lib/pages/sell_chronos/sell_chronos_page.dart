@@ -268,33 +268,6 @@ class _SellChronosPageState extends State<SellChronosPage> {
     });
   }
 
-  void showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: AppColors.preto,
-          title: const Text(
-            'Erro',
-            style: TextStyle(color: AppColors.branco),
-          ),
-          content: Text(
-            message,
-            style: const TextStyle(color: AppColors.branco),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'OK',
-                style: TextStyle(color: AppColors.amareloClaro),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   Widget _buildBackgroundImages() {
     return Stack(
