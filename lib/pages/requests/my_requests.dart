@@ -27,6 +27,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     'CRIADO',
     'ACEITO',
     'EM_ANDAMENTO',
+    'AGUARDANDO_CONFIRMACAO',
     'CONCLUIDO',
     'CANCELADO',
   ];
@@ -781,6 +782,8 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         return Icons.check_circle_outline;
       case 'EM_ANDAMENTO':
         return Icons.timelapse_outlined;
+      case 'AGUARDANDO_CONFIRMACAO':
+        return Icons.hourglass_bottom_outlined;
       case 'CONCLUIDO':
         return Icons.task_alt_outlined;
       case 'CANCELADO':
@@ -1210,7 +1213,8 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
               ServiceCard(
                 service: service,
                 onView: () async {
-                  if (status == 'EM_ANDAMENTO') {
+                  if (status == 'EM_ANDAMENTO' ||
+                      status == 'AGUARDANDO_CONFIRMACAO') {
                     await Navigator.pushNamed(
                       context,
                       AppRoutes.orderInProgress,
@@ -1282,6 +1286,8 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         return 'Pedidos Aceitos';
       case 'EM_ANDAMENTO':
         return 'Pedidos em Andamento';
+      case 'AGUARDANDO_CONFIRMACAO':
+        return 'Aguardando Confirmacao';
       case 'CONCLUIDO':
         return 'Pedidos Concluidos';
       case 'CANCELADO':
@@ -1299,6 +1305,8 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         return 'aceito';
       case 'EM_ANDAMENTO':
         return 'em andamento';
+      case 'AGUARDANDO_CONFIRMACAO':
+        return 'aguardando confirmacao';
       case 'CONCLUIDO':
         return 'concluido';
       case 'CANCELADO':
@@ -1316,6 +1324,8 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         return 'Nenhum pedido aceito encontrado.';
       case 'EM_ANDAMENTO':
         return 'Nenhum pedido em andamento encontrado.';
+      case 'AGUARDANDO_CONFIRMACAO':
+        return 'Nenhum pedido aguardando confirmacao encontrado.';
       case 'CONCLUIDO':
         return 'Nenhum pedido concluido encontrado.';
       case 'CANCELADO':
