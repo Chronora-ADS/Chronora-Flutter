@@ -1210,6 +1210,16 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
               ServiceCard(
                 service: service,
                 onView: () async {
+                  if (status == 'EM_ANDAMENTO') {
+                    await Navigator.pushNamed(
+                      context,
+                      AppRoutes.orderInProgress,
+                      arguments: {'serviceId': service.id},
+                    );
+                    await _loadMyRequests();
+                    return;
+                  }
+
                   final result = await Navigator.pushNamed(
                     context,
                     '${AppRoutes.requestView}/${service.id}',
