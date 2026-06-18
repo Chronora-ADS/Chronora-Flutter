@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
 import '../../core/services/chronos_wallet_service.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../widgets/header.dart';
