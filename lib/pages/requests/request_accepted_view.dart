@@ -14,6 +14,7 @@ import '../../core/utils/backend_date_time_parser.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/pending_service_cancellation_service.dart';
 import '../../widgets/header.dart';
+import '../../widgets/progress_tracking_card.dart';
 import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
 
@@ -149,8 +150,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
               (arguments['verificationCodeExpiresAt'] as String?)?.trim() ??
               (arguments['expiresAt'] as String?)?.trim();
       final acceptedAt = arguments['acceptedAt'];
-      final verificationCodeCallCount =
-          _toNullableInt(arguments['verificationCodeCallCount']);
+      final verificationCodeCallCount = _toNullableInt(
+        arguments['verificationCodeCallCount'],
+      );
 
       if (acceptedUserName != null && acceptedUserName.isNotEmpty) {
         _acceptedUserName = acceptedUserName;
@@ -249,8 +251,10 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         return;
       }
 
-      final response =
-          await ApiService.get('/service/get/$serviceId', token: token);
+      final response = await ApiService.get(
+        '/service/get/$serviceId',
+        token: token,
+      );
       if (response.statusCode != 200) {
         return;
       }
@@ -683,7 +687,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       _startAcceptedRequestSync();
 
       AppSnackBar.show(
-          context, 'Segunda chamada iniciada. Um novo codigo foi gerado.');
+        context,
+        'Segunda chamada iniciada. Um novo codigo foi gerado.',
+      );
     } catch (error) {
       if (!mounted) return;
 
@@ -777,13 +783,10 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       );
       await PendingServiceCancellationStore.upsert(pendingJustification);
 
-      await _leaveAcceptedView(
-        null,
-        {
-          'pendingServiceCancellationJustification':
-              pendingJustification.toJson(),
-        },
-      );
+      await _leaveAcceptedView(null, {
+        'pendingServiceCancellationJustification':
+            pendingJustification.toJson(),
+      });
     } catch (error) {
       if (!mounted) return;
       AppSnackBar.show(
@@ -877,8 +880,10 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         return;
       }
 
-      final response =
-          await ApiService.get('/service/get/$serviceId', token: token);
+      final response = await ApiService.get(
+        '/service/get/$serviceId',
+        token: token,
+      );
       if (response.statusCode != 200) {
         return;
       }
@@ -943,8 +948,11 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     if (!mounted) return;
 
     if (leaveMessage != null) {
-      AppSnackBar.show(context, leaveMessage.text,
-          isError: leaveMessage.isError);
+      AppSnackBar.show(
+        context,
+        leaveMessage.text,
+        isError: leaveMessage.isError,
+      );
     }
 
     Navigator.pushNamedAndRemoveUntil(
@@ -1040,12 +1048,17 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       children: [
         Column(
           children: [
-            KeyedSubtree(
-              key: _requestCardKey,
-              child: _buildRequestCard(),
-            ),
+            KeyedSubtree(key: _requestCardKey, child: _buildRequestCard()),
             const SizedBox(height: 16),
             _buildPosterCard(),
+            if (_resolvedServiceDetail != null) ...[
+              const SizedBox(height: 12),
+              ProgressTrackingCard(
+                trackingType: _resolvedServiceDetail!.trackingType,
+                trackingDescription:
+                    _resolvedServiceDetail!.trackingDescription,
+              ),
+            ],
             if (_isRequesterView) ...[
               const SizedBox(height: 12),
               _buildAcceptedProviderCard(),
@@ -1312,8 +1325,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   }
 
   Widget _buildCalloutCard() {
-    final phone =
-        _formatPhoneNumber(_resolvedServiceDetail?.userCreator.phoneNumber);
+    final phone = _formatPhoneNumber(
+      _resolvedServiceDetail?.userCreator.phoneNumber,
+    );
 
     return Container(
       width: double.infinity,
@@ -1365,8 +1379,10 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
                 onTap: () => _copyPhoneNumber(phone),
                 borderRadius: BorderRadius.circular(8),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -1492,17 +1508,10 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
           Expanded(
             child: Text(
               'Codigo de autenticacao de inicio',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.preto,
-              ),
+              style: TextStyle(fontSize: 14, color: AppColors.preto),
             ),
           ),
-          Icon(
-            Icons.help,
-            size: 18,
-            color: AppColors.preto,
-          ),
+          Icon(Icons.help, size: 18, color: AppColors.preto),
         ],
       ),
       child: Padding(
@@ -1595,10 +1604,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         ),
         child: const Text(
           'Iniciar pedido',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-          ),
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -1623,10 +1629,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         ),
         child: Text(
           _isCancellingService ? 'Cancelando servico...' : 'Cancelar servico',
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-          ),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -1652,11 +1655,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       child: Image.asset(
         'assets/img/Paintbrush.png',
         fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => const Icon(
-          Icons.image,
-          color: AppColors.cinza,
-          size: 40,
-        ),
+        errorBuilder: (_, __, ___) =>
+            const Icon(Icons.image, color: AppColors.cinza, size: 40),
       ),
     );
   }
@@ -1838,10 +1838,7 @@ class _InfoCard extends StatelessWidget {
           headerWidget ??
               Text(
                 header,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.preto,
-                ),
+                style: const TextStyle(fontSize: 14, color: AppColors.preto),
               ),
           const SizedBox(height: 4),
           child,
@@ -1854,9 +1851,7 @@ class _InfoCard extends StatelessWidget {
 class _TimeExpiredActionDialog extends StatefulWidget {
   final Duration decisionTimeout;
 
-  const _TimeExpiredActionDialog({
-    required this.decisionTimeout,
-  });
+  const _TimeExpiredActionDialog({required this.decisionTimeout});
 
   @override
   State<_TimeExpiredActionDialog> createState() =>
@@ -1951,10 +1946,7 @@ class _TimeExpiredActionDialogState extends State<_TimeExpiredActionDialog> {
           decoration: BoxDecoration(
             color: AppColors.branco,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: AppColors.amareloUmPoucoEscuro,
-              width: 2,
-            ),
+            border: Border.all(color: AppColors.amareloUmPoucoEscuro, width: 2),
             boxShadow: const [
               BoxShadow(
                 color: Colors.black54,
@@ -1994,12 +1986,12 @@ class _TimeExpiredActionDialogState extends State<_TimeExpiredActionDialog> {
               ),
               const SizedBox(height: 14),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
-                  color: AppColors.amareloUmPoucoEscuro.withValues(
-                    alpha: 0.12,
-                  ),
+                  color: AppColors.amareloUmPoucoEscuro.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: AppColors.amareloUmPoucoEscuro.withValues(
@@ -2035,9 +2027,7 @@ class _TimeExpiredActionDialogState extends State<_TimeExpiredActionDialog> {
                   final cancelButton = OutlinedButton(
                     onPressed: _didSelectAction
                         ? null
-                        : () => _selectAction(
-                              _ExpiredCodeAction.cancelService,
-                            ),
+                        : () => _selectAction(_ExpiredCodeAction.cancelService),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.vermelho,
                       side: const BorderSide(
@@ -2058,9 +2048,7 @@ class _TimeExpiredActionDialogState extends State<_TimeExpiredActionDialog> {
                   final secondCallButton = ElevatedButton(
                     onPressed: _didSelectAction
                         ? null
-                        : () => _selectAction(
-                              _ExpiredCodeAction.secondCall,
-                            ),
+                        : () => _selectAction(_ExpiredCodeAction.secondCall),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.amareloUmPoucoEscuro,
                       foregroundColor: AppColors.branco,
@@ -2122,10 +2110,7 @@ class _CancelServiceConfirmationDialog extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.branco,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: AppColors.vermelho,
-              width: 2,
-            ),
+            border: Border.all(color: AppColors.vermelho, width: 2),
             boxShadow: const [
               BoxShadow(
                 color: Colors.black54,
@@ -2419,10 +2404,7 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
           decoration: BoxDecoration(
             color: AppColors.branco,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: AppColors.amareloUmPoucoEscuro,
-              width: 2,
-            ),
+            border: Border.all(color: AppColors.amareloUmPoucoEscuro, width: 2),
             boxShadow: const [
               BoxShadow(
                 color: Colors.black54,
@@ -2491,8 +2473,9 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
                       counterText: '',
                       filled: true,
                       fillColor: Colors.white,
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 14),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: const BorderSide(color: AppColors.cinza),

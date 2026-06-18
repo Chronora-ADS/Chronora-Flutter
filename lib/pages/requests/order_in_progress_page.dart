@@ -9,6 +9,7 @@ import '../../core/constants/app_routes.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/services/api_service.dart';
 import '../../widgets/header.dart';
+import '../../widgets/progress_tracking_card.dart';
 import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
 import 'order_confirmation_page.dart';
@@ -17,11 +18,7 @@ class OrderInProgressPage extends StatefulWidget {
   final ServiceDetailModel? serviceDetail;
   final int? serviceId;
 
-  const OrderInProgressPage({
-    super.key,
-    this.serviceDetail,
-    this.serviceId,
-  });
+  const OrderInProgressPage({super.key, this.serviceDetail, this.serviceId});
 
   @override
   State<OrderInProgressPage> createState() => _OrderInProgressPageState();
@@ -320,6 +317,13 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
         ),
         const SizedBox(height: 20),
         _buildCard(),
+        if (_serviceDetail != null) ...[
+          const SizedBox(height: 16),
+          ProgressTrackingCard(
+            trackingType: _serviceDetail!.trackingType,
+            trackingDescription: _serviceDetail!.trackingDescription,
+          ),
+        ],
         const SizedBox(height: 16),
         if (_isAwaitingConfirmation && !_isProvider) _buildAwaitingBanner(),
         const SizedBox(height: 16),
@@ -348,10 +352,7 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
         borderRadius: BorderRadius.circular(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildCardImage(detail),
-            _buildCardInfo(detail),
-          ],
+          children: [_buildCardImage(detail), _buildCardInfo(detail)],
         ),
       ),
     );
@@ -417,11 +418,8 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
       child: Image.asset(
         'assets/img/Paintbrush.png',
         fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => const Icon(
-          Icons.image,
-          color: AppColors.branco,
-          size: 40,
-        ),
+        errorBuilder: (_, __, ___) =>
+            const Icon(Icons.image, color: AppColors.branco, size: 40),
       ),
     );
   }
@@ -569,10 +567,7 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
                   ? 'Aguardando confirmacao...'
                   : 'Concluir pedido')
               : 'Finalizar pedido',
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-          ),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -595,10 +590,7 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
         ),
         child: const Text(
           'Cancelar pedido',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-          ),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
       ),
     );

@@ -11,6 +11,7 @@ import '../../core/models/service_detail_model.dart';
 import '../../core/services/auth_session_service.dart';
 import '../../widgets/header.dart';
 import '../../widgets/pending_service_cancellation_obligations.dart';
+import '../../widgets/progress_tracking_card.dart';
 import '../../widgets/service_image.dart';
 import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
@@ -20,11 +21,7 @@ class RequestView extends StatefulWidget {
   final int? serviceId;
   final Service? service;
 
-  const RequestView({
-    super.key,
-    this.serviceId,
-    this.service,
-  });
+  const RequestView({super.key, this.serviceId, this.service});
 
   @override
   State<RequestView> createState() => _RequestViewState();
@@ -118,8 +115,10 @@ class _RequestViewState extends State<RequestView> {
       }
 
       final currentUser = await _fetchCurrentUser(token);
-      final response =
-          await ApiService.get('/service/get/$serviceId', token: token);
+      final response = await ApiService.get(
+        '/service/get/$serviceId',
+        token: token,
+      );
       if (response.statusCode != 200) {
         throw Exception(
           ApiService.extractErrorMessage(
@@ -257,8 +256,11 @@ class _RequestViewState extends State<RequestView> {
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      AppSnackBar.show(context, e.toString().replaceFirst('Exception: ', ''),
-          isError: true);
+      AppSnackBar.show(
+        context,
+        e.toString().replaceFirst('Exception: ', ''),
+        isError: true,
+      );
     }
   }
 
@@ -349,8 +351,11 @@ class _RequestViewState extends State<RequestView> {
       setState(() {
         _isLoading = false;
       });
-      AppSnackBar.show(context, _buildAcceptRequestErrorMessage(e),
-          isError: true);
+      AppSnackBar.show(
+        context,
+        _buildAcceptRequestErrorMessage(e),
+        isError: true,
+      );
     }
   }
 
@@ -358,8 +363,10 @@ class _RequestViewState extends State<RequestView> {
     int serviceId,
     String token,
   ) async {
-    final response =
-        await ApiService.get('/service/get/$serviceId', token: token);
+    final response = await ApiService.get(
+      '/service/get/$serviceId',
+      token: token,
+    );
     if (response.statusCode != 200) {
       return null;
     }
@@ -407,8 +414,11 @@ class _RequestViewState extends State<RequestView> {
     final acceptedInfo = _acceptedRequestInfo ?? detail?.acceptedRequestInfo;
 
     if (detail == null || acceptedInfo?.hasAcceptedUser != true) {
-      AppSnackBar.show(context, 'O pedido ainda nao foi aceito.',
-          isError: true);
+      AppSnackBar.show(
+        context,
+        'O pedido ainda nao foi aceito.',
+        isError: true,
+      );
       return;
     }
 
@@ -650,6 +660,11 @@ class _RequestViewState extends State<RequestView> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildRequestCard(detail),
+        const SizedBox(height: 12),
+        ProgressTrackingCard(
+          trackingType: detail.trackingType,
+          trackingDescription: detail.trackingDescription,
+        ),
         if (detail.categoryEntities.isNotEmpty) ...[
           const SizedBox(height: 5),
           _buildCategoryList(detail),
@@ -806,10 +821,7 @@ class _RequestViewState extends State<RequestView> {
       ),
       child: Text(
         text,
-        style: const TextStyle(
-          color: AppColors.preto,
-          fontSize: 16,
-        ),
+        style: const TextStyle(color: AppColors.preto, fontSize: 16),
       ),
     );
   }
@@ -877,17 +889,10 @@ class _RequestViewState extends State<RequestView> {
       children: [
         Text(
           (rating ?? 0.0).toStringAsFixed(1),
-          style: const TextStyle(
-            color: AppColors.preto,
-            fontSize: 14,
-          ),
+          style: const TextStyle(color: AppColors.preto, fontSize: 14),
         ),
         const SizedBox(width: 4),
-        const Icon(
-          Icons.star,
-          color: AppColors.amareloClaro,
-          size: 16,
-        ),
+        const Icon(Icons.star, color: AppColors.amareloClaro, size: 16),
       ],
     );
   }
@@ -976,10 +981,7 @@ class _RequestViewState extends State<RequestView> {
               ),
               child: const Text(
                 'Ver pedido aceito',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -1200,20 +1202,16 @@ class _CurrentUser {
   final int? phoneNumber;
   final double? rating;
 
-  const _CurrentUser({
-    this.id,
-    this.name,
-    this.phoneNumber,
-    this.rating,
-  });
+  const _CurrentUser({this.id, this.name, this.phoneNumber, this.rating});
 
   factory _CurrentUser.fromJson(Map<String, dynamic> json) {
     return _CurrentUser(
       id: _toInt(json['id']),
       name: json['name']?.toString(),
       phoneNumber: _toInt(json['phoneNumber']),
-      rating:
-          _toDouble(json['rating'] ?? json['userRating'] ?? json['avaliacao']),
+      rating: _toDouble(
+        json['rating'] ?? json['userRating'] ?? json['avaliacao'],
+      ),
     );
   }
 
