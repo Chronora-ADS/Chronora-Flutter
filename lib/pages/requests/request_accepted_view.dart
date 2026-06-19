@@ -873,6 +873,14 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       }
 
       final latestDetail = ServiceDetailModel.fromJson(decoded);
+
+      // Descarta dados desatualizados do sync para não reverter a contagem de
+      // chamadas já confirmada localmente (evita reabrir dialog de segunda
+      // chamada com dados da 1ª chamada que chegaram com atraso do backend).
+      if (latestDetail.verificationCodeCallCount < _authenticationCodeCallCount) {
+        return;
+      }
+
       final latestAcceptedInfo = latestDetail.acceptedRequestInfo;
       final hasActiveAcceptedRequest =
           latestAcceptedInfo?.hasAcceptedUser == true &&
