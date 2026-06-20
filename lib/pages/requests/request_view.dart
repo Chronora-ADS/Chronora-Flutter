@@ -945,6 +945,9 @@ class _RequestViewState extends State<RequestView> {
     final normalizedStatus = detail.status.trim().toUpperCase();
     final isTerminal =
         normalizedStatus == 'CONCLUIDO' || normalizedStatus == 'CANCELADO';
+    final parsedDeadline = DateTime.tryParse(detail.deadline.trim());
+    final isDeadlineExpired =
+        parsedDeadline != null && parsedDeadline.isBefore(DateTime.now());
     if (_isOwner && detail.id != null && !isTerminal) {
       return Column(
         children: [
@@ -1030,7 +1033,7 @@ class _RequestViewState extends State<RequestView> {
               ),
             ),
           ),
-          if (normalizedStatus == 'CRIADO') ...[
+          if (normalizedStatus == 'CRIADO' && isDeadlineExpired) ...[
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
