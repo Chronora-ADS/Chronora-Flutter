@@ -9,6 +9,7 @@ import '../../core/utils/app_snackbar.dart';
 import '../../core/models/main_page_requests_model.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/services/auth_session_service.dart';
+import '../../core/services/service_deadline_controller.dart';
 import '../../widgets/header.dart';
 import '../../widgets/pending_service_cancellation_obligations.dart';
 import '../../widgets/service_image.dart';
@@ -259,6 +260,55 @@ class _RequestViewState extends State<RequestView> {
       if (!mounted) return;
       AppSnackBar.show(context, e.toString().replaceFirst('Exception: ', ''),
           isError: true);
+    }
+  }
+
+  Future<void> _renewDeadline() async {
+    final detail = _serviceDetail;
+    if (detail?.id == null) return;
+
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day).add(
+      const Duration(days: 1),
+    );
+    final lastDate = tomorrow.add(const Duration(days: 365));
+
+    DateTime? currentDeadline;
+    final rawDeadline = detail!.deadline.trim();
+    if (rawDeadline.isNotEmpty) {
+      currentDeadline = DateTime.tryParse(rawDeadline);
+    }
+
+    var initialDate = tomorrow;
+    if (currentDeadline != null && currentDeadline.isAfter(tomorrow)) {
+      initialDate =
+          currentDeadline.isAfter(lastDate) ? lastDate : currentDeadline;
+    }
+
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: tomorrow,
+      lastDate: lastDate,
+    );
+
+    if (selectedDate == null || !mounted) return;
+
+    try {
+      await ServiceDeadlineController().renewDeadline(
+        serviceId: detail.id!,
+        deadline: selectedDate,
+      );
+      if (!mounted) return;
+      AppSnackBar.show(context, 'Prazo renovado com sucesso.');
+      _loadData(detail.id!);
+    } catch (e) {
+      if (!mounted) return;
+      AppSnackBar.show(
+        context,
+        e.toString().replaceFirst('Exception: ', ''),
+        isError: true,
+      );
     }
   }
 
@@ -983,6 +1033,35 @@ class _RequestViewState extends State<RequestView> {
               ),
             ),
           ),
+          if (normalizedStatus == 'CRIADO') ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: _renewDeadline,
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: AppColors.preto,
+                  foregroundColor: AppColors.branco,
+                  side: const BorderSide(
+                    color: AppColors.amareloUmPoucoEscuro,
+                    width: 2,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+                child: const Text(
+                  'Renovar prazo',
+                  style: TextStyle(
+                    color: AppColors.branco,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       );
     }
