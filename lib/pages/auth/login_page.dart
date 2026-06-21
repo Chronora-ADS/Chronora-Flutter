@@ -51,6 +51,41 @@ class _LoginPageState extends State<LoginPage> {
     AppSnackBar.show(context, message);
   }
 
+  Future<void> _showEmailNotConfirmedDialog() async {
+    final email = _emailController.text.trim();
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('E-mail não confirmado'),
+        content: const Text(
+          'Verifique sua caixa de entrada e clique no link de confirmação antes de fazer login.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Fechar'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              await _resendConfirmation(email);
+            },
+            child: const Text('Reenviar e-mail'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _resendConfirmation(String email) async {
+    try {
+      await ApiService.post('/auth/resend-confirmation', {'email': email});
+      _showSnackBar('E-mail de confirmação reenviado. Verifique sua caixa de entrada.');
+    } catch (_) {
+      _showSnackBar('Nao foi possivel reenviar o e-mail. Tente novamente.');
+    }
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -87,10 +122,15 @@ class _LoginPageState extends State<LoginPage> {
         _showSnackBar('Login realizado com sucesso!');
         Navigator.pushReplacementNamed(context, AppRoutes.main);
       } else {
-        _showSnackBar(
-          'Erro no login: '
-          '${ApiService.extractErrorMessage(response.body, fallback: 'Nao foi possivel fazer login.')}',
+        final errorMessage = ApiService.extractErrorMessage(
+          response.body,
+          fallback: 'Nao foi possivel fazer login.',
         );
+        if (errorMessage.contains('EMAIL_NOT_CONFIRMED')) {
+          _showEmailNotConfirmedDialog();
+        } else {
+          _showSnackBar('Erro no login: $errorMessage');
+        }
       }
     } catch (e) {
       _showSnackBar('Erro de conexao: $e');

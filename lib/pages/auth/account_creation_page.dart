@@ -188,7 +188,12 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
       if (!mounted) return;
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        _setFeedback('Cadastro realizado com sucesso!', isError: false);
+        _setFeedback(
+          'Cadastro realizado! Verifique seu e-mail para confirmar a conta antes de fazer login.',
+          isError: false,
+        );
+        await Future.delayed(const Duration(seconds: 3));
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, AppRoutes.login);
       } else {
         final message = resolveRegistrationErrorMessage(
