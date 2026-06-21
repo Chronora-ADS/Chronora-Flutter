@@ -4,7 +4,7 @@ import 'package:chronora/core/services/my_requests_service.dart';
 import 'package:chronora/widgets/backgrounds/background_default_widget.dart';
 import 'package:chronora/widgets/header.dart';
 import 'package:chronora/widgets/service_card.dart';
-import 'package:chronora/widgets/side_menu.dart';
+import 'package:chronora/widgets/animated_side_menu_overlay.dart';
 import 'package:chronora/widgets/wallet_modal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -27,6 +27,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     'CRIADO',
     'ACEITO',
     'EM_ANDAMENTO',
+    'AGUARDANDO_CONFIRMACAO',
     'CONCLUIDO',
     'CANCELADO',
   ];
@@ -528,30 +529,12 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
               ),
             ],
           ),
-          if (_isDrawerOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(onWalletPressed: _openWallet),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(color: Colors.transparent),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          AnimatedSideMenuOverlay(
+            isOpen: _isDrawerOpen,
+            onClose: _toggleDrawer,
+            onWalletPressed: _openWallet,
+            top: 0,
+          ),
           if (_isWalletOpen)
             Positioned(
               top: 0,
@@ -799,6 +782,8 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         return Icons.check_circle_outline;
       case 'EM_ANDAMENTO':
         return Icons.timelapse_outlined;
+      case 'AGUARDANDO_CONFIRMACAO':
+        return Icons.hourglass_bottom_outlined;
       case 'CONCLUIDO':
         return Icons.task_alt_outlined;
       case 'CANCELADO':
@@ -1228,6 +1213,17 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
               ServiceCard(
                 service: service,
                 onView: () async {
+                  if (status == 'EM_ANDAMENTO' ||
+                      status == 'AGUARDANDO_CONFIRMACAO') {
+                    await Navigator.pushNamed(
+                      context,
+                      AppRoutes.orderInProgress,
+                      arguments: {'serviceId': service.id},
+                    );
+                    await _loadMyRequests();
+                    return;
+                  }
+
                   final result = await Navigator.pushNamed(
                     context,
                     '${AppRoutes.requestView}/${service.id}',
@@ -1290,6 +1286,8 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         return 'Pedidos Aceitos';
       case 'EM_ANDAMENTO':
         return 'Pedidos em Andamento';
+      case 'AGUARDANDO_CONFIRMACAO':
+        return 'Aguardando Confirmacao';
       case 'CONCLUIDO':
         return 'Pedidos Concluidos';
       case 'CANCELADO':
@@ -1307,6 +1305,8 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         return 'aceito';
       case 'EM_ANDAMENTO':
         return 'em andamento';
+      case 'AGUARDANDO_CONFIRMACAO':
+        return 'aguardando confirmacao';
       case 'CONCLUIDO':
         return 'concluido';
       case 'CANCELADO':
@@ -1324,6 +1324,8 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         return 'Nenhum pedido aceito encontrado.';
       case 'EM_ANDAMENTO':
         return 'Nenhum pedido em andamento encontrado.';
+      case 'AGUARDANDO_CONFIRMACAO':
+        return 'Nenhum pedido aguardando confirmacao encontrado.';
       case 'CONCLUIDO':
         return 'Nenhum pedido concluido encontrado.';
       case 'CANCELADO':

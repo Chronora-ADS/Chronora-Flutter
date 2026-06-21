@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
 import '../../core/services/chronos_wallet_service.dart';
+import '../../core/utils/app_snackbar.dart';
 import '../../widgets/header.dart';
-import '../../widgets/side_menu.dart';
+import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
 import 'sell_success_page.dart';
 
 class PixSellPage extends StatefulWidget {
   final int chronosAmount;
   final double totalAmount;
+  final double taxAmount;
 
   const PixSellPage({
     super.key,
     required this.chronosAmount,
     required this.totalAmount,
+    required this.taxAmount,
   });
 
   @override
@@ -63,34 +65,6 @@ class _PixSellPageState extends State<PixSellPage> {
     setState(() {
       _isWalletOpen = false;
     });
-  }
-
-  void showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: AppColors.preto,
-          title: const Text(
-            'Erro',
-            style: TextStyle(color: AppColors.branco),
-          ),
-          content: Text(
-            message,
-            style: const TextStyle(color: AppColors.branco),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'OK',
-                style: TextStyle(color: AppColors.amareloClaro),
-              ),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   Widget _buildBackgroundImages() {
@@ -210,7 +184,7 @@ class _PixSellPageState extends State<PixSellPage> {
                     'R\$ ${widget.totalAmount.toStringAsFixed(2)}'),
                 const SizedBox(height: 8),
                 _labelValueRow('Taxa (10%)',
-                    'R\$ ${(widget.totalAmount * 0.1).toStringAsFixed(2)}'),
+                    'R\$ ${widget.taxAmount.toStringAsFixed(2)}'),
               ],
             ),
           ),
@@ -313,12 +287,11 @@ class _PixSellPageState extends State<PixSellPage> {
                           setState(() {
                             _isProcessing = false;
                           });
-                          showErrorDialog(
-                              'Erro ao processar venda: ${e.toString()}');
+                          final msg = e.toString().replaceFirst('Exception: ', '');
+                          if (mounted) AppSnackBar.show(context, msg, isError: true);
                         }
                       } else {
-                        showErrorDialog(
-                            'Chave PIX inválida. Verifique os dados informados.');
+                        AppSnackBar.show(context, 'Chave PIX inválida. Verifique os dados informados.', isError: true);
                       }
                     },
               style: ElevatedButton.styleFrom(
@@ -472,36 +445,12 @@ class _PixSellPageState extends State<PixSellPage> {
           ),
 
           // Menu lateral
-          if (_isDrawerOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(
-                        onWalletPressed: _openWallet,
-                      ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(
-                          color: Colors.transparent,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // Modal da Carteira
+          AnimatedSideMenuOverlay(
+            isOpen: _isDrawerOpen,
+            onClose: _toggleDrawer,
+            onWalletPressed: _openWallet,
+            top: 0,
+          ),
           if (_isWalletOpen)
             Positioned(
               top: 0,

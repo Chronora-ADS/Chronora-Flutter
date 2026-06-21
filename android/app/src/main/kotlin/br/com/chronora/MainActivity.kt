@@ -1,4 +1,4 @@
-package com.example.chronora_flutter
+package br.com.chronora
 
 import io.flutter.embedding.android.FlutterActivity
 

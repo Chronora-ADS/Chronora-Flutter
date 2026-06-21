@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:chronora/core/constants/app_routes.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/auth_session_service.dart';
+import '../../core/utils/app_snackbar.dart';
 import '../../widgets/auth_text_field.dart';
 import '../../widgets/backgrounds/background_auth_widget.dart';
 
@@ -35,6 +37,17 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     _loadRememberMePreference();
+    if (kIsWeb) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _checkEmailConfirmation());
+    }
+  }
+
+  void _checkEmailConfirmation() {
+    final fragment = Uri.base.fragment;
+    final params = Uri.splitQueryString(fragment);
+    if (params['type'] == 'signup') {
+      _showSnackBar('E-mail confirmado com sucesso! Faça login para continuar.');
+    }
   }
 
   Future<void> _loadRememberMePreference() async {
@@ -47,9 +60,60 @@ class _LoginPageState extends State<LoginPage> {
 
   void _showSnackBar(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+    AppSnackBar.show(context, message);
+  }
+
+  Future<void> _showEmailNotConfirmedDialog() async {
+    final email = _emailController.text.trim();
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('E-mail não confirmado'),
+        content: const Text(
+          'Verifique sua caixa de entrada e clique no link de confirmação antes de fazer login.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Fechar'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              await _resendConfirmation(email);
+            },
+            child: const Text('Reenviar e-mail'),
+          ),
+        ],
+      ),
     );
+  }
+
+  Future<void> _resendConfirmation(String email) async {
+    try {
+      await ApiService.post('/auth/resend-confirmation', {'email': email});
+      _showSnackBar('E-mail de confirmação reenviado. Verifique sua caixa de entrada.');
+    } catch (_) {
+      _showSnackBar('Nao foi possivel reenviar o e-mail. Tente novamente.');
+    }
+  }
+
+  String _buildLoginErrorMessage(int statusCode, String body) {
+    final extracted = ApiService.extractErrorMessage(
+      body,
+      fallback: 'Nao foi possivel fazer login.',
+    );
+    final normalized = extracted.toLowerCase();
+
+    if (statusCode == 401 ||
+        normalized.contains('credenciais inv') ||
+        normalized.contains('invalid login credentials') ||
+        normalized.contains('invalid credentials') ||
+        normalized.contains('invalid_grant')) {
+      return 'E-mail ou senha errados.';
+    }
+
+    return 'Erro no login: $extracted';
   }
 
   Future<void> _login() async {
@@ -88,10 +152,15 @@ class _LoginPageState extends State<LoginPage> {
         _showSnackBar('Login realizado com sucesso!');
         Navigator.pushReplacementNamed(context, AppRoutes.main);
       } else {
-        _showSnackBar(
-          'Erro no login: '
-          '${ApiService.extractErrorMessage(response.body, fallback: 'Nao foi possivel fazer login.')}',
+        final errorMessage = ApiService.extractErrorMessage(
+          response.body,
+          fallback: 'Nao foi possivel fazer login.',
         );
+        if (errorMessage.contains('EMAIL_NOT_CONFIRMED')) {
+          _showEmailNotConfirmedDialog();
+        } else {
+          _showSnackBar(_buildLoginErrorMessage(response.statusCode, response.body));
+        }
       }
     } catch (e) {
       _showSnackBar('Erro de conexao: $e');

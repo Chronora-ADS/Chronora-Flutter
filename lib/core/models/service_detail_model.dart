@@ -48,8 +48,11 @@ class ServiceDetailModel {
       status: (json['status'] ?? 'CRIADO').toString(),
       serviceImage: _parseServiceImage(json),
       userCreator: UserCreator.fromJson(
-        (json['userCreator'] as Map?)?.cast<String, dynamic>() ??
-            const <String, dynamic>{},
+        _withFallbackRating(
+          (json['userCreator'] as Map?)?.cast<String, dynamic>() ??
+              const <String, dynamic>{},
+          json['rating'] ?? json['userRating'] ?? json['avaliacao'],
+        ),
       ),
       postedAt: (json['postedAt'] ?? '').toString(),
       verificationCodeCallCount: _toInt(
@@ -65,6 +68,15 @@ class ServiceDetailModel {
     if (categories is! List) return [];
 
     return categories.map(CategoryEntity.fromJson).toList();
+  }
+
+  static Map<String, dynamic> _withFallbackRating(
+    Map<String, dynamic> data,
+    dynamic fallbackRating,
+  ) {
+    final nextData = Map<String, dynamic>.from(data);
+    nextData.putIfAbsent('rating', () => fallbackRating);
+    return nextData;
   }
 
   static String? _parseServiceImage(Map<String, dynamic> json) {
@@ -227,10 +239,20 @@ class AcceptedRequestInfo {
       json,
       const ['acceptedUserPhone', 'acceptedByPhone', 'providerAcceptedPhone'],
     );
+    final acceptedUserRating = _readFirstDouble(
+      json,
+      const [
+        'acceptedUserRating',
+        'acceptedByRating',
+        'providerAcceptedRating',
+        'acceptedRating',
+      ],
+    );
 
     if (acceptedUserId == null &&
         (acceptedUserName == null || acceptedUserName.isEmpty) &&
-        acceptedUserPhone == null) {
+        acceptedUserPhone == null &&
+        acceptedUserRating == null) {
       return null;
     }
 
@@ -238,6 +260,7 @@ class AcceptedRequestInfo {
       if (acceptedUserId != null) 'id': acceptedUserId,
       if (acceptedUserName != null) 'name': acceptedUserName,
       if (acceptedUserPhone != null) 'phoneNumber': acceptedUserPhone,
+      if (acceptedUserRating != null) 'rating': acceptedUserRating,
     };
   }
 
@@ -265,6 +288,23 @@ class AcceptedRequestInfo {
       }
       if (value is String) {
         final parsed = int.tryParse(value);
+        if (parsed != null) {
+          return parsed;
+        }
+      }
+    }
+    return null;
+  }
+
+  static double? _readFirstDouble(
+      Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is num) {
+        return value.toDouble();
+      }
+      if (value is String) {
+        final parsed = double.tryParse(value.replaceAll(',', '.'));
         if (parsed != null) {
           return parsed;
         }

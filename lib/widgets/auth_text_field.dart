@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/constants/app_colors.dart';
 
-class AuthTextField extends StatelessWidget {
+class AuthTextField extends StatefulWidget {
     final String hintText;
     final TextInputType keyboardType;
     final bool obscureText;
@@ -31,6 +31,19 @@ class AuthTextField extends StatelessWidget {
     });
 
     @override
+    State<AuthTextField> createState() => _AuthTextFieldState();
+}
+
+class _AuthTextFieldState extends State<AuthTextField> {
+    late bool _obscure;
+
+    @override
+    void initState() {
+        super.initState();
+        _obscure = widget.obscureText;
+    }
+
+    @override
     Widget build(BuildContext context) {
         return Container(
             width: MediaQuery.of(context).size.width * 0.75,
@@ -38,25 +51,25 @@ class AuthTextField extends StatelessWidget {
             decoration: BoxDecoration(
                 boxShadow: [
                     BoxShadow(
-                        color: Colors.black.withOpacity(0.25),
+                        color: Colors.black.withValues(alpha: 0.25),
                         blurRadius: 4,
                         offset: const Offset(0, 1),
                     ),
                 ],
             ),
             child: TextFormField(
-                controller: controller,
-                keyboardType: keyboardType,
-                obscureText: obscureText,
-                validator: validator,
-                onSaved: onSaved,
-                textInputAction: textInputAction,
-                onFieldSubmitted: onFieldSubmitted,
-                inputFormatters: inputFormatters,
-                focusNode: focusNode,
+                controller: widget.controller,
+                keyboardType: widget.keyboardType,
+                obscureText: _obscure,
+                validator: widget.validator,
+                onSaved: widget.onSaved,
+                textInputAction: widget.textInputAction,
+                onFieldSubmitted: widget.onFieldSubmitted,
+                inputFormatters: widget.inputFormatters,
+                focusNode: widget.focusNode,
                 style: const TextStyle(fontSize: 20),
                 decoration: InputDecoration(
-                    hintText: hintText,
+                    hintText: widget.hintText,
                     hintStyle: const TextStyle(color: AppColors.textoPlaceholder),
                     filled: true,
                     fillColor: AppColors.branco,
@@ -75,7 +88,17 @@ class AuthTextField extends StatelessWidget {
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 10,
-                    )
+                    ),
+                    suffixIcon: widget.obscureText
+                        ? IconButton(
+                            icon: Icon(
+                              _obscure ? Icons.visibility_off : Icons.visibility,
+                              color: AppColors.textoPlaceholder,
+                              size: 20,
+                            ),
+                            onPressed: () => setState(() => _obscure = !_obscure),
+                          )
+                        : null,
                 ),
             ),
         );

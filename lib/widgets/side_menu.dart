@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -5,20 +7,122 @@ import '../core/api/api_service.dart';
 import '../core/constants/app_colors.dart';
 import '../core/constants/app_routes.dart';
 import '../core/services/auth_session_service.dart';
+import 'pending_service_cancellation_obligations.dart';
 
-class SideMenu extends StatelessWidget {
+class SideMenu extends StatefulWidget {
   final VoidCallback onWalletPressed;
-  final String userName;
-  final double userRating;
+  final String? userName;
+  final double? userRating;
   final String? userPhotoUrl;
 
   const SideMenu({
     super.key,
     required this.onWalletPressed,
-    this.userName = 'Usuario',
-    this.userRating = 0.0,
+    this.userName,
+    this.userRating,
     this.userPhotoUrl,
   });
+
+  @override
+  State<SideMenu> createState() => _SideMenuState();
+}
+
+class _SideMenuState extends State<SideMenu> {
+  String _loadedUserName = 'Usuario';
+  double _loadedUserRating = 0.0;
+  String? _loadedUserPhotoUrl;
+  bool _isModerator = false;
+
+  String get _displayUserName {
+    final name = widget.userName?.trim();
+    return name != null && name.isNotEmpty ? name : _loadedUserName;
+  }
+
+  double get _displayUserRating => widget.userRating ?? _loadedUserRating;
+
+  String? get _displayUserPhotoUrl {
+    final photo = widget.userPhotoUrl?.trim();
+    return photo != null && photo.isNotEmpty ? photo : _loadedUserPhotoUrl;
+  }
+
+  static const _kName = 'side_menu_user_name';
+  static const _kRating = 'side_menu_user_rating';
+  static const _kPhoto = 'side_menu_user_photo';
+  static const _kIsMod = 'side_menu_is_moderator';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCached();
+    _fetchUserData();
+  }
+
+  Future<void> _loadCached() async {
+    final prefs = await SharedPreferences.getInstance();
+    final name = prefs.getString(_kName);
+    final rating = prefs.getDouble(_kRating);
+    final photo = prefs.getString(_kPhoto);
+    final isMod = prefs.getBool(_kIsMod) ?? false;
+    if (!mounted) return;
+    setState(() {
+      if (name != null && name.isNotEmpty) _loadedUserName = name;
+      if (rating != null) _loadedUserRating = rating;
+      _loadedUserPhotoUrl = photo;
+      _isModerator = isMod;
+    });
+  }
+
+  Future<void> _fetchUserData() async {
+    try {
+      final token = await AuthSessionService.getValidAccessToken();
+      if (token == null) return;
+
+      final response = await ApiService.get('/user/get', token: token);
+      if (response.statusCode != 200) return;
+
+      final decoded = json.decode(response.body);
+      if (decoded is! Map<String, dynamic> || !mounted) return;
+
+      final ratingRaw =
+          decoded['rating'] ?? decoded['userRating'] ?? decoded['avaliacao'];
+      final photo = decoded['profileImageUrl'] ??
+          decoded['profileImage'] ??
+          decoded['photoUrl'];
+
+      final roles = decoded['roles'];
+      final isMod = roles is List && roles.contains('ROLE_MODERATOR');
+
+      final name = (decoded['name'] ?? 'Usuario').toString().trim();
+      final resolvedName = name.isEmpty ? 'Usuario' : name;
+      double resolvedRating = 0.0;
+      if (ratingRaw is num) {
+        resolvedRating = ratingRaw.toDouble();
+      } else if (ratingRaw is String) {
+        resolvedRating = double.tryParse(ratingRaw) ?? 0.0;
+      }
+      final resolvedPhoto = photo?.toString();
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kName, resolvedName);
+      await prefs.setDouble(_kRating, resolvedRating);
+      if (resolvedPhoto != null) {
+        await prefs.setString(_kPhoto, resolvedPhoto);
+      } else {
+        await prefs.remove(_kPhoto);
+      }
+      await prefs.setBool(_kIsMod, isMod);
+
+      if (!mounted) return;
+      setState(() {
+        _loadedUserName = resolvedName;
+        _loadedUserRating = resolvedRating;
+        _loadedUserPhotoUrl = resolvedPhoto;
+        _isModerator = isMod;
+      });
+    } catch (_) {
+      // Mantem os dados de fallback sem quebrar o menu.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +154,17 @@ class SideMenu extends StatelessWidget {
                       _buildMenuItem(
                         icon: 'assets/img/PlusWhite.png',
                         title: 'Crie um pedido',
-                        onTap: () {
+                        onTap: () async {
+                          final canContinue =
+                              await PendingServiceCancellationObligations
+                                  .ensureCanContinue(
+                            context,
+                            actionLabel: 'criar pedido',
+                          );
+                          if (!canContinue || !context.mounted) {
+                            return;
+                          }
+
                           Navigator.pushNamed(
                             context,
                             AppRoutes.requestCreation,
@@ -67,7 +181,7 @@ class SideMenu extends StatelessWidget {
                       _buildMenuItem(
                         icon: 'assets/img/CoinWhite.png',
                         title: 'Carteira',
-                        onTap: onWalletPressed,
+                        onTap: widget.onWalletPressed,
                       ),
                       _buildMenuItem(
                         icon: 'assets/img/NotificationsWhite.png',
@@ -98,6 +212,15 @@ class SideMenu extends StatelessWidget {
                         Navigator.pushNamed(context, AppRoutes.profile);
                       },
                     ),
+                    if (_isModerator)
+                      _buildMenuItem(
+                        icon: 'assets/img/SettingsWhite.png',
+                        title: 'Painel',
+                        onTap: () {
+                          Navigator.pushNamed(
+                              context, AppRoutes.moderatorPanel);
+                        },
+                      ),
                     _buildMenuItem(
                       icon: 'assets/img/SettingsWhite.png',
                       title: 'Configurações',
@@ -161,6 +284,8 @@ class SideMenu extends StatelessWidget {
   }
 
   Widget _buildUserHeader() {
+    final photoUrl = _displayUserPhotoUrl;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
       child: Row(
@@ -168,10 +293,10 @@ class SideMenu extends StatelessWidget {
           CircleAvatar(
             radius: 26,
             backgroundColor: Colors.white24,
-            backgroundImage: (userPhotoUrl != null && userPhotoUrl!.isNotEmpty)
-                ? NetworkImage(userPhotoUrl!)
+            backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                ? NetworkImage(photoUrl)
                 : null,
-            child: (userPhotoUrl == null || userPhotoUrl!.isEmpty)
+            child: (photoUrl == null || photoUrl.isEmpty)
                 ? const Icon(Icons.person, size: 30, color: Colors.white)
                 : null,
           ),
@@ -181,7 +306,7 @@ class SideMenu extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  userName,
+                  _displayUserName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -200,7 +325,7 @@ class SideMenu extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      userRating.toStringAsFixed(1),
+                      _displayUserRating.toStringAsFixed(1),
                       style: const TextStyle(
                         color: AppColors.branco,
                         fontSize: 14,

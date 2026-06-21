@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/api_service.dart';
 import '../../widgets/header.dart';
-import '../../widgets/side_menu.dart';
+import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
 import 'order_outcome_page.dart';
 
@@ -102,30 +102,12 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
               Expanded(child: _buildBody()),
             ],
           ),
-          if (_isDrawerOpen)
-            Positioned(
-              top: kToolbarHeight * 1.5,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: AppColors.preto.withValues(alpha: 0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(onWalletPressed: _openWallet),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(color: Colors.transparent),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          AnimatedSideMenuOverlay(
+            isOpen: _isDrawerOpen,
+            onClose: _toggleDrawer,
+            onWalletPressed: _openWallet,
+            top: 0,
+          ),
           if (_isWalletOpen)
             Positioned.fill(
               child: Container(
@@ -238,8 +220,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                           TextSpan(text: titlePrefix),
                           TextSpan(
                             text: titleBold,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w800),
+                            style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
                           const TextSpan(text: titleSuffix),
                         ],
@@ -300,9 +281,8 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
               SizedBox(
                 height: 48,
                 child: OutlinedButton(
-                  onPressed: _isLoading
-                      ? null
-                      : () => Navigator.of(context).pop(),
+                  onPressed:
+                      _isLoading ? null : () => Navigator.of(context).pop(),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.preto,
                     side: const BorderSide(color: AppColors.preto),

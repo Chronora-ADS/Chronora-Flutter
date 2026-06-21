@@ -1,12 +1,20 @@
 class NotificationEntry {
   final int id;
   final String message;
+  final String notificationType;
+  final String detail;
+  final String actorName;
+  final String actorRole;
   final DateTime notificationTime;
   final NotificationServiceSummary service;
 
   NotificationEntry({
     required this.id,
     required this.message,
+    this.notificationType = '',
+    this.detail = '',
+    this.actorName = '',
+    this.actorRole = '',
     required this.notificationTime,
     required this.service,
   });
@@ -33,6 +41,36 @@ class NotificationEntry {
         'body',
         'description',
       ]),
+      notificationType: _readString(json, const [
+        'notificationType',
+        'notification_type',
+        'type',
+      ]),
+      detail: _readString(json, const [
+        'detail',
+        'details',
+        'notificationDetail',
+        'notification_detail',
+        'justification',
+        'serviceCancellationJustification',
+        'service_cancellation_justification',
+      ]),
+      actorName: _readString(json, const [
+        'actorName',
+        'actor_name',
+        'cancelledBy',
+        'cancelled_by',
+        'requestedByName',
+        'requested_by_name',
+      ]),
+      actorRole: _readString(json, const [
+        'actorRole',
+        'actor_role',
+        'cancelledByRole',
+        'cancelled_by_role',
+        'requestedByRole',
+        'requested_by_role',
+      ]),
       notificationTime: _readDateTime(
         json['notificationTime'] ??
             json['notification_time'] ??
@@ -46,6 +84,16 @@ class NotificationEntry {
         serviceJson.isEmpty ? json : serviceJson,
       ),
     );
+  }
+
+  bool get hasDetail => detail.trim().isNotEmpty;
+
+  bool get isServiceCancellationJustification {
+    final normalizedType = notificationType.trim().toUpperCase();
+    if (normalizedType == 'SERVICE_CANCELLATION_JUSTIFICATION') {
+      return true;
+    }
+    return message.toLowerCase().contains('justificativa de cancelamento');
   }
 
   static Map<String, dynamic> _readMap(dynamic value) {

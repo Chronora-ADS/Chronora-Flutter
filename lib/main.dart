@@ -12,6 +12,7 @@ import 'core/services/client_log_service.dart';
 import 'pages/auth/login_page.dart';
 import 'pages/auth/reset_password_page.dart';
 import 'pages/main_page.dart';
+import 'widgets/pending_service_cancellation_obligations.dart';
 
 Future<void> main() async {
   await runZonedGuarded(
@@ -121,7 +122,11 @@ class _AuthGateState extends State<_AuthGate> {
         }
 
         final isLoggedIn = snapshot.data ?? false;
-        if (isLoggedIn) return const MainPage();
+        if (isLoggedIn) {
+          return const PendingServiceCancellationOverlay(
+            child: MainPage(),
+          );
+        }
         return const LoginPage();
       },
     );

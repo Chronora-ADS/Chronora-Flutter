@@ -4,6 +4,7 @@ import 'package:chronora/pages/auth/login_page.dart';
 import 'package:chronora/pages/auth/reset_password_page.dart';
 import 'package:chronora/pages/buy_chronos/buy_chronos_page.dart';
 import 'package:chronora/pages/main_page.dart';
+import 'package:chronora/pages/moderator/moderator_panel_page.dart';
 import 'package:chronora/pages/notification/notification_page.dart';
 import 'package:chronora/pages/placeholder/coming_soon_page.dart';
 import 'package:chronora/pages/profile_page.dart';
@@ -15,6 +16,7 @@ import 'package:chronora/pages/requests/request_accepted_view.dart';
 import 'package:chronora/pages/requests/request_view.dart';
 import 'package:chronora/pages/sell_chronos/sell_chronos_page.dart';
 import 'package:chronora/widgets/auth_guard.dart';
+import 'package:chronora/widgets/pending_service_cancellation_obligations.dart';
 import 'package:flutter/material.dart';
 
 class AppRoutes {
@@ -34,6 +36,7 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String settings = '/settings';
   static const String orderInProgress = '/order-in-progress';
+  static const String moderatorPanel = '/moderator-panel';
 
   static String requestViewWithId(int id) => '$requestView/$id';
   static String requestEditingWithId(int id) => '$requestEditing/$id';
@@ -43,19 +46,29 @@ class AppRoutes {
       login: (context) => const LoginPage(),
       accountCreation: (context) => const AccountCreationPage(),
       main: (context) => _protected(const MainPage()),
-      buyChronos: (context) => _protected(const BuyChronosPage()),
+      buyChronos: (context) => _protected(
+            const PendingActionGate(
+              actionLabel: 'comprar Chronos',
+              child: BuyChronosPage(),
+            ),
+          ),
       sellChronos: (context) => _protected(const SellChronosPage()),
       forgotPassword: (context) => const ForgotPasswordPage(),
       resetPassword: (context) => const ResetPasswordPage(),
-      requestCreation: (context) => _protected(const RequestCreationPage()),
+      requestCreation: (context) => _protected(
+            const PendingActionGate(
+              actionLabel: 'criar pedido',
+              child: RequestCreationPage(),
+            ),
+          ),
       requestView: (context) => _protected(const RequestView()),
       requestAcceptedView: (context) => _protected(const RequestAcceptedView()),
       requestEditing: (context) => _protected(const RequestEditingPage()),
       notifications: (context) => _protected(const NotificationPage()),
       profile: (context) => _protected(const ProfilePage()),
       myOrders: (context) => _protected(const MeusPedidosPage()),
-      orderInProgress: (context) =>
-          _protected(const OrderInProgressPage()),
+      orderInProgress: (context) => _protected(const OrderInProgressPage()),
+      moderatorPanel: (context) => _protected(const ModeratorPanelPage()),
       settings: (context) => _protected(const ComingSoonPage(
             title: 'Configuracoes',
             description:

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
 import '../../widgets/header.dart';
-import '../../widgets/side_menu.dart';
+import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
 import 'review_page.dart';
 
@@ -53,30 +53,12 @@ class _OrderOutcomePageState extends State<OrderOutcomePage> {
               Expanded(child: _buildBody()),
             ],
           ),
-          if (_isDrawerOpen)
-            Positioned(
-              top: kToolbarHeight * 1.5,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: AppColors.preto.withValues(alpha: 0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(onWalletPressed: _openWallet),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(color: Colors.transparent),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          AnimatedSideMenuOverlay(
+            isOpen: _isDrawerOpen,
+            onClose: _toggleDrawer,
+            onWalletPressed: _openWallet,
+            top: 0,
+          ),
           if (_isWalletOpen)
             Positioned.fill(
               child: Container(
@@ -109,9 +91,8 @@ class _OrderOutcomePageState extends State<OrderOutcomePage> {
   Widget _buildBanner() {
     final color = _isConcluded ? const Color(0xFF2E7D32) : AppColors.vermelho;
     final icon = _isConcluded ? Icons.check_circle : Icons.cancel;
-    final text = _isConcluded
-        ? 'Um pedido foi finalizado'
-        : 'Um pedido foi cancelado';
+    final text =
+        _isConcluded ? 'Um pedido foi finalizado' : 'Um pedido foi cancelado';
 
     return Container(
       color: color,

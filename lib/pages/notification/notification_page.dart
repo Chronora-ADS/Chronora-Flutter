@@ -7,11 +7,12 @@ import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/services/auth_session_service.dart';
+import '../../core/utils/app_snackbar.dart';
 import '../../core/services/service_deadline_controller.dart';
 import '../../widgets/backgrounds/background_default_widget.dart';
 import '../../widgets/header.dart';
 import '../../widgets/notification_card.dart';
-import '../../widgets/side_menu.dart';
+import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
 
 class NotificationPage extends StatefulWidget {
@@ -70,10 +71,11 @@ class _NotificationPageState extends State<NotificationPage> {
           .map((item) => item.cast<String, dynamic>())
           .map(_extractNotificationMap)
           .map(NotificationEntry.fromJson)
-          .toList()
-        ..sort(
-          (a, b) => b.notificationTime.compareTo(a.notificationTime),
-        );
+          .toList();
+
+      notifications.sort(
+        (a, b) => b.notificationTime.compareTo(a.notificationTime),
+      );
 
       if (!mounted) return;
       setState(() {
@@ -88,11 +90,10 @@ class _NotificationPageState extends State<NotificationPage> {
         _visibleNotificationsLimit = _pageSize;
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
-        ),
+      AppSnackBar.show(
+        context,
+        e.toString().replaceFirst('Exception: ', ''),
+        isError: true,
       );
     }
   }
@@ -257,17 +258,14 @@ class _NotificationPageState extends State<NotificationPage> {
     try {
       await action();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(successMessage)),
-      );
+      AppSnackBar.show(context, successMessage);
       await _loadNotifications();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
-        ),
+      AppSnackBar.show(
+        context,
+        e.toString().replaceFirst('Exception: ', ''),
+        isError: true,
       );
     } finally {
       if (mounted) {
@@ -280,8 +278,6 @@ class _NotificationPageState extends State<NotificationPage> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-
     return Scaffold(
       backgroundColor: AppColors.preto,
       body: Stack(
@@ -296,30 +292,12 @@ class _NotificationPageState extends State<NotificationPage> {
               ),
             ],
           ),
-          if (_isDrawerOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: screenWidth * 0.6,
-                      child: SideMenu(onWalletPressed: _openWallet),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(color: Colors.transparent),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          AnimatedSideMenuOverlay(
+            isOpen: _isDrawerOpen,
+            onClose: _toggleDrawer,
+            onWalletPressed: _openWallet,
+            top: 0,
+          ),
           if (_isWalletOpen)
             Positioned(
               top: 0,
@@ -407,6 +385,10 @@ class _NotificationPageState extends State<NotificationPage> {
                     fontSize: 12,
                   ),
                 ),
+                if (notification.hasDetail) ...[
+                  const SizedBox(height: 12),
+                  _buildNotificationDetail(notification),
+                ],
                 if (canRespondToDeadline) ...[
                   const SizedBox(height: 12),
                   Wrap(
@@ -442,6 +424,77 @@ class _NotificationPageState extends State<NotificationPage> {
         );
       },
     );
+  }
+
+  Widget _buildNotificationDetail(NotificationEntry notification) {
+    final actorLabel = _formatActorLabel(notification);
+    final detailTitle = notification.isServiceCancellationJustification
+        ? 'Justificativa do cancelamento'
+        : 'Detalhes';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.amareloClaro.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.amareloUmPoucoEscuro.withValues(alpha: 0.45),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            detailTitle,
+            style: const TextStyle(
+              color: AppColors.preto,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (actorLabel.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              actorLabel,
+              style: const TextStyle(
+                color: Colors.black54,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            notification.detail,
+            style: const TextStyle(
+              color: AppColors.preto,
+              fontSize: 14,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatActorLabel(NotificationEntry notification) {
+    final actorName = notification.actorName.trim();
+    final actorRole = notification.actorRole.trim();
+
+    if (actorName.isEmpty && actorRole.isEmpty) {
+      return '';
+    }
+
+    if (actorName.isEmpty) {
+      return 'Cancelado por: $actorRole';
+    }
+
+    if (actorRole.isEmpty) {
+      return 'Cancelado por: $actorName';
+    }
+
+    return 'Cancelado por: $actorName ($actorRole)';
   }
 
   int get _visibleNotificationCount {

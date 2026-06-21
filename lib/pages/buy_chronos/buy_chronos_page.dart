@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/chronos_wallet_service.dart';
+import '../../core/utils/app_snackbar.dart';
 import '../../widgets/header.dart';
-import '../../widgets/side_menu.dart';
+import '../../widgets/pending_service_cancellation_obligations.dart';
+import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
+import 'card_buy_page.dart';
 import 'pix_buy_page.dart';
 
 /// Controller para gerenciar a compra de Chronos
@@ -15,10 +18,11 @@ import 'pix_buy_page.dart';
 /// - Persistência de dados
 /// - Integração com gateway de pagamento
 class BuyChronosController extends ChangeNotifier {
-  // Constantes de negócio
-  static const double CHRONOS_PRICE = 2.50; // R$ por Chronos
-  static const double TAX_PERCENTAGE = 0.10; // 10%
-  static const int MAX_CHRONOS_PER_ACCOUNT = 300; // Limite máximo de Chronos
+  // Valores padrão (substituídos ao carregar do backend)
+  double _chronosPrice = 2.50;
+  double _taxPercentage = 0.10;
+  int _maxChronosPerAccount = 300;
+
   static const String TOOLTIP_TEXT =
       'O valor em Chronos é equivalente à 25% do valor de 1 hora do salário mínimo brasileiro. '
       'No final, é aplicada uma taxa de 10% sobre o subtotal.';
@@ -30,7 +34,7 @@ class BuyChronosController extends ChangeNotifier {
   bool isLoading = false;
   bool isLoadingBalance = true;
   final ChronosWalletService _walletService;
-  String selectedPaymentMethod = 'Cartão de Crédito';
+  String selectedPaymentMethod = 'PIX';
   BuyPaymentResponse? pendingPayment;
 
   // Controllers
@@ -63,10 +67,15 @@ class BuyChronosController extends ChangeNotifier {
       final results = await Future.wait([
         _walletService.fetchCurrentBalance(),
         _walletService.fetchPendingBuyPayment(),
+        _walletService.fetchChronosConfig(),
       ]);
       _updateState(() {
         currentBalance = results[0] as int;
         pendingPayment = results[1] as BuyPaymentResponse?;
+        final config = results[2] as Map<String, dynamic>;
+        _chronosPrice = (config['buyPrice'] as num?)?.toDouble() ?? _chronosPrice;
+        _taxPercentage = (config['taxPercentage'] as num?)?.toDouble() ?? _taxPercentage;
+        _maxChronosPerAccount = (config['maxChronosPerAccount'] as num?)?.toInt() ?? _maxChronosPerAccount;
         isLoadingBalance = false;
       });
     } catch (error) {
@@ -99,17 +108,17 @@ class BuyChronosController extends ChangeNotifier {
   }
 
   // Getters para cálculos
-  double get subtotal => purchaseAmount * CHRONOS_PRICE;
-  double get tax => subtotal * TAX_PERCENTAGE;
+  double get subtotal => purchaseAmount * _chronosPrice;
+  double get tax => subtotal * _taxPercentage;
   double get taxAmount => tax;
   double get totalAmount => subtotal + tax;
   int get chronosAfterPurchase => currentBalance + purchaseAmount;
 
-  // REGRA: Não pode comprar mais de 300 Chronos no total
-  bool get isLimitExceeded => chronosAfterPurchase > MAX_CHRONOS_PER_ACCOUNT;
+  // REGRA: Não pode comprar mais do limite por conta
+  bool get isLimitExceeded => chronosAfterPurchase > _maxChronosPerAccount;
 
   // Quantidade máxima que pode comprar
-  int get maxPurchaseAmount => MAX_CHRONOS_PER_ACCOUNT - currentBalance;
+  int get maxPurchaseAmount => _maxChronosPerAccount - currentBalance;
 
   bool get canProceed =>
       purchaseAmount > 0 && !isLimitExceeded && !isLoading && !isLoadingBalance;
@@ -129,9 +138,9 @@ class BuyChronosController extends ChangeNotifier {
       return;
     }
 
-    if (chronosAfterPurchase > MAX_CHRONOS_PER_ACCOUNT) {
+    if (chronosAfterPurchase > _maxChronosPerAccount) {
       onError(
-          'Limite máximo de $MAX_CHRONOS_PER_ACCOUNT Chronos por conta atingido!\n\n'
+          'Limite máximo de $_maxChronosPerAccount Chronos por conta atingido!\n\n'
           'Você já possui $currentBalance Chronos e tentou comprar $amount.\n'
           'Máximo que você pode comprar: $maxPurchaseAmount Chronos');
       return;
@@ -179,9 +188,9 @@ class BuyChronosController extends ChangeNotifier {
         purchaseAmount = amount;
 
         // AGORA verifica o limite com o NOVO valor
-        if (chronosAfterPurchase > MAX_CHRONOS_PER_ACCOUNT) {
+        if (chronosAfterPurchase > _maxChronosPerAccount) {
           errorMessage =
-              'Limite máximo de $MAX_CHRONOS_PER_ACCOUNT Chronos por conta!\n\n'
+              'Limite máximo de $_maxChronosPerAccount Chronos por conta!\n\n'
               'Você já possui $currentBalance Chronos e tentou comprar $amount.\n'
               'Máximo que você pode comprar: $maxPurchaseAmount Chronos';
         }
@@ -460,33 +469,6 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
     });
   }
 
-  void showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: AppColors.preto,
-          title: const Text(
-            'Erro',
-            style: TextStyle(color: AppColors.branco),
-          ),
-          content: Text(
-            message,
-            style: const TextStyle(color: AppColors.branco),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'OK',
-                style: TextStyle(color: AppColors.amareloClaro),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   Widget _buildBackgroundImages() {
     return Stack(
@@ -569,7 +551,8 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
     );
   }
 
-  Widget _buildPendingPaymentCard(BuildContext context, BuyChronosController controller) {
+  Widget _buildPendingPaymentCard(
+      BuildContext context, BuyChronosController controller) {
     final pending = controller.pendingPayment!;
     final remaining = pending.expiresAt.difference(DateTime.now());
     final expired = remaining.isNegative;
@@ -586,7 +569,8 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
         children: [
           Row(
             children: [
-              const Icon(Icons.payment, color: AppColors.amareloClaro, size: 18),
+              const Icon(Icons.payment,
+                  color: AppColors.amareloClaro, size: 18),
               const SizedBox(width: 8),
               const Text(
                 'Pagamento PIX pendente',
@@ -636,14 +620,16 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
                 ),
                 child: const Text(
                   'Retomar pagamento',
-                  style: TextStyle(color: AppColors.preto, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      color: AppColors.preto, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
           ],
           TextButton(
             onPressed: controller.clearPendingPayment,
-            child: const Text('Ignorar', style: TextStyle(color: AppColors.cinza, fontSize: 12)),
+            child: const Text('Ignorar',
+                style: TextStyle(color: AppColors.cinza, fontSize: 12)),
           ),
         ],
       ),
@@ -865,6 +851,22 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
             ],
           ),
 
+          const SizedBox(height: 16),
+
+          // Seletor de método de pagamento
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Expanded(child: _buildMethodOption('PIX', Icons.pix, controller)),
+                Expanded(child: _buildMethodOption('Cartão', Icons.credit_card, controller)),
+              ],
+            ),
+          ),
+
           const SizedBox(height: 25),
 
           // Botões
@@ -909,9 +911,31 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
                   child: TextButton(
                     onPressed: controller.canProceed
                         ? () async {
-                            int amount = int.tryParse(
+                            final canContinue =
+                                await PendingServiceCancellationObligations
+                                    .ensureCanContinue(
+                              context,
+                              actionLabel: 'comprar Chronos',
+                            );
+                            if (!canContinue || !context.mounted) return;
+
+                            final amount = int.tryParse(
                                     controller.amountController.text) ??
                                 0;
+
+                            if (controller.selectedPaymentMethod == 'Cartão') {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => CardBuyPage(
+                                    chronosAmount: amount,
+                                    totalAmount: controller.totalAmount,
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+
                             await controller.purchaseChronos(
                               amount: amount,
                               onSuccess: (response) {
@@ -929,7 +953,7 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
                                 );
                               },
                               onError: (err) {
-                                showErrorDialog(err);
+                                AppSnackBar.show(context, err, isError: true);
                               },
                             );
                           }
@@ -949,6 +973,38 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMethodOption(
+      String method, IconData icon, BuyChronosController controller) {
+    final selected = controller.selectedPaymentMethod == method;
+    return GestureDetector(
+      onTap: () => controller.setPaymentMethod(method),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFC29503) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon,
+                size: 18,
+                color: selected ? Colors.white : Colors.black54),
+            const SizedBox(width: 6),
+            Text(
+              method,
+              style: TextStyle(
+                color: selected ? Colors.white : Colors.black54,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1022,36 +1078,12 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
           ),
 
           // Menu lateral
-          if (_isDrawerOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      child: SideMenu(
-                        onWalletPressed: _openWallet,
-                      ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(
-                          color: Colors.transparent,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // Modal da Carteira
+          AnimatedSideMenuOverlay(
+            isOpen: _isDrawerOpen,
+            onClose: _toggleDrawer,
+            onWalletPressed: _openWallet,
+            top: 0,
+          ),
           if (_isWalletOpen)
             Positioned(
               top: 0,

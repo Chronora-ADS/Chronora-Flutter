@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/services/auth_session_service.dart';
+import 'pending_service_cancellation_obligations.dart';
 
 class AuthGuard extends StatefulWidget {
   final Widget child;
@@ -52,7 +53,7 @@ class _AuthGuardState extends State<AuthGuard> {
         }
 
         if (snapshot.data == true) {
-          return widget.child;
+          return PendingServiceCancellationOverlay(child: widget.child);
         }
 
         _redirectToLogin();

@@ -5,12 +5,15 @@ import 'package:flutter/material.dart';
 import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
+import '../../core/utils/app_snackbar.dart';
 import '../../core/models/main_page_requests_model.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/services/auth_session_service.dart';
+import '../../core/services/service_deadline_controller.dart';
 import '../../widgets/header.dart';
+import '../../widgets/pending_service_cancellation_obligations.dart';
 import '../../widgets/service_image.dart';
-import '../../widgets/side_menu.dart';
+import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
 import 'request_accepted_view.dart';
 
@@ -36,8 +39,8 @@ class _RequestViewState extends State<RequestView> {
   int? _currentUserId;
   String? _currentUserName;
   int? _currentUserPhone;
+  double? _currentUserRating;
   AcceptedRequestInfo? _acceptedRequestInfo;
-  bool _isReadOnly = false;
   bool _showAcceptAction = true;
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
@@ -99,9 +102,6 @@ class _RequestViewState extends State<RequestView> {
     if (arguments is Map && arguments['showAcceptAction'] is bool) {
       _showAcceptAction = arguments['showAcceptAction'] as bool;
     }
-    if (arguments is Map && arguments['readOnly'] is bool) {
-      _isReadOnly = arguments['readOnly'] as bool;
-    }
   }
 
   Future<void> _loadData(int serviceId) async {
@@ -143,6 +143,7 @@ class _RequestViewState extends State<RequestView> {
         _currentUserId = currentUser?.id;
         _currentUserName = currentUser?.name;
         _currentUserPhone = currentUser?.phoneNumber;
+        _currentUserRating = currentUser?.rating;
         _serviceDetail = detail;
         _isOwner = isOwner;
         _acceptedRequestInfo = acceptedInfo;
@@ -232,7 +233,7 @@ class _RequestViewState extends State<RequestView> {
         throw Exception('Usuario nao autenticado.');
       }
 
-      final response = detail?.acceptedRequestInfo?.hasAcceptedUser != null
+      final response = detail?.acceptedRequestInfo?.hasAcceptedUser == true
           ? await ApiService.put(
               '/service/cancelService/${detail!.id}',
               {},
@@ -253,14 +254,59 @@ class _RequestViewState extends State<RequestView> {
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pedido cancelado com sucesso.')),
-      );
+      AppSnackBar.show(context, 'Pedido cancelado com sucesso.');
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      AppSnackBar.show(context, e.toString().replaceFirst('Exception: ', ''), isError: true);
+    }
+  }
+
+  Future<void> _renewDeadline() async {
+    final detail = _serviceDetail;
+    if (detail?.id == null) return;
+
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day).add(
+      const Duration(days: 1),
+    );
+    final lastDate = tomorrow.add(const Duration(days: 365));
+
+    DateTime? currentDeadline;
+    final rawDeadline = detail!.deadline.trim();
+    if (rawDeadline.isNotEmpty) {
+      currentDeadline = DateTime.tryParse(rawDeadline);
+    }
+
+    var initialDate = tomorrow;
+    if (currentDeadline != null && currentDeadline.isAfter(tomorrow)) {
+      initialDate =
+          currentDeadline.isAfter(lastDate) ? lastDate : currentDeadline;
+    }
+
+    final selectedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: tomorrow,
+      lastDate: lastDate,
+    );
+
+    if (selectedDate == null || !mounted) return;
+
+    try {
+      await ServiceDeadlineController().renewDeadline(
+        serviceId: detail.id!,
+        deadline: selectedDate,
+      );
+      if (!mounted) return;
+      AppSnackBar.show(context, 'Prazo renovado com sucesso.');
+      _loadData(detail.id!);
+    } catch (e) {
+      if (!mounted) return;
+      AppSnackBar.show(
+        context,
+        e.toString().replaceFirst('Exception: ', ''),
+        isError: true,
       );
     }
   }
@@ -283,6 +329,15 @@ class _RequestViewState extends State<RequestView> {
   }
 
   Future<void> _acceptRequest() async {
+    final canContinue =
+        await PendingServiceCancellationObligations.ensureCanContinue(
+      context,
+      actionLabel: 'aceitar pedido',
+    );
+    if (!canContinue || !mounted) {
+      return;
+    }
+
     final detail = _serviceDetail;
     if (detail?.id == null) return;
     final serviceId = detail!.id!;
@@ -343,10 +398,7 @@ class _RequestViewState extends State<RequestView> {
       setState(() {
         _isLoading = false;
       });
-      _showSnackBar(
-        _buildAcceptRequestErrorMessage(e),
-        backgroundColor: AppColors.vermelho,
-      );
+      AppSnackBar.show(context, _buildAcceptRequestErrorMessage(e), isError: true);
     }
   }
 
@@ -390,6 +442,7 @@ class _RequestViewState extends State<RequestView> {
             ? _currentUserName!.trim()
             : 'Prestador',
         phoneNumber: _currentUserPhone,
+        rating: _currentUserRating,
       ),
       acceptedAt: DateTime.now().toIso8601String(),
       authenticationCode: backendInfo?.authenticationCode,
@@ -402,10 +455,7 @@ class _RequestViewState extends State<RequestView> {
     final acceptedInfo = _acceptedRequestInfo ?? detail?.acceptedRequestInfo;
 
     if (detail == null || acceptedInfo?.hasAcceptedUser != true) {
-      _showSnackBar(
-        'O pedido ainda nao foi aceito.',
-        backgroundColor: AppColors.vermelho,
-      );
+      AppSnackBar.show(context, 'O pedido ainda nao foi aceito.', isError: true);
       return;
     }
 
@@ -428,6 +478,7 @@ class _RequestViewState extends State<RequestView> {
       'audience': audience,
       'acceptedUserName': acceptedInfo.acceptedUser?.name,
       'acceptedUserPhone': acceptedInfo.acceptedUser?.phoneNumber,
+      'acceptedUserRating': acceptedInfo.acceptedUser?.rating,
       'acceptedAt': acceptedInfo.acceptedAt,
       'authenticationCode': acceptedInfo.authenticationCode,
       'authenticationCodeExpiresAt': acceptedInfo.expiresAt,
@@ -488,21 +539,7 @@ class _RequestViewState extends State<RequestView> {
   }
 
   bool _canOpenAcceptedRequest(AcceptedRequestInfo? acceptedInfo) {
-    if (acceptedInfo?.hasAcceptedUser != true) {
-      return false;
-    }
-
-    final code = acceptedInfo?.authenticationCode?.trim();
-    final expiresAt = acceptedInfo?.expiresAt?.trim();
-    if (code == null ||
-        !RegExp(r'^\d{4}$').hasMatch(code) ||
-        expiresAt == null ||
-        expiresAt.isEmpty) {
-      return false;
-    }
-
-    final parsedExpiresAt = DateTime.tryParse(expiresAt);
-    return parsedExpiresAt == null || parsedExpiresAt.isAfter(DateTime.now());
+    return acceptedInfo?.hasAcceptedUser == true;
   }
 
   String _buildAcceptRequestErrorMessage(Object error) {
@@ -521,16 +558,6 @@ class _RequestViewState extends State<RequestView> {
     }
 
     return error.toString().replaceFirst('Exception: ', '');
-  }
-
-  void _showSnackBar(String message, {required Color backgroundColor}) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text(message), backgroundColor: backgroundColor),
-      );
   }
 
   void _toggleDrawer() {
@@ -554,8 +581,6 @@ class _RequestViewState extends State<RequestView> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-
     return Scaffold(
       backgroundColor: AppColors.preto,
       body: Stack(
@@ -575,30 +600,12 @@ class _RequestViewState extends State<RequestView> {
               ),
             ],
           ),
-          if (_isDrawerOpen)
-            Positioned(
-              top: kToolbarHeight * 1.5,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: AppColors.preto.withValues(alpha: 0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: screenWidth * 0.6,
-                      child: SideMenu(onWalletPressed: _openWallet),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(color: Colors.transparent),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          AnimatedSideMenuOverlay(
+            isOpen: _isDrawerOpen,
+            onClose: _toggleDrawer,
+            onWalletPressed: _openWallet,
+            top: 0,
+          ),
           if (_isWalletOpen)
             Positioned(
               top: 0,
@@ -901,23 +908,7 @@ class _RequestViewState extends State<RequestView> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Row(
-                      children: [
-                        Text(
-                          '5.0',
-                          style: TextStyle(
-                            color: AppColors.preto,
-                            fontSize: 14,
-                          ),
-                        ),
-                        SizedBox(width: 4),
-                        Icon(
-                          Icons.star,
-                          color: AppColors.amareloClaro,
-                          size: 16,
-                        ),
-                      ],
-                    ),
+                    _buildRatingRow(detail.userCreator.rating),
                   ],
                 ),
               ),
@@ -928,13 +919,36 @@ class _RequestViewState extends State<RequestView> {
     );
   }
 
+  Widget _buildRatingRow(double? rating) {
+    return Row(
+      children: [
+        Text(
+          (rating ?? 0.0).toStringAsFixed(1),
+          style: const TextStyle(
+            color: AppColors.preto,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(width: 4),
+        const Icon(
+          Icons.star,
+          color: AppColors.amareloClaro,
+          size: 16,
+        ),
+      ],
+    );
+  }
+
   Widget _buildActionButtons(ServiceDetailModel detail) {
     final acceptedInfo = _acceptedRequestInfo ?? detail.acceptedRequestInfo;
     final canOpenAcceptedRequest = _canOpenAcceptedRequest(acceptedInfo);
     final normalizedStatus = detail.status.trim().toUpperCase();
     final isTerminal =
         normalizedStatus == 'CONCLUIDO' || normalizedStatus == 'CANCELADO';
-    if (_isOwner && detail.id != null && !_isReadOnly && !isTerminal) {
+    final parsedDeadline = DateTime.tryParse(detail.deadline.trim());
+    final isDeadlineExpired =
+        parsedDeadline != null && parsedDeadline.isBefore(DateTime.now());
+    if (_isOwner && detail.id != null && !isTerminal) {
       return Column(
         children: [
           SizedBox(
@@ -1019,11 +1033,40 @@ class _RequestViewState extends State<RequestView> {
               ),
             ),
           ),
+          if (normalizedStatus == 'CRIADO' && isDeadlineExpired) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: _renewDeadline,
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: AppColors.preto,
+                  foregroundColor: AppColors.branco,
+                  side: const BorderSide(
+                    color: AppColors.amareloUmPoucoEscuro,
+                    width: 2,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+                child: const Text(
+                  'Renovar prazo',
+                  style: TextStyle(
+                    color: AppColors.branco,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       );
     }
 
-    if (!_showAcceptAction || _isReadOnly) {
+    if (!_showAcceptAction) {
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton(
@@ -1234,11 +1277,13 @@ class _CurrentUser {
   final int? id;
   final String? name;
   final int? phoneNumber;
+  final double? rating;
 
   const _CurrentUser({
     this.id,
     this.name,
     this.phoneNumber,
+    this.rating,
   });
 
   factory _CurrentUser.fromJson(Map<String, dynamic> json) {
@@ -1246,6 +1291,8 @@ class _CurrentUser {
       id: _toInt(json['id']),
       name: json['name']?.toString(),
       phoneNumber: _toInt(json['phoneNumber']),
+      rating:
+          _toDouble(json['rating'] ?? json['userRating'] ?? json['avaliacao']),
     );
   }
 
@@ -1253,6 +1300,12 @@ class _CurrentUser {
     if (value is int) return value;
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  static double? _toDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value.replaceAll(',', '.'));
     return null;
   }
 }

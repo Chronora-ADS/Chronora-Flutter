@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/app_snackbar.dart';
 import '../../widgets/auth_text_field.dart';
 import '../../widgets/backgrounds/background_auth_widget.dart';
 
@@ -46,11 +47,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           response.statusCode == 202 ||
           response.statusCode == 204) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Se o e-mail existir, enviaremos instruções de recuperação.'),
-          ),
+        AppSnackBar.show(
+          context,
+          'Se o e-mail existir, enviaremos instruções de recuperação.',
         );
         Navigator.pop(context);
         return;
@@ -65,14 +64,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       } catch (_) {}
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      AppSnackBar.show(context, message, isError: true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao enviar recuperação: $e')),
-      );
+      AppSnackBar.show(context, 'Erro ao enviar recuperação: $e', isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

@@ -7,10 +7,11 @@ import 'package:image_picker/image_picker.dart';
 import '../core/constants/app_colors.dart';
 import '../core/constants/app_routes.dart';
 import '../core/services/profile_controller.dart';
+import '../core/utils/app_snackbar.dart';
 import '../core/utils/service_image_resolver.dart';
 import '../widgets/backgrounds/background_default_widget.dart';
 import '../widgets/header.dart';
-import '../widgets/side_menu.dart';
+import '../widgets/animated_side_menu_overlay.dart';
 import '../widgets/wallet_modal.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -84,9 +85,7 @@ class _ProfilePageState extends State<ProfilePage> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao selecionar arquivo: $e')),
-      );
+      AppSnackBar.show(context, 'Erro ao selecionar arquivo: $e', isError: true);
     }
   }
 
@@ -109,9 +108,7 @@ class _ProfilePageState extends State<ProfilePage> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao selecionar foto de perfil: $e')),
-      );
+      AppSnackBar.show(context, 'Erro ao selecionar foto de perfil: $e', isError: true);
     }
   }
 
@@ -202,27 +199,19 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _updateProfile() async {
     if (_nameController.text.trim().isEmpty ||
         _emailController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preencha nome e email.')),
-      );
+      AppSnackBar.show(context, 'Preencha nome e email.', isError: true);
       return;
     }
 
     if (_newPasswordController.text.isNotEmpty &&
         _newPasswordController.text != _confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('As senhas não coincidem.')),
-      );
+      AppSnackBar.show(context, 'As senhas não coincidem.', isError: true);
       return;
     }
 
     if (_newPasswordController.text.isNotEmpty &&
         _currentPasswordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Digite a senha atual para trocar a senha.'),
-        ),
-      );
+      AppSnackBar.show(context, 'Digite a senha atual para trocar a senha.', isError: true);
       return;
     }
 
@@ -249,15 +238,11 @@ class _ProfilePageState extends State<ProfilePage> {
     });
 
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_controller.errorMessage)),
-      );
+      AppSnackBar.show(context, _controller.errorMessage, isError: true);
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Perfil atualizado com sucesso.')),
-    );
+    AppSnackBar.show(context, 'Perfil atualizado com sucesso.');
 
     _currentPasswordController.clear();
     _newPasswordController.clear();
@@ -355,9 +340,7 @@ class _ProfilePageState extends State<ProfilePage> {
     });
 
     if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_controller.errorMessage)),
-      );
+      AppSnackBar.show(context, _controller.errorMessage, isError: true);
       return;
     }
 
@@ -370,7 +353,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
     final hasError = !_controller.isLoading && _controller.user == null;
 
     return Scaffold(
@@ -390,34 +372,12 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ],
           ),
-          if (_isDrawerOpen)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.5),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: screenWidth * 0.6,
-
-                      child: SideMenu(
-                        onWalletPressed: _openWallet,
-                        userName: _controller.user?.name ?? 'Usuario',
-                      ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _toggleDrawer,
-                        child: Container(color: Colors.transparent),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          AnimatedSideMenuOverlay(
+            isOpen: _isDrawerOpen,
+            onClose: _toggleDrawer,
+            onWalletPressed: _openWallet,
+            top: 0,
+          ),
           if (_isWalletOpen)
             Positioned(
               top: 0,
