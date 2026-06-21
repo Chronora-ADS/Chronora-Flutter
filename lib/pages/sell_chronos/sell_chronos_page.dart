@@ -8,12 +8,12 @@ import '../../widgets/wallet_modal.dart';
 import 'pix_sell_page.dart';
 
 /// Controller para vender Chronos
-/// - Preço fixo de venda: R$2,00 por Chronos
-/// - Taxa de 10% sobre o subtotal
 /// - Validações de quantidade: feitas pelo backend
 class SellChronosController extends ChangeNotifier {
-  static const double CHRONOS_SELL_PRICE = 2.00;
-  static const double TAX_PERCENTAGE = 0.10;
+  // Valores padrão (substituídos ao carregar do backend)
+  double _chronosSellPrice = 2.00;
+  double _taxPercentage = 0.10;
+
   static const String TOOLTIP_TEXT =
       'O valor de venda de Chronos é equivalente a R\$2,00 reais. No final, é aplicada uma taxa de 10% sobre o total.';
 
@@ -62,13 +62,26 @@ class SellChronosController extends ChangeNotifier {
         return;
       }
 
-      final response = await ApiService.get('/user/get', token: token);
-      if (response.statusCode == 200) {
-        final balance = _parseBalance(response.body);
-        _updateState(() { currentBalance = balance; isLoadingBalance = false; });
-      } else {
-        _updateState(() { isLoadingBalance = false; currentBalance = 0; });
+      final results = await Future.wait([
+        ApiService.get('/user/get', token: token),
+        ApiService.get('/payment/config'),
+      ]);
+
+      final userResponse = results[0];
+      final configResponse = results[1];
+
+      int balance = 0;
+      if (userResponse.statusCode == 200) {
+        balance = _parseBalance(userResponse.body);
       }
+
+      if (configResponse.statusCode == 200) {
+        final config = json.decode(configResponse.body) as Map<String, dynamic>;
+        _chronosSellPrice = (config['sellPrice'] as num?)?.toDouble() ?? _chronosSellPrice;
+        _taxPercentage = (config['taxPercentage'] as num?)?.toDouble() ?? _taxPercentage;
+      }
+
+      _updateState(() { currentBalance = balance; isLoadingBalance = false; });
     } catch (_) {
       _updateState(() { isLoadingBalance = false; currentBalance = 0; });
     }
@@ -101,8 +114,8 @@ class SellChronosController extends ChangeNotifier {
     isLoading = false;
   }
 
-  double get subtotal => sellAmount * CHRONOS_SELL_PRICE;
-  double get tax => subtotal * TAX_PERCENTAGE;
+  double get subtotal => sellAmount * _chronosSellPrice;
+  double get tax => subtotal * _taxPercentage;
   double get taxAmount => tax;
   double get totalAmount => subtotal - tax;
   int get chronosAfterSale => currentBalance - sellAmount;
