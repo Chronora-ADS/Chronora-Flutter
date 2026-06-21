@@ -189,7 +189,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         _setFeedback(
-          'Cadastro realizado! Verifique seu e-mail para confirmar a conta antes de fazer login.',
+          'Cadastro realizado com sucesso!',
           isError: false,
         );
         await Future.delayed(const Duration(seconds: 3));

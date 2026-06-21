@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:chronora/core/constants/app_routes.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -36,6 +37,17 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     _loadRememberMePreference();
+    if (kIsWeb) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _checkEmailConfirmation());
+    }
+  }
+
+  void _checkEmailConfirmation() {
+    final fragment = Uri.base.fragment;
+    final params = Uri.splitQueryString(fragment);
+    if (params['type'] == 'signup') {
+      _showSnackBar('E-mail confirmado com sucesso! Faça login para continuar.');
+    }
   }
 
   Future<void> _loadRememberMePreference() async {
