@@ -89,9 +89,11 @@ class _ChronoraFlutterState extends State<ChronoraFlutter> {
 
   @override
   Widget build(BuildContext context) {
-    final initialUri = widget.initialUri;
+    // Na web, Uri.base contém o hash com access_token; no mobile vem do AppLinks
+    final Uri? effectiveUri =
+        widget.initialUri ?? (kIsWeb ? Uri.base : null);
     final isRecovery =
-        initialUri != null && _isPasswordRecoveryUrl(initialUri);
+        effectiveUri != null && _isPasswordRecoveryUrl(effectiveUri);
 
     return MaterialApp(
       navigatorKey: _navigatorKey,
@@ -107,7 +109,7 @@ class _ChronoraFlutterState extends State<ChronoraFlutter> {
       ),
       home: isRecovery
           ? ResetPasswordPage(
-              accessToken: ResetPasswordPage.extractAccessToken(initialUri),
+              accessToken: ResetPasswordPage.extractAccessToken(effectiveUri),
             )
           : const _AuthGate(),
       routes: AppRoutes.routes,
