@@ -161,24 +161,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  String _buildLoginErrorMessage(int statusCode, String body) {
-    final extractedMessage = ApiService.extractErrorMessage(
-      body,
-      fallback: 'Nao foi possivel fazer login.',
-    );
-    final normalizedMessage = extractedMessage.toLowerCase();
-
-    if (statusCode == 401 ||
-        normalizedMessage.contains('credenciais inv') ||
-        normalizedMessage.contains('invalid login credentials') ||
-        normalizedMessage.contains('invalid credentials') ||
-        normalizedMessage.contains('invalid_grant')) {
-      return 'E-mail ou senha errados.';
-    }
-
-    return 'Erro no login: $extractedMessage';
-  }
-
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
