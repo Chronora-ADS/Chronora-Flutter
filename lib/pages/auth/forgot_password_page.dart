@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/api/api_service.dart';
@@ -74,8 +75,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   String _buildResetRedirectUrl() {
-    final baseUri = Uri.base;
-    return '${baseUri.scheme}://${baseUri.authority}';
+    if (kIsWeb) {
+      final baseUri = Uri.base;
+      return '${baseUri.scheme}://${baseUri.authority}';
+    }
+    return 'br.com.chronora://reset-password';
   }
 
   @override
