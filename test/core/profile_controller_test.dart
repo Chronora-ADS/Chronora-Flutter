@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:chronora/core/api/api_service.dart';
+import 'package:chronora/core/models/user_model.dart';
 import 'package:chronora/core/services/profile_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -56,6 +57,47 @@ void main() {
       });
       expect(controller.user?.profileImage, 'https://storage/avatar.jpg');
       expect(controller.user?.rating, 4.5);
+    });
+  });
+
+  group('Funcionalidade: Desativacao da conta', () {
+    test('aceita resposta 204, limpa a sessao e remove o usuario em memoria',
+        () async {
+      SharedPreferences.setMockInitialValues({
+        'auth_token': 'token-valido',
+        'refresh_token': 'refresh-valido',
+        'auth_expires_at':
+            DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch,
+      });
+
+      late http.Request capturedRequest;
+      ApiService.setClientForTesting(
+        MockClient((request) async {
+          capturedRequest = request;
+          return http.Response('', 204);
+        }),
+      );
+
+      final controller = ProfileController()
+        ..user = User(
+          id: '1',
+          name: 'Ana Silva',
+          email: 'ana@chronora.com',
+          phoneNumber: '11999999999',
+          timeChronos: 25,
+        );
+
+      final success = await controller.deleteAccount();
+      final preferences = await SharedPreferences.getInstance();
+
+      expect(success, isTrue);
+      expect(capturedRequest.method, 'DELETE');
+      expect(capturedRequest.url.path, '/user/delete');
+      expect(capturedRequest.headers['authorization'], 'Bearer token-valido');
+      expect(controller.user, isNull);
+      expect(preferences.getString('auth_token'), isNull);
+      expect(preferences.getString('refresh_token'), isNull);
+      expect(preferences.getInt('auth_expires_at'), isNull);
     });
   });
 }

@@ -302,7 +302,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ],
               ),
               const Text(
-                'Deseja mesmo deletar sua conta?',
+                'Deseja mesmo desativar sua conta?',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 20,
@@ -312,7 +312,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Você perderá seus Chronos e pedidos em aberto.',
+                'Seu acesso será encerrado, mas seus dados e histórico serão preservados.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: AppColors.preto),
               ),
@@ -326,7 +326,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: const Text(
-                    'Deletar conta',
+                    'Desativar conta',
                     style: TextStyle(
                       color: AppColors.branco,
                       fontWeight: FontWeight.bold,
@@ -563,7 +563,7 @@ class _ProfilePageState extends State<ProfilePage> {
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
             child: const Text(
-              'Deletar conta',
+              'Desativar conta',
               style: TextStyle(
                 color: Colors.red,
                 fontWeight: FontWeight.bold,

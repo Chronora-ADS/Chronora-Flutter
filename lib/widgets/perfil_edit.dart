@@ -34,7 +34,7 @@ class _PerfilEditState extends State<PerfilEdit> {
   @override
   void initState() {
     super.initState();
-    
+
     // Inicializa os controladores com valores vazios
     nameController = TextEditingController();
     emailController = TextEditingController();
@@ -59,12 +59,13 @@ class _PerfilEditState extends State<PerfilEdit> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     // Obtém os arguments passados na navegação
-    final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
-    
+    final args =
+        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+
     if (args != null) {
       _user = args['user'] as User;
       _onProfileUpdated = args['onProfileUpdated'] as VoidCallback;
-      
+
       // Preenche os controladores com os dados do usuário
       nameController.text = _user.name;
       emailController.text = _user.email;
@@ -99,9 +100,9 @@ class _PerfilEditState extends State<PerfilEdit> {
     bool confirmDelete = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Deletar Conta'),
+        title: const Text('Desativar conta'),
         content: const Text(
-          'Tem certeza que deseja deletar sua conta? Esta ação não pode ser desfeita e todos os seus dados serão perdidos.',
+          'Tem certeza que deseja desativar sua conta? Seu acesso será encerrado, mas seus dados e histórico serão preservados.',
         ),
         actions: [
           TextButton(
@@ -113,7 +114,7 @@ class _PerfilEditState extends State<PerfilEdit> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
             ),
-            child: const Text('Deletar'),
+            child: const Text('Desativar'),
           ),
         ],
       ),
@@ -121,19 +122,20 @@ class _PerfilEditState extends State<PerfilEdit> {
 
     if (confirmDelete == true) {
       setState(() => _isLoading = true);
-      
+
       final success = await _controller.deleteAccount();
-      
+
+      if (!mounted) return;
+
       setState(() => _isLoading = false);
-      
+
       if (success) {
         Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Conta deletada com sucesso')),
-        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao deletar conta: ${_controller.errorMessage}')),
+          SnackBar(
+              content:
+                  Text('Erro ao desativar conta: ${_controller.errorMessage}')),
         );
       }
     }
@@ -177,7 +179,8 @@ class _PerfilEditState extends State<PerfilEdit> {
                     const SizedBox(height: 16),
 
                     // Email
-                    _buildInfoRow('Email', emailController, Icons.email, enabled: false),
+                    _buildInfoRow('Email', emailController, Icons.email,
+                        enabled: false),
                     const SizedBox(height: 16),
 
                     // Telefone
@@ -187,7 +190,8 @@ class _PerfilEditState extends State<PerfilEdit> {
                     // Time Chronos (somente leitura)
                     Row(
                       children: [
-                        const Icon(Icons.monetization_on, color: AppColors.cinza),
+                        const Icon(Icons.monetization_on,
+                            color: AppColors.cinza),
                         const SizedBox(width: 12),
                         const Text(
                           'Time Chronos:',
@@ -233,7 +237,6 @@ class _PerfilEditState extends State<PerfilEdit> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     GestureDetector(
                       onTap: _pickDocument,
                       child: Container(
@@ -306,7 +309,7 @@ class _PerfilEditState extends State<PerfilEdit> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      _documentFile != null 
+                      _documentFile != null
                           ? 'Arquivo selecionado: $_documentFileName'
                           : 'Nenhum arquivo selecionado',
                       style: TextStyle(
@@ -339,14 +342,14 @@ class _PerfilEditState extends State<PerfilEdit> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
-                    _buildPasswordField('Senha Atual', currentPasswordController, Icons.lock),
+                    _buildPasswordField(
+                        'Senha Atual', currentPasswordController, Icons.lock),
                     const SizedBox(height: 16),
-
-                    _buildPasswordField('Nova Senha', newPasswordController, Icons.lock_outline),
+                    _buildPasswordField('Nova Senha', newPasswordController,
+                        Icons.lock_outline),
                     const SizedBox(height: 16),
-
-                    _buildPasswordField('Confirmar Nova Senha', confirmPasswordController, Icons.lock_outline),
+                    _buildPasswordField('Confirmar Nova Senha',
+                        confirmPasswordController, Icons.lock_outline),
                   ],
                 ),
               ),
@@ -361,7 +364,8 @@ class _PerfilEditState extends State<PerfilEdit> {
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: _isLoading ? null : () => Navigator.pop(context),
+                        onPressed:
+                            _isLoading ? null : () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: AppColors.amareloClaro),
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -388,7 +392,8 @@ class _PerfilEditState extends State<PerfilEdit> {
                                 height: 20,
                                 width: 20,
                                 child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation(AppColors.preto),
+                                  valueColor:
+                                      AlwaysStoppedAnimation(AppColors.preto),
                                   strokeWidth: 2,
                                 ),
                               )
@@ -406,7 +411,7 @@ class _PerfilEditState extends State<PerfilEdit> {
 
                 const SizedBox(height: 16),
 
-                // Botão Deletar Conta
+                // Botão Desativar Conta
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
@@ -425,7 +430,7 @@ class _PerfilEditState extends State<PerfilEdit> {
                             ),
                           )
                         : const Text(
-                            'Deletar conta',
+                            'Desativar conta',
                             style: TextStyle(
                               color: Colors.red,
                               fontWeight: FontWeight.bold,
@@ -441,7 +446,9 @@ class _PerfilEditState extends State<PerfilEdit> {
     );
   }
 
-  Widget _buildInfoRow(String label, TextEditingController controller, IconData icon, {bool enabled = true}) {
+  Widget _buildInfoRow(
+      String label, TextEditingController controller, IconData icon,
+      {bool enabled = true}) {
     return Row(
       children: [
         Icon(icon, color: AppColors.cinza),
@@ -486,7 +493,8 @@ class _PerfilEditState extends State<PerfilEdit> {
     );
   }
 
-  Widget _buildPasswordField(String label, TextEditingController controller, IconData icon) {
+  Widget _buildPasswordField(
+      String label, TextEditingController controller, IconData icon) {
     return Row(
       children: [
         Icon(icon, color: AppColors.cinza),
@@ -531,7 +539,8 @@ class _PerfilEditState extends State<PerfilEdit> {
   Future<void> _updateProfile() async {
     if (currentPasswordController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Digite sua senha atual para atualizar o perfil')),
+        const SnackBar(
+            content: Text('Digite sua senha atual para atualizar o perfil')),
       );
       return;
     }
@@ -552,7 +561,8 @@ class _PerfilEditState extends State<PerfilEdit> {
       }
       if (currentPasswordController.text.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Digite sua senha atual para mudar a senha')),
+          const SnackBar(
+              content: Text('Digite sua senha atual para mudar a senha')),
         );
         return;
       }
@@ -565,7 +575,9 @@ class _PerfilEditState extends State<PerfilEdit> {
       name: nameController.text,
       email: emailController.text,
       phoneNumber: phoneController.text,
-      password: newPasswordController.text.isNotEmpty ? newPasswordController.text : null,
+      password: newPasswordController.text.isNotEmpty
+          ? newPasswordController.text
+          : null,
     );
 
     setState(() => _isLoading = false);

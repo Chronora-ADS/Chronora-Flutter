@@ -40,21 +40,22 @@ void main() {
     });
 
     testWidgets(
-        'Cenario: Dado usuario no perfil, quando toca em deletar conta, entao modal de confirmacao abre e pode cancelar',
+        'Cenario: Dado usuario no perfil, quando toca em desativar conta, entao modal de confirmacao explica o soft delete e pode cancelar',
         (tester) async {
       await tester.pumpWidget(buildPage());
 
-      await tester.ensureVisible(find.text('Deletar conta'));
-      await tester.tap(find.text('Deletar conta'));
+      await tester.ensureVisible(find.text('Desativar conta'));
+      await tester.tap(find.text('Desativar conta'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Deletar Conta'), findsOneWidget);
-      expect(find.textContaining('Tem certeza'), findsOneWidget);
+      expect(find.text('Desativar conta'), findsNWidgets(2));
+      expect(find.textContaining('dados e histórico serão preservados'),
+          findsOneWidget);
 
       await tester.tap(find.text('Cancelar').last);
       await tester.pumpAndSettle();
 
-      expect(find.text('Deletar Conta'), findsNothing);
+      expect(find.text('Desativar'), findsNothing);
     });
   });
 }

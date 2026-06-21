@@ -132,11 +132,11 @@ class ProfileController {
 
       errorMessage = ApiService.extractErrorMessage(
         response.body,
-        fallback: 'Nao foi possivel deletar a conta.',
+        fallback: 'Nao foi possivel desativar a conta.',
       );
       return false;
     } catch (e) {
-      errorMessage = 'Erro ao deletar conta: $e';
+      errorMessage = 'Erro ao desativar conta: $e';
       return false;
     } finally {
       isLoading = false;
