@@ -94,7 +94,7 @@ class _TopBannerState extends State<_TopBanner>
         child: SafeArea(
           bottom: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            padding: const EdgeInsets.fromLTRB(20, kToolbarHeight + 8, 20, 0),
             child: Material(
               elevation: 6,
               borderRadius: BorderRadius.circular(10),
