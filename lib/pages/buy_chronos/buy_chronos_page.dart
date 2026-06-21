@@ -67,7 +67,7 @@ class BuyChronosController extends ChangeNotifier {
       final results = await Future.wait([
         _walletService.fetchCurrentBalance(),
         _walletService.fetchPendingBuyPayment(),
-        _walletService.fetchChronosConfig(),
+        _walletService.fetchChronosConfig().catchError((_) => <String, dynamic>{}),
       ]);
       _updateState(() {
         currentBalance = results[0] as int;
