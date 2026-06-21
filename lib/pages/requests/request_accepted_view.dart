@@ -18,7 +18,7 @@ import '../../widgets/wallet_modal.dart';
 
 enum RequestAcceptedAudience { provider, requester }
 
-enum _ExpiredCodeAction { cancelService, secondCall, renewCode }
+enum _ExpiredCodeAction { cancelService, secondCall }
 
 class _LeaveMessage {
   final String text;
@@ -604,11 +604,6 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         return;
       }
 
-      if (action == _ExpiredCodeAction.renewCode) {
-        await _renewVerificationCode();
-        return;
-      }
-
       if (action == _ExpiredCodeAction.secondCall) {
         await _requestSecondCall();
         return;
@@ -682,64 +677,6 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
           error,
           fallback: 'Nao foi possivel iniciar a segunda chamada.',
         ),
-        isError: true,
-      );
-    } finally {
-      _isHandlingExpiration = false;
-    }
-  }
-
-  Future<void> _renewVerificationCode() async {
-    if (_isHandlingExpiration || _isLeavingAcceptedView) return;
-
-    final serviceId = _resolvedServiceDetail?.id;
-    if (serviceId == null) {
-      AppSnackBar.show(context, 'Servico nao encontrado.', isError: true);
-      return;
-    }
-
-    _isHandlingExpiration = true;
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token');
-      if (token == null) throw Exception('Usuario nao autenticado.');
-
-      final response = await ApiService.put(
-        '/service/renewCode/$serviceId',
-        const {},
-        token: token,
-      );
-
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(
-          ApiService.extractErrorMessage(
-            response.body,
-            fallback: 'Nao foi possivel renovar o codigo.',
-          ),
-        );
-      }
-
-      final latestDetail = _parseServiceDetailFromResponse(response.body);
-      if (!mounted || latestDetail == null) return;
-
-      setState(() {
-        _resolvedServiceDetail = latestDetail;
-        _serviceId = latestDetail.id ?? _serviceId;
-        _syncAcceptedRequestInfoFromServiceDetail();
-        _didShowProviderExpiredMessage = false;
-      });
-
-      _syncRemainingAuthenticationCodeTime();
-      _startAuthenticationCodeCountdown();
-      _startAcceptedRequestSync();
-
-      AppSnackBar.show(context, 'Novo codigo gerado. Compartilhe com o prestador.');
-    } catch (error) {
-      if (!mounted) return;
-      AppSnackBar.show(
-        context,
-        _friendlyErrorMessage(error, fallback: 'Nao foi possivel renovar o codigo.'),
         isError: true,
       );
     } finally {
@@ -1981,7 +1918,7 @@ class _TimeExpiredActionDialogState extends State<_TimeExpiredActionDialog> {
               ),
               const SizedBox(height: 14),
               const Text(
-                'O codigo expirou. Gere um novo codigo, inicie uma segunda chamada ou cancele o servico.',
+                'O codigo expirou. Cancele o servico com este fornecedor ou inicie uma segunda chamada com um novo codigo.',
                 style: TextStyle(
                   color: AppColors.preto,
                   fontSize: 15,
@@ -1989,52 +1926,15 @@ class _TimeExpiredActionDialogState extends State<_TimeExpiredActionDialog> {
                 ),
               ),
               const SizedBox(height: 20),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  ElevatedButton(
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompact = constraints.maxWidth < 380;
+                  final cancelButton = OutlinedButton(
                     onPressed: _didSelectAction
                         ? null
-                        : () => _selectAction(_ExpiredCodeAction.renewCode),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.amareloUmPoucoEscuro,
-                      foregroundColor: AppColors.branco,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      'Gerar novo codigo',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  OutlinedButton(
-                    onPressed: _didSelectAction
-                        ? null
-                        : () => _selectAction(_ExpiredCodeAction.secondCall),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.amareloUmPoucoEscuro,
-                      side: const BorderSide(
-                        color: AppColors.amareloUmPoucoEscuro,
-                        width: 1.6,
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      'Segunda chamada',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  OutlinedButton(
-                    onPressed: _didSelectAction
-                        ? null
-                        : () => _selectAction(_ExpiredCodeAction.cancelService),
+                        : () => _selectAction(
+                              _ExpiredCodeAction.cancelService,
+                            ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.vermelho,
                       side: const BorderSide(
@@ -2050,8 +1950,47 @@ class _TimeExpiredActionDialogState extends State<_TimeExpiredActionDialog> {
                       'Cancelar servico',
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
-                  ),
-                ],
+                  );
+
+                  final secondCallButton = ElevatedButton(
+                    onPressed: _didSelectAction
+                        ? null
+                        : () => _selectAction(
+                              _ExpiredCodeAction.secondCall,
+                            ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.amareloUmPoucoEscuro,
+                      foregroundColor: AppColors.branco,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Segunda chamada',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  );
+
+                  if (isCompact) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        cancelButton,
+                        const SizedBox(height: 10),
+                        secondCallButton,
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    children: [
+                      Expanded(child: cancelButton),
+                      const SizedBox(width: 12),
+                      Expanded(child: secondCallButton),
+                    ],
+                  );
+                },
               ),
             ],
           ),
