@@ -86,6 +86,24 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  String _buildLoginErrorMessage(int statusCode, String body) {
+    final extracted = ApiService.extractErrorMessage(
+      body,
+      fallback: 'Nao foi possivel fazer login.',
+    );
+    final normalized = extracted.toLowerCase();
+
+    if (statusCode == 401 ||
+        normalized.contains('credenciais inv') ||
+        normalized.contains('invalid login credentials') ||
+        normalized.contains('invalid credentials') ||
+        normalized.contains('invalid_grant')) {
+      return 'E-mail ou senha errados.';
+    }
+
+    return 'Erro no login: $extracted';
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
