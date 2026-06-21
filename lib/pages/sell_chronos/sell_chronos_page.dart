@@ -167,71 +167,6 @@ class SellChronosController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> sellChronos({
-    required int amount,
-    required String pixKey,
-    required Function onSuccess,
-    required Function(String) onError,
-  }) async {
-    if (amount <= 0) {
-      onError('Quantidade inválida');
-      return;
-    }
-
-    if (amount > currentBalance) {
-      onError('Saldo insuficiente');
-      return;
-    }
-
-    if (!_validatePixBasic(pixKey)) {
-      onError('Chave PIX inválida');
-      return;
-    }
-
-    isLoading = true;
-    notifyListeners();
-
-    try {
-      // TODO: Integrar com backend real
-      // await _sellChronosBackend(amount, pixKey);
-
-      // Simulação temporária
-      await Future.delayed(const Duration(milliseconds: 900));
-
-      // Atualiza saldo local após sucesso
-      currentBalance = chronosAfterSale;
-      sellAmount = 0;
-      pixKey = '';
-      amountController.clear();
-      pixKeyController.clear();
-      isLoading = false;
-      notifyListeners();
-      onSuccess();
-    } catch (e) {
-      isLoading = false;
-      notifyListeners();
-      onError('Erro ao processar venda: ${e.toString()}');
-    }
-  }
-
-  bool _validatePixBasic(String key) {
-    if (key.isEmpty) return false;
-    // Verificação simples: e-mail, CPF (somente números 11), telefone (10-13 dígitos) ou aleatória (chave aleatória allowed)
-    final emailRegex = RegExp(r"^[\w-.]+@[\w-]+\.[a-zA-Z]{2,}");
-    final digitsOnly = RegExp(r"^[0-9]+$");
-    final phoneRegex = RegExp(r'^\+?[0-9]{10,13}\$');
-
-    if (emailRegex.hasMatch(key)) return true;
-    final clean = key.replaceAll(RegExp(r'[^0-9]'), '');
-    if (clean.length == 11 && digitsOnly.hasMatch(clean))
-      return true; // possível CPF
-    if (phoneRegex.hasMatch(key)) return true;
-    // chave aleatória (UUID-like) allow alphanumeric between 8 and 64
-    final randomKey = RegExp(r'^[a-zA-Z0-9_-]{8,64}\$');
-    if (randomKey.hasMatch(key)) return true;
-
-    return false;
-  }
 }
 
 class SellChronosPage extends StatefulWidget {
@@ -611,6 +546,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
                                     builder: (context) => PixSellPage(
                                       chronosAmount: amount,
                                       totalAmount: _controller.totalAmount,
+                                      taxAmount: _controller.taxAmount,
                                     ),
                                   ),
                                 );
@@ -641,7 +577,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: Colors.black.withOpacity(0.7))),
+        Text(label, style: TextStyle(color: Colors.black.withValues(alpha: 0.7))),
         Text(value,
             style: const TextStyle(
                 color: Colors.black, fontWeight: FontWeight.bold)),
@@ -708,7 +644,7 @@ class _SellChronosPageState extends State<SellChronosPage> {
               right: 0,
               bottom: 0,
               child: Container(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
