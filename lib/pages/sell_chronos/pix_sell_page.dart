@@ -9,11 +9,13 @@ import 'sell_success_page.dart';
 class PixSellPage extends StatefulWidget {
   final int chronosAmount;
   final double totalAmount;
+  final double taxAmount;
 
   const PixSellPage({
     super.key,
     required this.chronosAmount,
     required this.totalAmount,
+    required this.taxAmount,
   });
 
   @override
@@ -182,7 +184,7 @@ class _PixSellPageState extends State<PixSellPage> {
                     'R\$ ${widget.totalAmount.toStringAsFixed(2)}'),
                 const SizedBox(height: 8),
                 _labelValueRow('Taxa (10%)',
-                    'R\$ ${(widget.totalAmount * 0.1).toStringAsFixed(2)}'),
+                    'R\$ ${widget.taxAmount.toStringAsFixed(2)}'),
               ],
             ),
           ),
