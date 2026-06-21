@@ -18,10 +18,11 @@ import 'pix_buy_page.dart';
 /// - Persistência de dados
 /// - Integração com gateway de pagamento
 class BuyChronosController extends ChangeNotifier {
-  // Constantes de negócio
-  static const double CHRONOS_PRICE = 2.50; // R$ por Chronos
-  static const double TAX_PERCENTAGE = 0.10; // 10%
-  static const int MAX_CHRONOS_PER_ACCOUNT = 300; // Limite máximo de Chronos
+  // Valores padrão (substituídos ao carregar do backend)
+  double _chronosPrice = 2.50;
+  double _taxPercentage = 0.10;
+  int _maxChronosPerAccount = 300;
+
   static const String TOOLTIP_TEXT =
       'O valor em Chronos é equivalente à 25% do valor de 1 hora do salário mínimo brasileiro. '
       'No final, é aplicada uma taxa de 10% sobre o subtotal.';
@@ -66,10 +67,15 @@ class BuyChronosController extends ChangeNotifier {
       final results = await Future.wait([
         _walletService.fetchCurrentBalance(),
         _walletService.fetchPendingBuyPayment(),
+        _walletService.fetchChronosConfig(),
       ]);
       _updateState(() {
         currentBalance = results[0] as int;
         pendingPayment = results[1] as BuyPaymentResponse?;
+        final config = results[2] as Map<String, dynamic>;
+        _chronosPrice = (config['buyPrice'] as num?)?.toDouble() ?? _chronosPrice;
+        _taxPercentage = (config['taxPercentage'] as num?)?.toDouble() ?? _taxPercentage;
+        _maxChronosPerAccount = (config['maxChronosPerAccount'] as num?)?.toInt() ?? _maxChronosPerAccount;
         isLoadingBalance = false;
       });
     } catch (error) {
@@ -102,17 +108,17 @@ class BuyChronosController extends ChangeNotifier {
   }
 
   // Getters para cálculos
-  double get subtotal => purchaseAmount * CHRONOS_PRICE;
-  double get tax => subtotal * TAX_PERCENTAGE;
+  double get subtotal => purchaseAmount * _chronosPrice;
+  double get tax => subtotal * _taxPercentage;
   double get taxAmount => tax;
   double get totalAmount => subtotal + tax;
   int get chronosAfterPurchase => currentBalance + purchaseAmount;
 
-  // REGRA: Não pode comprar mais de 300 Chronos no total
-  bool get isLimitExceeded => chronosAfterPurchase > MAX_CHRONOS_PER_ACCOUNT;
+  // REGRA: Não pode comprar mais do limite por conta
+  bool get isLimitExceeded => chronosAfterPurchase > _maxChronosPerAccount;
 
   // Quantidade máxima que pode comprar
-  int get maxPurchaseAmount => MAX_CHRONOS_PER_ACCOUNT - currentBalance;
+  int get maxPurchaseAmount => _maxChronosPerAccount - currentBalance;
 
   bool get canProceed =>
       purchaseAmount > 0 && !isLimitExceeded && !isLoading && !isLoadingBalance;
@@ -132,9 +138,9 @@ class BuyChronosController extends ChangeNotifier {
       return;
     }
 
-    if (chronosAfterPurchase > MAX_CHRONOS_PER_ACCOUNT) {
+    if (chronosAfterPurchase > _maxChronosPerAccount) {
       onError(
-          'Limite máximo de $MAX_CHRONOS_PER_ACCOUNT Chronos por conta atingido!\n\n'
+          'Limite máximo de $_maxChronosPerAccount Chronos por conta atingido!\n\n'
           'Você já possui $currentBalance Chronos e tentou comprar $amount.\n'
           'Máximo que você pode comprar: $maxPurchaseAmount Chronos');
       return;
@@ -182,9 +188,9 @@ class BuyChronosController extends ChangeNotifier {
         purchaseAmount = amount;
 
         // AGORA verifica o limite com o NOVO valor
-        if (chronosAfterPurchase > MAX_CHRONOS_PER_ACCOUNT) {
+        if (chronosAfterPurchase > _maxChronosPerAccount) {
           errorMessage =
-              'Limite máximo de $MAX_CHRONOS_PER_ACCOUNT Chronos por conta!\n\n'
+              'Limite máximo de $_maxChronosPerAccount Chronos por conta!\n\n'
               'Você já possui $currentBalance Chronos e tentou comprar $amount.\n'
               'Máximo que você pode comprar: $maxPurchaseAmount Chronos';
         }

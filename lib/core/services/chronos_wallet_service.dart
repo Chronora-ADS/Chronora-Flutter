@@ -26,6 +26,14 @@ class ChronosWalletService {
     return _extractChronosBalance(response.body);
   }
 
+  Future<Map<String, dynamic>> fetchChronosConfig() async {
+    final response = await ApiService.get('/payment/config');
+    if (response.statusCode != 200) {
+      throw Exception('Nao foi possivel carregar configuracao de precos.');
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   Future<BuyPaymentResponse?> fetchPendingBuyPayment() async {
     final token = await AuthSessionService.getValidAccessToken();
     if (token == null) return null;
