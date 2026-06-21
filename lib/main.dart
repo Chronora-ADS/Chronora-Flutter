@@ -107,7 +107,7 @@ class _ChronoraFlutterState extends State<ChronoraFlutter> {
       ),
       home: isRecovery
           ? ResetPasswordPage(
-              accessToken: ResetPasswordPage.extractAccessToken(initialUri!),
+              accessToken: ResetPasswordPage.extractAccessToken(initialUri),
             )
           : const _AuthGate(),
       routes: AppRoutes.routes,
