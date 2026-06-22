@@ -107,7 +107,7 @@ void main() {
       await tester.tap(find.text('Entrar').last);
       await tester.pumpAndSettle();
 
-      expect(find.text('E-mail ou senha errados.'), findsOneWidget);
+      expect(find.text('Email ou senha incorretos'), findsOneWidget);
       expect(find.textContaining('indispon'), findsNothing);
     });
   });
