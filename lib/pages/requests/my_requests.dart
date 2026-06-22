@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chronora/core/constants/app_routes.dart';
 import 'package:chronora/core/constants/app_colors.dart';
 import 'package:chronora/core/services/my_requests_service.dart';
@@ -41,6 +43,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
   String _searchQuery = '';
   String _errorMessage = '';
+  int _searchRevision = 0;
 
   MyRequestsUserIdentity _currentUser = const MyRequestsUserIdentity(
     id: null,
@@ -217,7 +220,9 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
       final merged = <int, ServiceEnvelope>{};
       for (final envelope in state.services) {
-        if (!belongsToGroup(envelope) || !_matchesSearch(envelope)) {
+        if (_normalizeStatus(envelope.service.status) != status ||
+            !belongsToGroup(envelope) ||
+            !_matchesSearch(envelope)) {
           continue;
         }
 
@@ -375,6 +380,46 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
   String _normalizeText(String value) => value.trim().toLowerCase();
 
+  void _handleSearchChanged(String value) {
+    if (value == _searchQuery) {
+      return;
+    }
+
+    final selectedSectionKey = _selectedSectionKey;
+
+    setState(() {
+      _searchQuery = value;
+      _searchRevision++;
+      _statusSections.clear();
+    });
+
+    if (selectedSectionKey != null) {
+      final parsedSectionKey = _parseSectionKey(selectedSectionKey);
+      if (parsedSectionKey != null) {
+        unawaited(
+          _loadStatusSection(
+            sectionKey: selectedSectionKey,
+            groupKey: parsedSectionKey.groupKey,
+            status: parsedSectionKey.status,
+            reset: true,
+          ),
+        );
+      }
+    }
+  }
+
+  _ParsedSectionKey? _parseSectionKey(String sectionKey) {
+    final separatorIndex = sectionKey.indexOf('::');
+    if (separatorIndex <= 0 || separatorIndex >= sectionKey.length - 2) {
+      return null;
+    }
+
+    return _ParsedSectionKey(
+      groupKey: sectionKey.substring(0, separatorIndex),
+      status: sectionKey.substring(separatorIndex + 2),
+    );
+  }
+
   String _normalizeStatus(String value) {
     final normalized = value.trim().toUpperCase();
     if (_serviceStatuses.contains(normalized)) {
@@ -463,6 +508,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       final fetched = <ServiceEnvelope>[];
       final seenIds = state.services.map((item) => item.service.id).toSet();
       final searchQuery = _searchQuery;
+      final searchRevision = _searchRevision;
       final isSearching = searchQuery.trim().isNotEmpty;
       var matchingFetched = 0;
 
@@ -495,7 +541,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         }
       }
 
-      if (!mounted) return;
+      if (!mounted || searchRevision != _searchRevision) return;
       setState(() {
         state.services.addAll(fetched);
         state.services.sort((a, b) => b.service.id.compareTo(a.service.id));
@@ -596,11 +642,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
   Widget _buildSearchField() {
     return TextField(
       controller: _searchController,
-      onChanged: (value) {
-        setState(() {
-          _searchQuery = value;
-        });
-      },
+      onChanged: _handleSearchChanged,
       decoration: InputDecoration(
         hintText: 'Buscar por titulo, categoria ou criador',
         hintStyle: TextStyle(color: AppColors.cinza.withValues(alpha: 0.78)),
@@ -632,9 +674,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
                 tooltip: 'Limpar busca',
                 onPressed: () {
                   _searchController.clear();
-                  setState(() {
-                    _searchQuery = '';
-                  });
+                  _handleSearchChanged('');
                 },
                 icon: const Icon(Icons.close, color: AppColors.cinza),
               ),
@@ -1451,4 +1491,14 @@ class _LazyStatusSectionState {
   bool isLoading = false;
   bool hasLoaded = false;
   String errorMessage = '';
+}
+
+class _ParsedSectionKey {
+  final String groupKey;
+  final String status;
+
+  const _ParsedSectionKey({
+    required this.groupKey,
+    required this.status,
+  });
 }

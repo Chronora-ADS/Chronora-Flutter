@@ -367,6 +367,7 @@ void main() {
       expect(serviceRequests, 1);
       expect(find.text('Alvo 109'), findsOneWidget);
       expect(find.text('Alvo 200'), findsNothing);
+      expect(find.text('Alvo 218'), findsNothing);
 
       await tester.ensureVisible(find.text('Carregar mais'));
       await tester.tap(find.text('Carregar mais'));
@@ -376,6 +377,130 @@ void main() {
       expect(find.text('Alvo 200'), findsOneWidget);
       expect(find.text('Alvo 218'), findsOneWidget);
       expect(find.text('Carregar mais'), findsNothing);
+    });
+
+    testWidgets(
+        'Cenario: Dado status ja carregado, quando pesquisa, entao recarrega categoria com resultados correspondentes',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({'auth_token': 'token-local'});
+      var serviceRequests = 0;
+
+      ApiService.setClientForTesting(
+        MockClient((request) async {
+          if (request.url.path.endsWith('/user/get')) {
+            return http.Response(
+              jsonEncode({
+                'id': 1,
+                'name': 'Ana',
+                'email': 'ana@example.com',
+                'timeChronos': 8,
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+
+          if (request.url.path.endsWith('/service/get/all')) {
+            return http.Response(
+              jsonEncode({
+                'content': [
+                  for (var id = 100; id <= 109; id++)
+                    _serviceJson(
+                      id: id,
+                      creatorId: 1,
+                      status: 'CRIADO',
+                      title: 'Outro $id',
+                    ),
+                  _serviceJson(
+                    id: 200,
+                    creatorId: 1,
+                    status: 'CRIADO',
+                    title: 'Alvo 200',
+                  ),
+                ],
+                'page': 0,
+                'totalPages': 1,
+                'totalElements': 11,
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+
+          if (request.url.path.endsWith('/service/get/all/CRIADO')) {
+            serviceRequests++;
+            expect(request.url.queryParameters['size'], '10');
+            final page = int.parse(request.url.queryParameters['page']!);
+
+            final content = switch (page) {
+              0 => [
+                  for (var id = 100; id <= 109; id++)
+                    _serviceJson(
+                      id: id,
+                      creatorId: 1,
+                      status: 'CRIADO',
+                      title: 'Outro $id',
+                    ),
+                ],
+              1 => [
+                  _serviceJson(
+                    id: 200,
+                    creatorId: 1,
+                    status: 'CRIADO',
+                    title: 'Alvo 200',
+                  ),
+                ],
+              _ => <Map<String, dynamic>>[],
+            };
+
+            return http.Response(
+              jsonEncode({
+                'content': content,
+                'page': page,
+                'totalPages': 2,
+                'totalElements': 11,
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+
+          return http.Response('not found', 404);
+        }),
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: MediaQuery(
+            data: MediaQueryData(
+              padding: EdgeInsets.only(top: 24),
+              size: Size(390, 844),
+            ),
+            child: MeusPedidosPage(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final createdStatus = find
+          .byKey(const ValueKey('my-requests-status-created_by_me::CRIADO'));
+      await tester.ensureVisible(createdStatus.first);
+      await tester.tap(createdStatus.first);
+      await tester.pumpAndSettle();
+
+      expect(serviceRequests, 1);
+      expect(find.text('Outro 109'), findsOneWidget);
+      expect(find.text('Alvo 200'), findsNothing);
+
+      await tester.enterText(find.byType(TextField), 'Alvo');
+      await tester.pumpAndSettle();
+
+      expect(serviceRequests, greaterThan(1));
+      expect(find.text('1 pedido(s) vinculados ao seu login'), findsOneWidget);
+      expect(
+        find.text('Nenhum pedido criado combina com a busca.'),
+        findsNothing,
+      );
     });
   });
 }
