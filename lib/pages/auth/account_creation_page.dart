@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
@@ -34,47 +35,99 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
   final _passwordFocus = FocusNode();
   final _confirmPasswordFocus = FocusNode();
 
-  String? _fileName;
-  PlatformFile? _pickedFile;
+  Uint8List? _documentBytes;
+  String? _documentName;
+  String? _documentMimeType;
   bool _isLoading = false;
   String? _feedbackMessage;
   bool _isFeedbackError = false;
 
-  Future<void> _pickFile() async {
+  Future<void> _pickFromGallery() async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+        withData: true,
       );
-
-      if (result != null) {
-        setState(() {
-          _pickedFile = result.files.first;
-          _fileName = _pickedFile!.name;
-        });
+      if (result == null) return;
+      final file = result.files.first;
+      final Uint8List bytes;
+      if (kIsWeb) {
+        if (file.bytes == null) throw Exception('Arquivo vazio');
+        bytes = file.bytes!;
+      } else {
+        bytes = await File(file.path!).readAsBytes();
       }
+      setState(() {
+        _documentBytes = bytes;
+        _documentName = file.name;
+        _documentMimeType = _mimeFromExtension(file.extension ?? '');
+      });
     } catch (e) {
       if (!mounted) return;
       AppSnackBar.show(context, 'Erro ao selecionar arquivo: $e', isError: true);
     }
   }
 
-  Future<String> _convertToBase64(PlatformFile file) async {
-    if (kIsWeb) {
-      final bytes = file.bytes;
-      if (bytes == null) {
-        throw Exception('Arquivo vazio');
-      }
-      return base64Encode(bytes);
+  Future<void> _pickFromCamera() async {
+    try {
+      final photo = await ImagePicker().pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+      if (photo == null) return;
+      final bytes = await photo.readAsBytes();
+      setState(() {
+        _documentBytes = bytes;
+        _documentName = 'documento.jpg';
+        _documentMimeType = 'image/jpeg';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      AppSnackBar.show(context, 'Erro ao tirar foto: $e', isError: true);
     }
-
-    final selectedFile = File(file.path!);
-    final fileBytes = await selectedFile.readAsBytes();
-    return base64Encode(fileBytes);
   }
 
-  String _resolveDocumentMimeType(PlatformFile file) {
-    switch ((file.extension ?? '').toLowerCase()) {
+  void _showDocumentPicker() {
+    if (kIsWeb) {
+      _pickFromGallery();
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.branco,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined, color: AppColors.amareloUmPoucoEscuro),
+              title: const Text('Tirar foto'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickFromCamera();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.folder_outlined, color: AppColors.amareloUmPoucoEscuro),
+              title: const Text('Escolher da galeria'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickFromGallery();
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _mimeFromExtension(String ext) {
+    switch (ext.toLowerCase()) {
       case 'pdf':
         return 'application/pdf';
       case 'jpg':
@@ -158,7 +211,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_pickedFile == null) {
+    if (_documentBytes == null) {
       _setFeedback('Selecione um documento com foto', isError: true);
       return;
     }
@@ -170,7 +223,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
 
     try {
       final phoneDigits = _phoneController.text.replaceAll(RegExp(r'\D'), '');
-      final base64Data = await _convertToBase64(_pickedFile!);
+      final base64Data = base64Encode(_documentBytes!);
 
       final payload = {
         'name': _nameController.text.trim(),
@@ -178,8 +231,8 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
         'phoneNumber': int.parse(phoneDigits),
         'password': _passwordController.text,
         'document': {
-          'name': _pickedFile!.name,
-          'type': _resolveDocumentMimeType(_pickedFile!),
+          'name': _documentName ?? 'documento.jpg',
+          'type': _documentMimeType ?? 'image/jpeg',
           'data': base64Data,
         },
       };
@@ -312,7 +365,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
-                      onPressed: _pickFile,
+                      onPressed: _showDocumentPicker,
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(
                           color: AppColors.amareloUmPoucoEscuro,
@@ -350,10 +403,10 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                       ),
                     ),
                   ),
-                  if (_fileName != null) ...{
+                  if (_documentName != null) ...{
                     const SizedBox(height: 10),
                     Text(
-                      _fileName!,
+                      _documentName!,
                       style: const TextStyle(
                         fontSize: 14,
                         color: Colors.grey,
