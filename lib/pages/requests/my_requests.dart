@@ -47,6 +47,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     name: '',
     email: '',
   );
+  final List<ServiceEnvelope> _allServices = [];
   String? _selectedSectionKey;
   final Map<String, _LazyStatusSectionState> _statusSections = {};
   final Map<String, int> _sectionCounts = {};
@@ -62,6 +63,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       _isLoading = true;
       _errorMessage = '';
       _selectedSectionKey = null;
+      _allServices.clear();
       _statusSections.clear();
       _sectionCounts.clear();
     });
@@ -71,6 +73,9 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
       setState(() {
         _currentUser = result.currentUser;
+        _allServices
+          ..clear()
+          ..addAll(result.services);
         _sectionCounts.addAll(_buildSectionCounts(result.services));
         _isLoading = false;
       });
@@ -103,6 +108,8 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
   }
 
   List<_RequestSectionGroup> get _requestGroups {
+    final sectionCounts = _currentSectionCounts;
+
     return [
       _RequestSectionGroup(
         key: 'created_by_me',
@@ -110,7 +117,10 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         emptyMessage: _searchQuery.trim().isEmpty
             ? 'Nenhum pedido criado por voce foi encontrado.'
             : 'Nenhum pedido criado por voce combina com a busca.',
-        countsByStatus: _countsByStatusForGroup('created_by_me'),
+        countsByStatus: _countsByStatusForGroup(
+          'created_by_me',
+          sectionCounts,
+        ),
         requestsByStatus: _groupServicesByStatus(
           groupKey: 'created_by_me',
           belongsToGroup: _isCreatedByCurrentUser,
@@ -122,7 +132,10 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         emptyMessage: _searchQuery.trim().isEmpty
             ? 'Nenhum pedido de outro usuario aceito por voce foi encontrado.'
             : 'Nenhum pedido de outro usuario aceito por voce combina com a busca.',
-        countsByStatus: _countsByStatusForGroup('accepted_from_others'),
+        countsByStatus: _countsByStatusForGroup(
+          'accepted_from_others',
+          sectionCounts,
+        ),
         requestsByStatus: _groupServicesByStatus(
           groupKey: 'accepted_from_others',
           belongsToGroup: (envelope) =>
@@ -131,6 +144,16 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         ),
       ),
     ];
+  }
+
+  Map<String, int> get _currentSectionCounts {
+    if (_searchQuery.trim().isEmpty) {
+      return _sectionCounts;
+    }
+
+    return _buildSectionCounts(
+      _allServices.where(_matchesSearch).toList(),
+    );
   }
 
   Map<String, int> _buildSectionCounts(List<ServiceEnvelope> services) {
@@ -167,10 +190,13 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     return counts;
   }
 
-  Map<String, int> _countsByStatusForGroup(String groupKey) {
+  Map<String, int> _countsByStatusForGroup(
+    String groupKey,
+    Map<String, int> sectionCounts,
+  ) {
     return <String, int>{
       for (final status in _serviceStatuses)
-        status: _sectionCounts[_buildSectionKey(groupKey, status)] ?? 0,
+        status: sectionCounts[_buildSectionKey(groupKey, status)] ?? 0,
     };
   }
 
@@ -324,8 +350,12 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
   }
 
   bool _matchesSearch(ServiceEnvelope envelope) {
+    return _matchesSearchQuery(envelope, _searchQuery);
+  }
+
+  bool _matchesSearchQuery(ServiceEnvelope envelope, String searchQuery) {
     final service = envelope.service;
-    final query = _normalizeText(_searchQuery);
+    final query = _normalizeText(searchQuery);
 
     return query.isEmpty ||
         _normalizeText(service.title).contains(query) ||
@@ -432,8 +462,13 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       var hasMore = state.hasMore;
       final fetched = <ServiceEnvelope>[];
       final seenIds = state.services.map((item) => item.service.id).toSet();
+      final searchQuery = _searchQuery;
+      final isSearching = searchQuery.trim().isNotEmpty;
+      var matchingFetched = 0;
 
-      while (fetched.length < _sectionPageSize && hasMore) {
+      while (
+          (isSearching ? matchingFetched : fetched.length) < _sectionPageSize &&
+              hasMore) {
         final result = await _myRequestsService.loadStatusPage(
           status: status,
           page: page,
@@ -446,6 +481,9 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
           }
           if (seenIds.add(envelope.service.id)) {
             fetched.add(envelope);
+            if (_matchesSearchQuery(envelope, searchQuery)) {
+              matchingFetched++;
+            }
           }
         }
 
@@ -1092,6 +1130,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
                 sectionKey: sectionKey,
                 groupKey: groupKey,
                 status: status,
+                totalCount: totalCount,
                 services: services,
               ),
             ),
@@ -1105,6 +1144,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     required String sectionKey,
     required String groupKey,
     required String status,
+    required int totalCount,
     required List<ServiceEnvelope> services,
   }) {
     final state = _statusSections[sectionKey];
@@ -1166,7 +1206,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
               ),
             ),
           )
-        else if (state != null && state.hasMore)
+        else if (state != null && state.hasMore && services.length < totalCount)
           _buildSectionLoadMoreButton(
             label: 'Carregar mais',
             onPressed: () => _loadStatusSection(
