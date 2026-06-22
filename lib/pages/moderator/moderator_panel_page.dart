@@ -12,7 +12,7 @@ class ModeratorPanelPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 5,
+      length: 6,
       child: Scaffold(
         backgroundColor: AppColors.preto,
         appBar: AppBar(
@@ -39,6 +39,7 @@ class ModeratorPanelPage extends StatelessWidget {
               Tab(text: 'Denúncias'),
               Tab(text: 'Estatísticas'),
               Tab(text: 'Webhooks'),
+              Tab(text: 'Chronos'),
             ],
           ),
         ),
@@ -49,6 +50,7 @@ class ModeratorPanelPage extends StatelessWidget {
             const _PlaceholderTab(label: 'Denúncias'),
             const _EstatisticasTab(),
             const _TransacoesTab(),
+            const _ChronosTab(),
           ],
         ),
       ),
@@ -1194,7 +1196,7 @@ class _Chip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color, width: 1),
       ),
@@ -1204,6 +1206,469 @@ class _Chip extends StatelessWidget {
           color: color,
           fontSize: 11,
           fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Aba Chronos (Compras / Vendas) ───────────────────────────────────────────
+
+class _ChronosTab extends StatefulWidget {
+  const _ChronosTab();
+
+  @override
+  State<_ChronosTab> createState() => _ChronosTabState();
+}
+
+class _ChronosTabState extends State<_ChronosTab>
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+  late final TabController _tabController;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return Column(
+      children: [
+        Container(
+          color: const Color(0xFF111214),
+          child: TabBar(
+            controller: _tabController,
+            indicatorColor: AppColors.amareloClaro,
+            labelColor: AppColors.amareloClaro,
+            unselectedLabelColor: AppColors.cinza,
+            labelStyle: const TextStyle(
+                fontWeight: FontWeight.w700, fontSize: 13),
+            tabs: const [
+              Tab(text: 'Compras'),
+              Tab(text: 'Vendas'),
+            ],
+          ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: const [
+              _ComprasSubTab(),
+              _VendasSubTab(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Sub-aba Compras ──────────────────────────────────────────────────────────
+
+class _ComprasSubTab extends StatefulWidget {
+  const _ComprasSubTab();
+
+  @override
+  State<_ComprasSubTab> createState() => _ComprasSubTabState();
+}
+
+class _ComprasSubTabState extends State<_ComprasSubTab>
+    with AutomaticKeepAliveClientMixin {
+  final _service = ModeratorService();
+  late Future<List<PaymentTransactionSummary>> _future;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _service.getBuyTransactions();
+  }
+
+  void _reload() =>
+      setState(() => _future = _service.getBuyTransactions());
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return FutureBuilder<List<PaymentTransactionSummary>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+              child: CircularProgressIndicator(
+                  color: AppColors.amareloClaro));
+        }
+        if (snapshot.hasError) {
+          return _ErrorView(
+            message: snapshot.error
+                .toString()
+                .replaceFirst('Exception: ', ''),
+            onRetry: _reload,
+          );
+        }
+        final list = snapshot.data ?? [];
+        if (list.isEmpty) {
+          return const Center(
+            child: Text('Nenhuma compra encontrada.',
+                style:
+                    TextStyle(color: AppColors.cinza, fontSize: 16)),
+          );
+        }
+        return RefreshIndicator(
+          color: AppColors.amareloClaro,
+          onRefresh: () async => _reload(),
+          child: ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: list.length,
+            itemBuilder: (context, index) =>
+                _BuyCard(transaction: list[index]),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _BuyCard extends StatelessWidget {
+  final PaymentTransactionSummary transaction;
+  const _BuyCard({required this.transaction});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = transaction;
+    final dateStr =
+        DateFormat('dd/MM/yyyy HH:mm').format(t.createdAt.toLocal());
+
+    Color statusColor;
+    String statusLabel;
+    if (t.isPaid) {
+      statusColor = Colors.greenAccent;
+      statusLabel = 'Pago';
+    } else if (t.isPending) {
+      statusColor = Colors.orangeAccent;
+      statusLabel = 'Pendente';
+    } else {
+      statusColor = AppColors.vermelho;
+      statusLabel = 'Falhou';
+    }
+
+    return Card(
+      color: const Color(0xFF1A1B1E),
+      margin: const EdgeInsets.only(bottom: 10),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _Chip(label: statusLabel, color: statusColor),
+                _Chip(
+                  label: t.isPix ? 'PIX' : 'Cartão',
+                  color: Colors.blueAccent,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.person_outline,
+                    size: 14, color: AppColors.cinza),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(t.userName,
+                      style: const TextStyle(
+                          color: AppColors.branco,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('${t.chronosAmount} Chronos',
+                    style: const TextStyle(
+                        color: AppColors.amareloClaro,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700)),
+                Text('R\$ ${t.totalAmount.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                        color: AppColors.branco,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(dateStr,
+                style: const TextStyle(
+                    color: AppColors.cinza, fontSize: 11)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Sub-aba Vendas ───────────────────────────────────────────────────────────
+
+class _VendasSubTab extends StatefulWidget {
+  const _VendasSubTab();
+
+  @override
+  State<_VendasSubTab> createState() => _VendasSubTabState();
+}
+
+class _VendasSubTabState extends State<_VendasSubTab>
+    with AutomaticKeepAliveClientMixin {
+  final _service = ModeratorService();
+  late Future<List<PaymentTransactionSummary>> _future;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _service.getSellTransactions();
+  }
+
+  void _reload() =>
+      setState(() => _future = _service.getSellTransactions());
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return FutureBuilder<List<PaymentTransactionSummary>>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+              child: CircularProgressIndicator(
+                  color: AppColors.amareloClaro));
+        }
+        if (snapshot.hasError) {
+          return _ErrorView(
+            message: snapshot.error
+                .toString()
+                .replaceFirst('Exception: ', ''),
+            onRetry: _reload,
+          );
+        }
+        final list = snapshot.data ?? [];
+        if (list.isEmpty) {
+          return const Center(
+            child: Text('Nenhuma venda encontrada.',
+                style:
+                    TextStyle(color: AppColors.cinza, fontSize: 16)),
+          );
+        }
+        return RefreshIndicator(
+          color: AppColors.amareloClaro,
+          onRefresh: () async => _reload(),
+          child: ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: list.length,
+            itemBuilder: (context, index) => _SellCard(
+              transaction: list[index],
+              onMarkAsPaid: () async {
+                await _service.markSellAsPaid(list[index].id);
+                _reload();
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SellCard extends StatefulWidget {
+  final PaymentTransactionSummary transaction;
+  final Future<void> Function() onMarkAsPaid;
+
+  const _SellCard(
+      {required this.transaction, required this.onMarkAsPaid});
+
+  @override
+  State<_SellCard> createState() => _SellCardState();
+}
+
+class _SellCardState extends State<_SellCard> {
+  bool _loading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = widget.transaction;
+    final dateStr =
+        DateFormat('dd/MM/yyyy HH:mm').format(t.createdAt.toLocal());
+
+    Color statusColor;
+    String statusLabel;
+    if (t.isPaid) {
+      statusColor = Colors.greenAccent;
+      statusLabel = 'PIX Enviado';
+    } else if (t.isPending) {
+      statusColor = Colors.orangeAccent;
+      statusLabel = 'Aguardando';
+    } else {
+      statusColor = AppColors.vermelho;
+      statusLabel = 'Falhou';
+    }
+
+    return Card(
+      color: const Color(0xFF1A1B1E),
+      margin: const EdgeInsets.only(bottom: 10),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _Chip(label: statusLabel, color: statusColor),
+                Text('#${t.id}',
+                    style: const TextStyle(
+                        color: AppColors.cinza, fontSize: 12)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.person_outline,
+                    size: 14, color: AppColors.cinza),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(t.userName,
+                      style: const TextStyle(
+                          color: AppColors.branco,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('${t.chronosAmount} Chronos',
+                    style: const TextStyle(
+                        color: AppColors.amareloClaro,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700)),
+                Text('R\$ ${t.totalAmount.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                        color: AppColors.branco,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600)),
+              ],
+            ),
+            if (t.pixKey != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0B0C0C),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.pix,
+                        size: 16, color: Colors.greenAccent),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(t.pixKey!,
+                          style: const TextStyle(
+                              color: AppColors.branco, fontSize: 12),
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        Clipboard.setData(
+                            ClipboardData(text: t.pixKey!));
+                        AppSnackBar.show(context, 'Chave PIX copiada');
+                      },
+                      child: const Icon(Icons.copy_outlined,
+                          size: 16, color: AppColors.cinza),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 4),
+            Text(dateStr,
+                style: const TextStyle(
+                    color: AppColors.cinza, fontSize: 11)),
+            if (t.isPending) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _loading
+                      ? null
+                      : () async {
+                          setState(() => _loading = true);
+                          String? errorMsg;
+                          try {
+                            await widget.onMarkAsPaid();
+                          } catch (e) {
+                            errorMsg = e
+                                .toString()
+                                .replaceFirst('Exception: ', '');
+                          } finally {
+                            if (mounted) setState(() => _loading = false);
+                          }
+                          if (errorMsg != null) {
+                            if (!mounted) return;
+                            AppSnackBar.show(context, errorMsg,
+                                isError: true);
+                          }
+                        },
+                  icon: _loading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.branco))
+                      : const Icon(Icons.check_circle_outline,
+                          size: 16),
+                  label: const Text('Marcar PIX enviado'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade700,
+                    foregroundColor: AppColors.branco,
+                    textStyle: const TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 13),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );

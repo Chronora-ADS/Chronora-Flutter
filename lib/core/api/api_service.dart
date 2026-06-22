@@ -128,6 +128,24 @@ class ApiService {
     }
   }
 
+  static Future<http.Response> patch(
+    String endpoint,
+    Map<String, dynamic> data, {
+    String? token,
+  }) async {
+    try {
+      final headers = _buildHeaders(token: token);
+
+      return await _client.patch(
+        _buildUri(endpoint),
+        headers: headers,
+        body: jsonEncode(data),
+      );
+    } catch (e) {
+      throw Exception('Erro de conexao: $e');
+    }
+  }
+
   static Future<http.Response> delete(String endpoint, {String? token}) async {
     try {
       final headers = _buildHeaders(token: token);
