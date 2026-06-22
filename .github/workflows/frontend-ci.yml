@@ -53,3 +53,7 @@ jobs:
 
       - name: Gerar build web
         run: flutter build web --release --dart-define=API_BASE_URL=https://example.com
+
+      - name: Notificar Render para deploy
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
