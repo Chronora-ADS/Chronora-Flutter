@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -89,10 +89,10 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _pickProfileImage() async {
+  Future<void> _pickProfileImageFromSource(ImageSource source) async {
     try {
       final file = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
+        source: source,
         imageQuality: 85,
       );
 
@@ -110,6 +110,44 @@ class _ProfilePageState extends State<ProfilePage> {
       if (!mounted) return;
       AppSnackBar.show(context, 'Erro ao selecionar foto de perfil: $e', isError: true);
     }
+  }
+
+  void _showProfileImagePicker() {
+    if (kIsWeb) {
+      _pickProfileImageFromSource(ImageSource.gallery);
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.branco,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined, color: AppColors.amareloUmPoucoEscuro),
+              title: const Text('Tirar foto'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickProfileImageFromSource(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined, color: AppColors.amareloUmPoucoEscuro),
+              title: const Text('Escolher da galeria'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickProfileImageFromSource(ImageSource.gallery);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<Map<String, String>?> _buildDocumentPayload() async {
@@ -568,7 +606,7 @@ class _ProfilePageState extends State<ProfilePage> {
         if (_isEditing) ...[
           const SizedBox(height: 10),
           TextButton.icon(
-            onPressed: _pickProfileImage,
+            onPressed: _showProfileImagePicker,
             icon: const Icon(
               Icons.photo_camera,
               color: AppColors.amareloUmPoucoEscuro,
