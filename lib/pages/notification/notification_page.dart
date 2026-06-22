@@ -340,6 +340,7 @@ class _NotificationPageState extends State<NotificationPage> {
     final visibleCount = _visibleNotificationCount;
 
     return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: visibleCount + (_shouldShowLoadMoreButton ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == visibleCount) {
