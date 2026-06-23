@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chronora/core/constants/app_routes.dart';
 import 'package:chronora/core/constants/app_colors.dart';
 import 'package:chronora/core/services/my_requests_service.dart';
@@ -42,12 +44,14 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
   String _searchQuery = '';
   String _errorMessage = '';
+  int _searchRevision = 0;
 
   MyRequestsUserIdentity _currentUser = const MyRequestsUserIdentity(
     id: null,
     name: '',
     email: '',
   );
+  final List<ServiceEnvelope> _allServices = [];
   String? _selectedSectionKey;
   final Map<String, _LazyStatusSectionState> _statusSections = {};
   final Map<String, int> _sectionCounts = {};
@@ -63,6 +67,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       _isLoading = true;
       _errorMessage = '';
       _selectedSectionKey = null;
+      _allServices.clear();
       _statusSections.clear();
       _sectionCounts.clear();
     });
@@ -72,6 +77,9 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
       setState(() {
         _currentUser = result.currentUser;
+        _allServices
+          ..clear()
+          ..addAll(result.services);
         _sectionCounts.addAll(_buildSectionCounts(result.services));
         _isLoading = false;
       });
@@ -104,6 +112,8 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
   }
 
   List<_RequestSectionGroup> get _requestGroups {
+    final sectionCounts = _currentSectionCounts;
+
     return [
       _RequestSectionGroup(
         key: 'created_by_me',
@@ -111,7 +121,10 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         emptyMessage: _searchQuery.trim().isEmpty
             ? 'Nenhum pedido criado por voce foi encontrado.'
             : 'Nenhum pedido criado por voce combina com a busca.',
-        countsByStatus: _countsByStatusForGroup('created_by_me'),
+        countsByStatus: _countsByStatusForGroup(
+          'created_by_me',
+          sectionCounts,
+        ),
         requestsByStatus: _groupServicesByStatus(
           groupKey: 'created_by_me',
           belongsToGroup: _isCreatedByCurrentUser,
@@ -123,7 +136,10 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         emptyMessage: _searchQuery.trim().isEmpty
             ? 'Nenhum pedido de outro usuario aceito por voce foi encontrado.'
             : 'Nenhum pedido de outro usuario aceito por voce combina com a busca.',
-        countsByStatus: _countsByStatusForGroup('accepted_from_others'),
+        countsByStatus: _countsByStatusForGroup(
+          'accepted_from_others',
+          sectionCounts,
+        ),
         requestsByStatus: _groupServicesByStatus(
           groupKey: 'accepted_from_others',
           belongsToGroup: (envelope) =>
@@ -132,6 +148,16 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         ),
       ),
     ];
+  }
+
+  Map<String, int> get _currentSectionCounts {
+    if (_searchQuery.trim().isEmpty) {
+      return _sectionCounts;
+    }
+
+    return _buildSectionCounts(
+      _allServices.where(_matchesSearch).toList(),
+    );
   }
 
   Map<String, int> _buildSectionCounts(List<ServiceEnvelope> services) {
@@ -168,10 +194,13 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     return counts;
   }
 
-  Map<String, int> _countsByStatusForGroup(String groupKey) {
+  Map<String, int> _countsByStatusForGroup(
+    String groupKey,
+    Map<String, int> sectionCounts,
+  ) {
     return <String, int>{
       for (final status in _serviceStatuses)
-        status: _sectionCounts[_buildSectionKey(groupKey, status)] ?? 0,
+        status: sectionCounts[_buildSectionKey(groupKey, status)] ?? 0,
     };
   }
 
@@ -192,7 +221,9 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
       final merged = <int, ServiceEnvelope>{};
       for (final envelope in state.services) {
-        if (!belongsToGroup(envelope) || !_matchesSearch(envelope)) {
+        if (_normalizeStatus(envelope.service.status) != status ||
+            !belongsToGroup(envelope) ||
+            !_matchesSearch(envelope)) {
           continue;
         }
 
@@ -325,8 +356,12 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
   }
 
   bool _matchesSearch(ServiceEnvelope envelope) {
+    return _matchesSearchQuery(envelope, _searchQuery);
+  }
+
+  bool _matchesSearchQuery(ServiceEnvelope envelope, String searchQuery) {
     final service = envelope.service;
-    final query = _normalizeText(_searchQuery);
+    final query = _normalizeText(searchQuery);
 
     return query.isEmpty ||
         _normalizeText(service.title).contains(query) ||
@@ -345,6 +380,46 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
   }
 
   String _normalizeText(String value) => value.trim().toLowerCase();
+
+  void _handleSearchChanged(String value) {
+    if (value == _searchQuery) {
+      return;
+    }
+
+    final selectedSectionKey = _selectedSectionKey;
+
+    setState(() {
+      _searchQuery = value;
+      _searchRevision++;
+      _statusSections.clear();
+    });
+
+    if (selectedSectionKey != null) {
+      final parsedSectionKey = _parseSectionKey(selectedSectionKey);
+      if (parsedSectionKey != null) {
+        unawaited(
+          _loadStatusSection(
+            sectionKey: selectedSectionKey,
+            groupKey: parsedSectionKey.groupKey,
+            status: parsedSectionKey.status,
+            reset: true,
+          ),
+        );
+      }
+    }
+  }
+
+  _ParsedSectionKey? _parseSectionKey(String sectionKey) {
+    final separatorIndex = sectionKey.indexOf('::');
+    if (separatorIndex <= 0 || separatorIndex >= sectionKey.length - 2) {
+      return null;
+    }
+
+    return _ParsedSectionKey(
+      groupKey: sectionKey.substring(0, separatorIndex),
+      status: sectionKey.substring(separatorIndex + 2),
+    );
+  }
 
   String _normalizeStatus(String value) {
     final normalized = value.trim().toUpperCase();
@@ -433,8 +508,14 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       var hasMore = state.hasMore;
       final fetched = <ServiceEnvelope>[];
       final seenIds = state.services.map((item) => item.service.id).toSet();
+      final searchQuery = _searchQuery;
+      final searchRevision = _searchRevision;
+      final isSearching = searchQuery.trim().isNotEmpty;
+      var matchingFetched = 0;
 
-      while (fetched.length < _sectionPageSize && hasMore) {
+      while (
+          (isSearching ? matchingFetched : fetched.length) < _sectionPageSize &&
+              hasMore) {
         final result = await _myRequestsService.loadStatusPage(
           status: status,
           page: page,
@@ -447,6 +528,9 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
           }
           if (seenIds.add(envelope.service.id)) {
             fetched.add(envelope);
+            if (_matchesSearchQuery(envelope, searchQuery)) {
+              matchingFetched++;
+            }
           }
         }
 
@@ -458,7 +542,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         }
       }
 
-      if (!mounted) return;
+      if (!mounted || searchRevision != _searchRevision) return;
       setState(() {
         state.services.addAll(fetched);
         state.services.sort((a, b) => b.service.id.compareTo(a.service.id));
@@ -559,11 +643,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
   Widget _buildSearchField() {
     return TextField(
       controller: _searchController,
-      onChanged: (value) {
-        setState(() {
-          _searchQuery = value;
-        });
-      },
+      onChanged: _handleSearchChanged,
       decoration: InputDecoration(
         hintText: 'Buscar por titulo, categoria ou criador',
         hintStyle: TextStyle(color: AppColors.cinza.withValues(alpha: 0.78)),
@@ -595,9 +675,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
                 tooltip: 'Limpar busca',
                 onPressed: () {
                   _searchController.clear();
-                  setState(() {
-                    _searchQuery = '';
-                  });
+                  _handleSearchChanged('');
                 },
                 icon: const Icon(Icons.close, color: AppColors.cinza),
               ),
@@ -1095,6 +1173,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
                 sectionKey: sectionKey,
                 groupKey: groupKey,
                 status: status,
+                totalCount: totalCount,
                 services: services,
               ),
             ),
@@ -1108,6 +1187,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     required String sectionKey,
     required String groupKey,
     required String status,
+    required int totalCount,
     required List<ServiceEnvelope> services,
   }) {
     final state = _statusSections[sectionKey];
@@ -1169,7 +1249,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
               ),
             ),
           )
-        else if (state != null && state.hasMore)
+        else if (state != null && state.hasMore && services.length < totalCount)
           _buildSectionLoadMoreButton(
             label: 'Carregar mais',
             onPressed: () => _loadStatusSection(
@@ -1421,4 +1501,14 @@ class _LazyStatusSectionState {
   bool isLoading = false;
   bool hasLoaded = false;
   String errorMessage = '';
+}
+
+class _ParsedSectionKey {
+  final String groupKey;
+  final String status;
+
+  const _ParsedSectionKey({
+    required this.groupKey,
+    required this.status,
+  });
 }
