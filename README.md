@@ -2,78 +2,77 @@
 
 Frontend Flutter Web da Chronora.
 
-<<<<<<< HEAD
-## Render production
 
-O deploy de producao esta preparado para a branch `main` com Docker.
+# Pré‑requisitos
+- Flutter (versão 3.x ou superior)
+- Docker (para deploy no Render)
+- PowerShell (para executar os scripts locais)
 
-### Variavel obrigatoria
 
-- `API_BASE_URL`
-=======
-## Render dev
+# Configuração
+### Variáveis de ambiente
+O frontend precisa saber a URL base da API para se comunicar com o backend.
+A variável obrigatória é:
 
-O deploy de desenvolvimento esta preparado para a branch `master` com Docker.
+| Variável |	Descrição |
+|----------|------------|
+| API_BASE_URL |	URL pública do backend (ex: https://api.exemplo.com) |
 
-- Backend padrao: `https://chronora-java-master.onrender.com`
-- Health check: `/`
->>>>>>> master
 
-### Subir no Render
+### Arquivos de ambiente
+Desenvolvimento local – crie um arquivo .env.local na raiz do projeto baseado no .env.local.example:
+- API_BASE_URL=http://localhost:8085
 
-1. Conecte o repositorio no Render como `Web Service`.
-<<<<<<< HEAD
-2. Use a branch `main`.
-3. Use `Docker` como runtime.
-4. Garanta que o `Dockerfile` da raiz seja usado.
-5. Defina `API_BASE_URL` com a URL publica do backend de producao.
-6. Rode o deploy.
-=======
-2. Use `Docker` como runtime.
-3. Garanta que o `Dockerfile` da raiz seja usado.
-4. Rode o deploy da branch `master`.
->>>>>>> master
+Produção / Deploy – a variável API_BASE_URL é definida no ambiente do servidor.
 
-## Build local
 
-Para rodar local apontando para o backend local, use um arquivo `.env.local` na raiz com base em `.env.local.example`:
+# Execução local
+Para rodar o frontend em modo desenvolvimento apontando para o backend local:
+- Subir o backend local – certifique‑se de que ele esteja rodando na porta 8085 (ou ajuste a URL no .env.local).
+- Executar o script: .\scripts\run-local.ps1
 
-```text
-API_BASE_URL=http://localhost:8085
-```
+O script iniciará o servidor de desenvolvimento do Flutter Web.
 
-<<<<<<< HEAD
-### Arquivos locais
 
-- Crie um arquivo `.env.local` na raiz
-- O arquivo `.env.local` esta no `.gitignore` e nao deve ser commitado
-- Para rodar localmente com backend local, use `API_BASE_URL=http://localhost:8085`
+# Build local (gerar artefatos para produção)
+- Para compilar o projeto e gerar os arquivos estáticos da web: .\scripts\run-local.ps1 -Mode build
 
-=======
->>>>>>> master
-### Rodar localmente
+Os arquivos compilados estarão na pasta build/web/.
 
-```powershell
-.\scripts\run-local.ps1
-```
 
-### Build web local
+# Deploy no Render
+O projeto está configurado para deploy via Docker no Render.
 
-```powershell
-.\scripts\run-local.ps1 -Mode build
-```
-<<<<<<< HEAD
+### Produção (main branch)
+- Branch: main
+- Runtime: Docker
+- Dockerfile: raiz do projeto
+- Variável obrigatória: API_BASE_URL com a URL pública do backend de produção
 
-### Observacoes
+### Passos
+- Conecte o repositório ao Render como Web Service.
+- Selecione a branch main.
+- Escolha Docker como runtime.
+- Defina a variável de ambiente API_BASE_URL com o endereço do backend de produção.
+- Clique em Deploy.
 
-- Se o PowerShell bloquear a execucao do script, rode:
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-local.ps1
-```
+### Desenvolvimento (master branch)
+- Branch: master
+- Runtime: Docker
+- Dockerfile: raiz do projeto
+- Backend padrão: https://chronora-java-master.onrender.com
+- Health check: /
 
-- Para desenvolvimento local completo:
-  1. suba o backend local na porta `8085`
-  2. depois rode o frontend com o `.env.local` apontando para `http://localhost:8085`
-=======
->>>>>>> master
+### Passos
+- Conecte o repositório ao Render como Web Service.
+- Selecione a branch master.
+- Escolha Docker como runtime.
+- Defina API_BASE_URL apontando para o backend de desenvolvimento.
+- Clique em Deploy.
+- O health check pode ser configurado na rota / para monitoramento.
+
+
+# Estrutura de branches
+- master → ambiente de desenvolvimento
+- main → ambiente de produção
