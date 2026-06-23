@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:typed_data';
 import 'dart:convert';
 import 'package:chronora/core/api/api_service.dart';
+import 'package:chronora/core/constants/app_routes.dart';
 import 'package:chronora/core/constants/modality_options.dart';
 import 'package:chronora/core/models/service_detail_model.dart';
 import 'package:chronora/core/models/main_page_requests_model.dart';
@@ -50,6 +51,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   bool _isWalletOpen = false;
   bool _isLoading = false;
   bool _isFetchingData = false;
+  bool _isRedirectingAcceptedRequest = false;
   String? _errorMessage;
   int? _serviceId;
 
@@ -57,6 +59,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   void _populateFormFromService(Service service) {
     // Garante que o serviceId seja setado
     _serviceId = service.id;
+
+    if (_isServiceSummaryLockedForEditing(service)) {
+      _redirectToMainBecauseRequestWasAccepted();
+      return;
+    }
 
     // Preenche os campos básicos
     _titleController.text = service.title;
@@ -174,6 +181,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         final serviceDetail = ServiceDetailModel.fromJson(responseData);
         if (!mounted) return;
 
+        if (_isServiceDetailLockedForEditing(serviceDetail)) {
+          _redirectToMainBecauseRequestWasAccepted();
+          return;
+        }
+
         // Preenche o formulário com os dados do serviço
         _populateFormFromServiceDetail(serviceDetail);
       } else {
@@ -186,7 +198,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
       AppSnackBar.show(context, 'Erro ao carregar dados: $e', isError: true);
     } finally {
-      if (mounted) {
+      if (mounted && !_isRedirectingAcceptedRequest) {
         setState(() {
           _isFetchingData = false;
         });
@@ -252,6 +264,78 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     }
   }
 
+  bool _isServiceSummaryLockedForEditing(Service service) {
+    return service.userAccepted != null ||
+        _isLockedStatusForEditing(service.status);
+  }
+
+  bool _isServiceDetailLockedForEditing(ServiceDetailModel serviceDetail) {
+    return serviceDetail.acceptedRequestInfo?.hasAcceptedUser == true ||
+        _isLockedStatusForEditing(serviceDetail.status);
+  }
+
+  bool _isLockedStatusForEditing(String status) {
+    final normalizedStatus = status.trim().toUpperCase();
+    return normalizedStatus == 'ACEITO' ||
+        normalizedStatus == 'AGUARDANDO_CONFIRMACAO' ||
+        normalizedStatus == 'EM_ANDAMENTO' ||
+        normalizedStatus == 'CONCLUIDO';
+  }
+
+  Future<bool> _ensureRequestCanStillBeEdited() async {
+    final serviceId = _serviceId;
+    if (serviceId == null) {
+      return true;
+    }
+
+    final token = await AuthSessionService.getValidAccessToken();
+    if (token == null) {
+      throw Exception('Usuario nao autenticado. Faca login novamente.');
+    }
+
+    final response =
+        await ApiService.get('/service/get/$serviceId', token: token);
+    if (response.statusCode != 200) {
+      throw Exception(
+        ApiService.extractErrorMessage(
+          response.body,
+          fallback: 'Nao foi possivel validar o status do pedido.',
+        ),
+      );
+    }
+
+    final decoded = json.decode(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      return true;
+    }
+
+    final latestDetail = ServiceDetailModel.fromJson(decoded);
+    if (_isServiceDetailLockedForEditing(latestDetail)) {
+      _redirectToMainBecauseRequestWasAccepted();
+      return false;
+    }
+
+    return true;
+  }
+
+  void _redirectToMainBecauseRequestWasAccepted() {
+    if (!mounted || _isRedirectingAcceptedRequest) {
+      return;
+    }
+
+    _isRedirectingAcceptedRequest = true;
+    AppSnackBar.show(
+      context,
+      'Este pedido ja foi aceito e nao pode mais ser editado.',
+      isError: true,
+    );
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.main,
+      (route) => false,
+    );
+  }
+
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     try {
@@ -286,7 +370,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   }
 
   void _stopLoading() {
-    if (!mounted) return;
+    if (!mounted || _isRedirectingAcceptedRequest) return;
     setState(() {
       _isLoading = false;
     });
@@ -386,7 +470,8 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_categoriesTags.isEmpty) {
-      AppSnackBar.show(context, 'Adicione pelo menos uma categoria', isError: true);
+      AppSnackBar.show(context, 'Adicione pelo menos uma categoria',
+          isError: true);
       return;
     }
 
@@ -405,12 +490,19 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     });
 
     try {
+      final canEdit = await _ensureRequestCanStillBeEdited();
+      if (!mounted || !canEdit) {
+        return;
+      }
+
       final token = await AuthSessionService.getValidAccessToken();
 
       if (!mounted) return;
 
       if (token == null) {
-        AppSnackBar.show(context, 'Usuário não autenticado. Faça login novamente.', isError: true);
+        AppSnackBar.show(
+            context, 'Usuário não autenticado. Faça login novamente.',
+            isError: true);
         setState(() {
           _isLoading = false;
         });
@@ -437,7 +529,8 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
       final deadlineParts = deadlineText.split('/');
       if (deadlineParts.length != 3) {
-        AppSnackBar.show(context, 'Formato de data inválido. Use DD/MM/YYYY', isError: true);
+        AppSnackBar.show(context, 'Formato de data inválido. Use DD/MM/YYYY',
+            isError: true);
         setState(() {
           _isLoading = false;
         });
@@ -452,7 +545,8 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
         final date = DateTime.parse('$year-$month-$day');
         if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
-          AppSnackBar.show(context, 'A data não pode ser no passado', isError: true);
+          AppSnackBar.show(context, 'A data não pode ser no passado',
+              isError: true);
           setState(() {
             _isLoading = false;
           });
@@ -471,7 +565,8 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       // Validação do tempo em Chronos
       final chronosText = _chronosController.text.trim();
       if (chronosText.isEmpty) {
-        AppSnackBar.show(context, 'Tempo em Chronos é obrigatório', isError: true);
+        AppSnackBar.show(context, 'Tempo em Chronos é obrigatório',
+            isError: true);
         setState(() {
           _isLoading = false;
         });
@@ -482,21 +577,24 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       try {
         timeChronos = int.parse(chronosText);
         if (timeChronos <= 0) {
-          AppSnackBar.show(context, 'Tempo em Chronos deve ser maior que zero', isError: true);
+          AppSnackBar.show(context, 'Tempo em Chronos deve ser maior que zero',
+              isError: true);
           setState(() {
             _isLoading = false;
           });
           return;
         }
         if (timeChronos > 100) {
-          AppSnackBar.show(context, 'Tempo em Chronos deve ser no maximo 100', isError: true);
+          AppSnackBar.show(context, 'Tempo em Chronos deve ser no maximo 100',
+              isError: true);
           setState(() {
             _isLoading = false;
           });
           return;
         }
       } catch (e) {
-        AppSnackBar.show(context, 'Tempo em Chronos deve ser um número válido', isError: true);
+        AppSnackBar.show(context, 'Tempo em Chronos deve ser um número válido',
+            isError: true);
         setState(() {
           _isLoading = false;
         });

@@ -1,14 +1,14 @@
 FROM ghcr.io/cirruslabs/flutter:stable AS builder
 
-WORKDIR /app
+ARG API_BASE_URL=https://chronora-java-master.onrender.com
 
-ARG API_BASE_URL=http://localhost:8085
+WORKDIR /app
 
 COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
 
 COPY . .
-RUN flutter build web --release --dart-define=API_BASE_URL=$API_BASE_URL
+RUN flutter build web --release --dart-define=API_BASE_URL=${API_BASE_URL}
 
 FROM node:20-alpine
 
