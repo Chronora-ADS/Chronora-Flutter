@@ -18,7 +18,8 @@ void main() {
     return MaterialApp(
       routes: {
         AppRoutes.main: (_) => const Scaffold(body: Text('Pagina inicial')),
-        AppRoutes.accountCreation: (_) => const Scaffold(body: Text('Cadastro')),
+        AppRoutes.accountCreation: (_) =>
+            const Scaffold(body: Text('Cadastro')),
         AppRoutes.forgotPassword: (_) =>
             const Scaffold(body: Text('Recuperar senha')),
       },
@@ -45,8 +46,10 @@ void main() {
       );
 
       await tester.pumpWidget(buildLoginApp());
-      await tester.enterText(find.widgetWithText(TextFormField, 'E-mail'), 'ana.usuario');
-      await tester.enterText(find.widgetWithText(TextFormField, 'Senha'), 'SenhaForte1');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'E-mail'), 'ana.usuario');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Senha'), 'SenhaForte1');
       await tester.tap(find.text('Entrar').last);
       await tester.pump();
 
@@ -68,12 +71,44 @@ void main() {
       );
 
       await tester.pumpWidget(buildLoginApp());
-      await tester.enterText(find.widgetWithText(TextFormField, 'E-mail'), 'ana@email.com');
-      await tester.enterText(find.widgetWithText(TextFormField, 'Senha'), 'SenhaForte1');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'E-mail'), 'ana@email.com');
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Senha'), 'SenhaForte1');
       await tester.tap(find.text('Entrar').last);
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Erro de conexao'), findsOneWidget);
+    });
+
+    testWidgets(
+        'Cenario: Dado senha incorreta, quando tenta entrar, entao mostra mensagem de credenciais',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      ApiService.setClientForTesting(
+        MockClient(
+          (request) async => http.Response(
+            jsonEncode({'message': 'Credenciais inválidas.'}),
+            401,
+            headers: {'content-type': 'application/json'},
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(buildLoginApp());
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'E-mail'),
+        'ana@email.com',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Senha'),
+        'senha-errada',
+      );
+      await tester.tap(find.text('Entrar').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Email ou senha incorretos'), findsOneWidget);
+      expect(find.textContaining('indispon'), findsNothing);
     });
   });
 }

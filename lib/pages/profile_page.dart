@@ -1,8 +1,10 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+
+import '../widgets/camera_capture_page.dart';
 
 import '../core/constants/app_colors.dart';
 import '../core/constants/app_routes.dart';
@@ -89,7 +91,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _pickProfileImage() async {
+  Future<void> _pickProfileImageFromGallery() async {
     try {
       final file = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -112,6 +114,57 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _pickProfileImageFromCamera() async {
+    final bytes = await Navigator.push<Uint8List>(
+      context,
+      MaterialPageRoute(builder: (_) => const CameraCapturePage()),
+    );
+    if (bytes == null || !mounted) return;
+    setState(() {
+      _profileImageFile = null;
+      _profileImageBytes = bytes;
+      _profileImageFileName = 'foto_perfil.jpg';
+    });
+  }
+
+  void _showProfileImagePicker() {
+    if (kIsWeb) {
+      _pickProfileImageFromGallery();
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.branco,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined, color: AppColors.amareloUmPoucoEscuro),
+              title: const Text('Tirar foto'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickProfileImageFromCamera();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined, color: AppColors.amareloUmPoucoEscuro),
+              title: const Text('Escolher da galeria'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickProfileImageFromGallery();
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<Map<String, String>?> _buildDocumentPayload() async {
     if (_documentFile == null) {
       return null;
@@ -132,7 +185,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<Map<String, String>?> _buildProfileImagePayload() async {
-    if (_profileImageFile == null) {
+    if (_profileImageFile == null && _profileImageBytes == null) {
       return null;
     }
 
@@ -568,7 +621,7 @@ class _ProfilePageState extends State<ProfilePage> {
         if (_isEditing) ...[
           const SizedBox(height: 10),
           TextButton.icon(
-            onPressed: _pickProfileImage,
+            onPressed: _showProfileImagePicker,
             icon: const Icon(
               Icons.photo_camera,
               color: AppColors.amareloUmPoucoEscuro,

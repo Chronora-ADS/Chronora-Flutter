@@ -56,6 +56,58 @@ class ModeratorService {
         .toList();
   }
 
+  Future<List<PaymentTransactionSummary>> getBuyTransactions() async {
+    final token = await AuthSessionService.getValidAccessToken();
+    if (token == null) throw Exception('Nao autenticado.');
+
+    final response =
+        await ApiService.get('/moderator/transactions/buy', token: token);
+
+    if (response.statusCode != 200) {
+      throw Exception(ApiService.extractErrorMessage(response.body,
+          fallback: 'Erro ao carregar compras.'));
+    }
+
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => PaymentTransactionSummary.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<PaymentTransactionSummary>> getSellTransactions() async {
+    final token = await AuthSessionService.getValidAccessToken();
+    if (token == null) throw Exception('Nao autenticado.');
+
+    final response =
+        await ApiService.get('/moderator/transactions/sell', token: token);
+
+    if (response.statusCode != 200) {
+      throw Exception(ApiService.extractErrorMessage(response.body,
+          fallback: 'Erro ao carregar vendas.'));
+    }
+
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => PaymentTransactionSummary.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<void> markSellAsPaid(int id) async {
+    final token = await AuthSessionService.getValidAccessToken();
+    if (token == null) throw Exception('Nao autenticado.');
+
+    final response = await ApiService.patch(
+      '/moderator/sell/$id/mark-paid',
+      {},
+      token: token,
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(ApiService.extractErrorMessage(response.body,
+          fallback: 'Erro ao marcar venda como paga.'));
+    }
+  }
+
   Future<PlatformStats> getStats() async {
     final token = await AuthSessionService.getValidAccessToken();
     if (token == null) throw Exception('Nao autenticado.');
@@ -83,6 +135,7 @@ class PaymentTransactionSummary {
   final DateTime createdAt;
   final bool isPix;
   final int? mpPaymentId;
+  final String? pixKey;
 
   const PaymentTransactionSummary({
     required this.id,
@@ -95,6 +148,7 @@ class PaymentTransactionSummary {
     required this.createdAt,
     required this.isPix,
     this.mpPaymentId,
+    this.pixKey,
   });
 
   factory PaymentTransactionSummary.fromJson(Map<String, dynamic> json) {
@@ -109,6 +163,7 @@ class PaymentTransactionSummary {
       createdAt: DateTime.parse(json['createdAt'] as String),
       isPix: json['isPix'] as bool? ?? false,
       mpPaymentId: json['mpPaymentId'] as int?,
+      pixKey: json['pixKey'] as String?,
     );
   }
 

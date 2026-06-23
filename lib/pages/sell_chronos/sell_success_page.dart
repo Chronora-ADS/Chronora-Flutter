@@ -139,7 +139,7 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
 
           // Título de sucesso
           const Text(
-            'Venda realizada com sucesso!',
+            'Solicitação enviada!',
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -169,9 +169,9 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
                 ),
                 const SizedBox(height: 16),
 
-                // Valor recebido
+                // Valor a receber
                 _buildDetailRow(
-                  'Valor recebido:',
+                  'Valor a receber:',
                   'R\$ ${widget.totalAmount.toStringAsFixed(2)}',
                   Icons.attach_money,
                 ),
@@ -199,7 +199,7 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
 
           // Mensagem de confirmação
           Text(
-            'O valor será creditado em sua conta em até 2 dias úteis.',
+            'Sua solicitação foi recebida. O pagamento via PIX será realizado pelos moderadores em breve.',
             style: TextStyle(
               color: Colors.black.withOpacity(0.7),
               fontSize: 14,
@@ -258,7 +258,7 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
                 ),
               ),
               child: const Text(
-                'Fazer Nova Venda',
+                'Fazer Nova Solicitação',
                 style: TextStyle(
                   color: Color(0xFFC29503),
                   fontSize: 16,

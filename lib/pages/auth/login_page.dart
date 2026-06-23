@@ -110,7 +110,7 @@ class _LoginPageState extends State<LoginPage> {
         normalized.contains('invalid login credentials') ||
         normalized.contains('invalid credentials') ||
         normalized.contains('invalid_grant')) {
-      return 'E-mail ou senha errados.';
+      return 'Email ou senha incorretos';
     }
 
     return 'Erro no login: $extracted';

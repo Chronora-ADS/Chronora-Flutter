@@ -17,8 +17,10 @@ dependencies:
   shared_preferences: ^2.5.3
   provider: ^6.1.5+1
   image_picker: ^1.2.1
+  camera: ^0.11.0+2
   intl: ^0.20.2
   qr_flutter: ^4.1.0
+  app_links: ^6.3.2
 
 dev_dependencies:
   flutter_test:
@@ -27,6 +29,12 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^3.0.0
   mocktail: ^1.0.4
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/img/LogoBackgroundYellow.png"
 
 flutter:
   uses-material-design: true

@@ -1,7 +1,8 @@
 import 'dart:async';
 
+import 'package:app_links/app_links.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/api/api_service.dart';
@@ -14,12 +15,22 @@ import 'pages/auth/reset_password_page.dart';
 import 'pages/main_page.dart';
 import 'widgets/pending_service_cancellation_obligations.dart';
 
+final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
 Future<void> main() async {
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
       ClientLogService.initializeGlobalHandlers();
-      runApp(const ChronoraFlutter());
+
+      Uri? initialUri;
+      if (!kIsWeb) {
+        try {
+          initialUri = await AppLinks().getInitialLink();
+        } catch (_) {}
+      }
+
+      runApp(ChronoraFlutter(initialUri: initialUri));
     },
     (error, stackTrace) async {
       await ClientLogService.logError(
@@ -31,14 +42,61 @@ Future<void> main() async {
   );
 }
 
-class ChronoraFlutter extends StatelessWidget {
+class ChronoraFlutter extends StatefulWidget {
   final Uri? initialUri;
 
   const ChronoraFlutter({super.key, this.initialUri});
 
   @override
+  State<ChronoraFlutter> createState() => _ChronoraFlutterState();
+}
+
+class _ChronoraFlutterState extends State<ChronoraFlutter> {
+  StreamSubscription<Uri>? _linkSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!kIsWeb) {
+      _linkSubscription = AppLinks().uriLinkStream.listen(_handleIncomingLink);
+    }
+  }
+
+  @override
+  void dispose() {
+    _linkSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _handleIncomingLink(Uri uri) {
+    if (!_isPasswordRecoveryUrl(uri)) return;
+
+    final token = ResetPasswordPage.extractAccessToken(uri);
+    _navigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => ResetPasswordPage(accessToken: token),
+      ),
+      (route) => false,
+    );
+  }
+
+  bool _isPasswordRecoveryUrl(Uri uri) {
+    final location = uri.toString();
+    return location.contains('reset-password') ||
+        location.contains('type=recovery') ||
+        location.contains('access_token=');
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Na web, Uri.base contém o hash com access_token; no mobile vem do AppLinks
+    final Uri? effectiveUri =
+        widget.initialUri ?? (kIsWeb ? Uri.base : null);
+    final isRecovery =
+        effectiveUri != null && _isPasswordRecoveryUrl(effectiveUri);
+
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'Chronora',
       theme: ThemeData(
         primarySwatch: Colors.amber,
@@ -49,10 +107,9 @@ class ChronoraFlutter extends StatelessWidget {
           trackColor: WidgetStateProperty.all(Colors.transparent),
         ),
       ),
-      home: _isPasswordRecoveryUrl(initialUri ?? Uri.base)
+      home: isRecovery
           ? ResetPasswordPage(
-              accessToken:
-                  ResetPasswordPage.extractAccessToken(initialUri ?? Uri.base),
+              accessToken: ResetPasswordPage.extractAccessToken(effectiveUri),
             )
           : const _AuthGate(),
       routes: AppRoutes.routes,
@@ -62,13 +119,6 @@ class ChronoraFlutter extends StatelessWidget {
       ),
       debugShowCheckedModeBanner: false,
     );
-  }
-
-  bool _isPasswordRecoveryUrl(Uri uri) {
-    final location = uri.toString();
-    return location.contains('/reset-password') ||
-        location.contains('type=recovery') ||
-        location.contains('access_token=');
   }
 }
 

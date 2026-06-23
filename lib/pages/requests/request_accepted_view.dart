@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -10,6 +10,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/models/user_creator.dart';
 import '../../core/utils/app_snackbar.dart';
+import '../../core/utils/backend_date_time_parser.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/pending_service_cancellation_service.dart';
 import '../../widgets/header.dart';
@@ -18,7 +19,7 @@ import '../../widgets/wallet_modal.dart';
 
 enum RequestAcceptedAudience { provider, requester }
 
-enum _ExpiredCodeAction { cancelService, secondCall }
+enum _ExpiredCodeAction { cancelService, secondCall, timeout }
 
 class _LeaveMessage {
   final String text;
@@ -42,6 +43,7 @@ class RequestAcceptedView extends StatefulWidget {
 
 class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   static const Duration _authenticationCodeLifetime = Duration(minutes: 2);
+  static const Duration _secondCallDecisionTimeout = Duration(minutes: 2);
 
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
@@ -327,14 +329,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   }
 
   DateTime? _parseDateTime(dynamic value) {
-    if (value is DateTime) return value;
-    if (value is! String || value.trim().isEmpty) return null;
-    final raw = value.trim();
-    // Backend sends Java LocalDateTime without offset, so keep it local.
-    final parsed = DateTime.tryParse(raw);
-    if (parsed == null) return null;
-
-    return parsed.isUtc ? parsed.toLocal() : parsed;
+    return BackendDateTimeParser.parse(value);
   }
 
   void _applyAcceptedAt(dynamic value) {
@@ -548,6 +543,28 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   }
 
   Future<void> _expireAcceptedRequestAfterSecondCall() async {
+    await _expireAcceptedRequestAndLeave(
+      const SnackBar(
+        content: Text(
+          'A segunda chamada expirou. O servico foi cancelado e o pedido voltou para aberto.',
+        ),
+        backgroundColor: AppColors.vermelho,
+      ),
+    );
+  }
+
+  Future<void> _expireAcceptedRequestAfterDecisionTimeout() async {
+    await _expireAcceptedRequestAndLeave(
+      const SnackBar(
+        content: Text(
+          'O tempo para decidir acabou. O servico foi cancelado e o pedido voltou para aberto.',
+        ),
+        backgroundColor: AppColors.vermelho,
+      ),
+    );
+  }
+
+  Future<void> _expireAcceptedRequestAndLeave(SnackBar snackBar) async {
     if (_isHandlingExpiration || _isLeavingAcceptedView) return;
     _isHandlingExpiration = true;
 
@@ -595,12 +612,19 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       final action = await showDialog<_ExpiredCodeAction>(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const _TimeExpiredActionDialog(),
+        builder: (_) => const _TimeExpiredActionDialog(
+          decisionTimeout: _secondCallDecisionTimeout,
+        ),
       );
 
       _isHandlingExpiration = false;
 
-      if (!mounted || action == null || _isLeavingAcceptedView) {
+      if (!mounted || _isLeavingAcceptedView) {
+        return;
+      }
+
+      if (action == _ExpiredCodeAction.timeout || action == null) {
+        await _expireAcceptedRequestAfterDecisionTimeout();
         return;
       }
 
@@ -667,7 +691,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       _startAuthenticationCodeCountdown();
       _startAcceptedRequestSync();
 
-      AppSnackBar.show(context, 'Segunda chamada iniciada. Um novo codigo foi gerado.');
+      AppSnackBar.show(
+          context, 'Segunda chamada iniciada. Um novo codigo foi gerado.');
     } catch (error) {
       if (!mounted) return;
 
@@ -937,7 +962,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     if (!mounted) return;
 
     if (leaveMessage != null) {
-      AppSnackBar.show(context, leaveMessage.text, isError: leaveMessage.isError);
+      AppSnackBar.show(context, leaveMessage.text,
+          isError: leaveMessage.isError);
     }
 
     Navigator.pushNamedAndRemoveUntil(
@@ -1845,7 +1871,11 @@ class _InfoCard extends StatelessWidget {
 }
 
 class _TimeExpiredActionDialog extends StatefulWidget {
-  const _TimeExpiredActionDialog();
+  final Duration decisionTimeout;
+
+  const _TimeExpiredActionDialog({
+    required this.decisionTimeout,
+  });
 
   @override
   State<_TimeExpiredActionDialog> createState() =>
@@ -1853,10 +1883,66 @@ class _TimeExpiredActionDialog extends StatefulWidget {
 }
 
 class _TimeExpiredActionDialogState extends State<_TimeExpiredActionDialog> {
+  late final DateTime _decisionDeadline;
+  Duration _remainingDecisionTime = Duration.zero;
+  Timer? _decisionCountdownTimer;
+  Timer? _decisionTimeoutTimer;
   bool _didSelectAction = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _decisionDeadline = DateTime.now().add(widget.decisionTimeout);
+    _remainingDecisionTime = widget.decisionTimeout;
+
+    _decisionCountdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _syncRemainingDecisionTime();
+    });
+    _decisionTimeoutTimer = Timer(widget.decisionTimeout, _expireDecisionTime);
+  }
+
+  @override
+  void dispose() {
+    _decisionCountdownTimer?.cancel();
+    _decisionTimeoutTimer?.cancel();
+    super.dispose();
+  }
+
+  String get _formattedDecisionCountdown {
+    final totalSeconds = (_remainingDecisionTime.inMilliseconds + 999) ~/ 1000;
+    final safeSeconds = totalSeconds < 0 ? 0 : totalSeconds;
+    final minutes = (safeSeconds ~/ 60).toString().padLeft(2, '0');
+    final seconds = (safeSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  void _syncRemainingDecisionTime() {
+    final remaining = _decisionDeadline.difference(DateTime.now());
+    final safeRemaining = remaining.isNegative ? Duration.zero : remaining;
+
+    if (!mounted) {
+      _remainingDecisionTime = safeRemaining;
+      return;
+    }
+
+    setState(() {
+      _remainingDecisionTime = safeRemaining;
+    });
+
+    if (safeRemaining == Duration.zero) {
+      _expireDecisionTime();
+    }
+  }
+
+  void _expireDecisionTime() {
+    _selectAction(_ExpiredCodeAction.timeout);
+  }
 
   void _selectAction(_ExpiredCodeAction action) {
     if (_didSelectAction) return;
+
+    _decisionCountdownTimer?.cancel();
+    _decisionTimeoutTimer?.cancel();
 
     setState(() {
       _didSelectAction = true;
@@ -1923,6 +2009,42 @@ class _TimeExpiredActionDialogState extends State<_TimeExpiredActionDialog> {
                   color: AppColors.preto,
                   fontSize: 15,
                   height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.amareloUmPoucoEscuro.withValues(
+                    alpha: 0.12,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppColors.amareloUmPoucoEscuro.withValues(
+                      alpha: 0.35,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.hourglass_bottom,
+                      color: AppColors.amareloUmPoucoEscuro,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Tempo para decidir: $_formattedDecisionCountdown',
+                        style: const TextStyle(
+                          color: AppColors.preto,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 20),
@@ -2504,4 +2626,3 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
     );
   }
 }
-
