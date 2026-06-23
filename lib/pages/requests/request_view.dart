@@ -44,6 +44,7 @@ class _RequestViewState extends State<RequestView> {
   bool _showAcceptAction = true;
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
+  bool _isShowingDetails = false;
   int _walletRefreshVersion = 0;
   bool _resolvedRouteArguments = false;
 
@@ -700,6 +701,17 @@ class _RequestViewState extends State<RequestView> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildRequestCard(detail),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: _isShowingDetails
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: _buildDetailsOverlay(detail),
+                )
+              : const SizedBox(width: double.infinity),
+        ),
         if (detail.categoryEntities.isNotEmpty) ...[
           const SizedBox(height: 5),
           _buildCategoryList(detail),
@@ -760,66 +772,114 @@ class _RequestViewState extends State<RequestView> {
                   width: 3,
                 ),
                 left: BorderSide(
-                  color: AppColors.amareloUmPoucoMaisEscuro,
+                  color: AppColors.amareloUmPoucoEscuro,
                   width: 3,
                 ),
                 right: BorderSide(
-                  color: AppColors.amareloUmPoucoMaisEscuro,
+                  color: AppColors.amareloUmPoucoEscuro,
                   width: 3,
                 ),
               ),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(12),
-                bottomRight: Radius.circular(12),
-              ),
             ),
-            child: Column(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final imageWidth = constraints.maxWidth < 340
-                        ? 128.0
-                        : constraints.maxWidth < 420
-                            ? 150.0
-                            : 200.0;
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            width: imageWidth,
-                            height: imageWidth * 0.565,
-                            color: AppColors.cinza,
-                            child: _buildServiceImage(detail),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _RequestSummary(
-                            deadline: _formatDate(detail.deadline),
-                            modality: _formatModality(detail.modality),
-                            timeChronos: detail.timeChronos,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: 200,
+                    height: 113,
+                    color: AppColors.cinza,
+                    child: _buildServiceImage(detail),
+                  ),
                 ),
-                const SizedBox(height: 20),
-                Text(
-                  detail.description,
-                  style: const TextStyle(
-                    color: AppColors.branco,
-                    fontSize: 16,
-                    height: 1.35,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _RequestSummary(
+                    deadline: _formatDate(detail.deadline),
+                    modality: _formatModality(detail.modality),
+                    timeChronos: detail.timeChronos,
                   ),
                 ),
               ],
             ),
           ),
+          InkWell(
+            onTap: () {
+              setState(() {
+                _isShowingDetails = !_isShowingDetails;
+              });
+            },
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(14),
+              bottomRight: Radius.circular(14),
+            ),
+            child: Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: AppColors.amareloUmPoucoEscuro,
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(14),
+                  bottomRight: Radius.circular(14),
+                ),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Mais detalhes',
+                    style: TextStyle(
+                      color: AppColors.branco,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  AnimatedRotation(
+                    turns: _isShowingDetails ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 250),
+                    child: const Icon(
+                      Icons.keyboard_arrow_down,
+                      color: AppColors.branco,
+                      size: 30,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDetailsOverlay(ServiceDetailModel detail) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+      decoration: BoxDecoration(
+        color: AppColors.preto,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(14),
+          bottomRight: Radius.circular(14),
+        ),
+        border: Border.all(color: AppColors.amareloUmPoucoEscuro, width: 3),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black38,
+            blurRadius: 12,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Text(
+        detail.description,
+        style: const TextStyle(
+          color: AppColors.branco,
+          fontSize: 17.5,
+          height: 1.45,
+        ),
       ),
     );
   }
@@ -865,36 +925,16 @@ class _RequestViewState extends State<RequestView> {
   }
 
   Widget _buildPosterCard(ServiceDetailModel detail) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.branco,
-        borderRadius: BorderRadius.circular(8),
-      ),
+    return _InfoCard(
+      header: 'Postado as ${_formatTime(detail.postedAt)} por:',
+      highlightBorder: _isOwner,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Postado as ${_formatTime(detail.postedAt)} por:',
-            style: const TextStyle(
-              color: AppColors.preto,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                backgroundColor: AppColors.amareloClaro,
-                child: Text(
-                  detail.userCreator.name.isEmpty
-                      ? '?'
-                      : detail.userCreator.name[0].toUpperCase(),
-                  style: const TextStyle(color: AppColors.branco),
-                ),
-              ),
+              _buildAvatar(),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -905,13 +945,33 @@ class _RequestViewState extends State<RequestView> {
                           ? 'Solicitante'
                           : detail.userCreator.name,
                       style: const TextStyle(
+                        fontSize: 18,
                         color: AppColors.preto,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     _buildRatingRow(detail.userCreator.rating),
+                    if (_isOwner) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Text(
+                            _formatPhoneNumber(detail.userCreator.phoneNumber),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: AppColors.preto,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.phone_in_talk,
+                            color: AppColors.preto,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -922,21 +982,26 @@ class _RequestViewState extends State<RequestView> {
     );
   }
 
+  Widget _buildAvatar() {
+    return const CircleAvatar(
+      radius: 24,
+      backgroundColor: AppColors.amareloClaro,
+      child: Icon(Icons.person, color: AppColors.preto, size: 30),
+    );
+  }
+
   Widget _buildRatingRow(double? rating) {
     return Row(
       children: [
         Text(
           (rating ?? 0.0).toStringAsFixed(1),
-          style: const TextStyle(
-            color: AppColors.preto,
-            fontSize: 14,
-          ),
+          style: const TextStyle(fontSize: 16, color: AppColors.preto),
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: 3),
         const Icon(
           Icons.star,
-          color: AppColors.amareloClaro,
-          size: 16,
+          color: AppColors.preto,
+          size: 19,
         ),
       ],
     );
@@ -1179,6 +1244,24 @@ class _RequestViewState extends State<RequestView> {
     return '$day/$month/$year';
   }
 
+  String _formatPhoneNumber(int? phoneNumber) {
+    if (phoneNumber == null) {
+      return 'Telefone indisponivel';
+    }
+
+    final digits = phoneNumber.toString().replaceAll(RegExp(r'\D'), '');
+    if (digits.length < 10) {
+      return digits;
+    }
+
+    final normalized =
+        digits.length > 11 ? digits.substring(digits.length - 11) : digits;
+    final ddd = normalized.substring(0, 2);
+    final prefix = normalized.substring(2, 7);
+    final suffix = normalized.substring(7);
+    return '+55 $ddd $prefix-$suffix';
+  }
+
   String _formatTime(String? value) {
     if (value == null || value.isEmpty) {
       return '--:--';
@@ -1196,6 +1279,48 @@ class _RequestViewState extends State<RequestView> {
     }
 
     return '--:--';
+  }
+}
+
+class _InfoCard extends StatelessWidget {
+  final String header;
+  final Widget child;
+  final bool highlightBorder;
+
+  const _InfoCard({
+    required this.header,
+    required this.child,
+    this.highlightBorder = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(6, 6, 12, 10),
+      decoration: BoxDecoration(
+        color: AppColors.branco,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: highlightBorder ? AppColors.azul : AppColors.cinza,
+          width: highlightBorder ? 2.2 : 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            header,
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppColors.preto,
+            ),
+          ),
+          const SizedBox(height: 4),
+          child,
+        ],
+      ),
+    );
   }
 }
 
@@ -1256,7 +1381,7 @@ class _RequestSummary extends StatelessWidget {
 
   Widget _buildChip(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: AppColors.amareloUmPoucoEscuro,
         borderRadius: BorderRadius.circular(8),
@@ -1265,7 +1390,6 @@ class _RequestSummary extends StatelessWidget {
         text,
         textAlign: TextAlign.center,
         overflow: TextOverflow.ellipsis,
-        maxLines: 2,
         style: const TextStyle(
           color: AppColors.branco,
           fontWeight: FontWeight.bold,
