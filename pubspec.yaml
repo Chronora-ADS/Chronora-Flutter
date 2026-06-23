@@ -17,6 +17,7 @@ dependencies:
   shared_preferences: ^2.5.3
   provider: ^6.1.5+1
   image_picker: ^1.2.1
+  camera: ^0.11.0+2
   intl: ^0.20.2
   qr_flutter: ^4.1.0
   app_links: ^6.3.2

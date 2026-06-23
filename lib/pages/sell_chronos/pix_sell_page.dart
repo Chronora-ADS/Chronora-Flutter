@@ -313,7 +313,7 @@ class _PixSellPageState extends State<PixSellPage> {
                       ),
                     )
                   : const Text(
-                      'Finalizar Venda',
+                      'Enviar Solicitação',
                       style: TextStyle(
                         color: Color(0xFFE9EAEC),
                         fontSize: 16,
