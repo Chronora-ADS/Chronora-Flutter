@@ -5,7 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
+import '../../widgets/camera_capture_page.dart';
 
 import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
@@ -70,22 +70,16 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
   }
 
   Future<void> _pickFromCamera() async {
-    try {
-      final photo = await ImagePicker().pickImage(
-        source: ImageSource.camera,
-        imageQuality: 85,
-      );
-      if (photo == null) return;
-      final bytes = await photo.readAsBytes();
-      setState(() {
-        _documentBytes = bytes;
-        _documentName = 'documento.jpg';
-        _documentMimeType = 'image/jpeg';
-      });
-    } catch (e) {
-      if (!mounted) return;
-      AppSnackBar.show(context, 'Erro ao tirar foto: $e', isError: true);
-    }
+    final bytes = await Navigator.push<Uint8List>(
+      context,
+      MaterialPageRoute(builder: (_) => const CameraCapturePage()),
+    );
+    if (bytes == null || !mounted) return;
+    setState(() {
+      _documentBytes = bytes;
+      _documentName = 'documento.jpg';
+      _documentMimeType = 'image/jpeg';
+    });
   }
 
   void _showDocumentPicker() {

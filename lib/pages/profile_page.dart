@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../widgets/camera_capture_page.dart';
+
 import '../core/constants/app_colors.dart';
 import '../core/constants/app_routes.dart';
 import '../core/services/profile_controller.dart';
@@ -89,10 +91,10 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _pickProfileImageFromSource(ImageSource source) async {
+  Future<void> _pickProfileImageFromGallery() async {
     try {
       final file = await _imagePicker.pickImage(
-        source: source,
+        source: ImageSource.gallery,
         imageQuality: 85,
       );
 
@@ -112,9 +114,22 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _pickProfileImageFromCamera() async {
+    final bytes = await Navigator.push<Uint8List>(
+      context,
+      MaterialPageRoute(builder: (_) => const CameraCapturePage()),
+    );
+    if (bytes == null || !mounted) return;
+    setState(() {
+      _profileImageFile = null;
+      _profileImageBytes = bytes;
+      _profileImageFileName = 'foto_perfil.jpg';
+    });
+  }
+
   void _showProfileImagePicker() {
     if (kIsWeb) {
-      _pickProfileImageFromSource(ImageSource.gallery);
+      _pickProfileImageFromGallery();
       return;
     }
     showModalBottomSheet(
@@ -132,7 +147,7 @@ class _ProfilePageState extends State<ProfilePage> {
               title: const Text('Tirar foto'),
               onTap: () {
                 Navigator.pop(context);
-                _pickProfileImageFromSource(ImageSource.camera);
+                _pickProfileImageFromCamera();
               },
             ),
             ListTile(
@@ -140,7 +155,7 @@ class _ProfilePageState extends State<ProfilePage> {
               title: const Text('Escolher da galeria'),
               onTap: () {
                 Navigator.pop(context);
-                _pickProfileImageFromSource(ImageSource.gallery);
+                _pickProfileImageFromGallery();
               },
             ),
             const SizedBox(height: 8),
@@ -170,7 +185,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<Map<String, String>?> _buildProfileImagePayload() async {
-    if (_profileImageFile == null) {
+    if (_profileImageFile == null && _profileImageBytes == null) {
       return null;
     }
 
