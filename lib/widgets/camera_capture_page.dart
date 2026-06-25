@@ -2,6 +2,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
 import '../core/constants/app_colors.dart';
+import '../core/utils/app_snackbar.dart';
 
 class CameraCapturePage extends StatefulWidget {
   const CameraCapturePage({super.key});
@@ -62,9 +63,7 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isCapturing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao capturar foto: $e')),
-      );
+      AppSnackBar.show(context, 'Erro ao capturar foto: $e', isError: true);
     }
   }
 

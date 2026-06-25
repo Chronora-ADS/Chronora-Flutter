@@ -544,28 +544,14 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   }
 
   Future<void> _expireAcceptedRequestAfterSecondCall() async {
-    await _expireAcceptedRequestAndLeave(
-      const SnackBar(
-        content: Text(
-          'A segunda chamada expirou. O servico foi cancelado e o pedido voltou para aberto.',
-        ),
-        backgroundColor: AppColors.vermelho,
-      ),
-    );
+    await _expireAcceptedRequestAndLeave();
   }
 
   Future<void> _expireAcceptedRequestAfterDecisionTimeout() async {
-    await _expireAcceptedRequestAndLeave(
-      const SnackBar(
-        content: Text(
-          'O tempo para decidir acabou. O servico foi cancelado e o pedido voltou para aberto.',
-        ),
-        backgroundColor: AppColors.vermelho,
-      ),
-    );
+    await _expireAcceptedRequestAndLeave();
   }
 
-  Future<void> _expireAcceptedRequestAndLeave(SnackBar snackBar) async {
+  Future<void> _expireAcceptedRequestAndLeave() async {
     if (_isHandlingExpiration || _isLeavingAcceptedView) return;
     _isHandlingExpiration = true;
 
