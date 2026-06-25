@@ -1,0 +1,64 @@
+name: Android APK — Teste
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      - name: Decodificar keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/chronora-release.jks
+
+      - name: Criar key.properties
+        run: |
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=chronora-release.jks
+          EOF
+
+      - name: Gerar APK release
+        run: flutter build apk --flavor dev --release --dart-define=API_BASE_URL=https://chronora-java-master.onrender.com
+
+      - name: Renomear APK
+        run: mv build/app/outputs/flutter-apk/app-dev-release.apk build/app/outputs/flutter-apk/chronora-teste.apk
+
+      - name: Criar Release no GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: teste-${{ github.run_number }}
+          name: "Chronora Teste — Build ${{ github.run_number }}"
+          body: |
+            APK de teste gerado automaticamente.
+
+            **Commit:** ${{ github.sha }}
+            **Mensagem:** ${{ github.event.head_commit.message }}
+
+            Instale no Android habilitando "Instalar apps desconhecidos" nas configurações.
+          files: build/app/outputs/flutter-apk/chronora-teste.apk
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
