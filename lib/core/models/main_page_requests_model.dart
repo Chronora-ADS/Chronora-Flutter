@@ -44,13 +44,13 @@ class Service {
           fallbackRating:
               json['rating'] ?? json['userRating'] ?? json['avaliacao'],
         ) ??
-        UserCreator(name: 'Usuario desconhecido');
+        UserCreator(name: 'Usuário desconhecido');
 
     return Service(
       id: _toInt(json['id']) ?? 0,
-      title: (json['title'] ?? 'Titulo nao disponivel').toString(),
+      title: (json['title'] ?? 'Título não disponível').toString(),
       description:
-          (json['description'] ?? 'Descricao nao disponivel').toString(),
+          (json['description'] ?? 'Descrição não disponível').toString(),
       serviceImage: _parseServiceImage(json),
       timeChronos: _toInt(json['timeChronos']) ?? 0,
       userCreator: userCreator,

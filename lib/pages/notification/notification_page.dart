@@ -50,7 +50,7 @@ class _NotificationPageState extends State<NotificationPage> {
     try {
       final token = await AuthSessionService.getValidAccessToken();
       if (token == null) {
-        throw Exception('Usuario nao autenticado.');
+        throw Exception('Usuário não autenticado.');
       }
 
       final response =
@@ -59,7 +59,7 @@ class _NotificationPageState extends State<NotificationPage> {
         throw Exception(
           ApiService.extractErrorMessage(
             response.body,
-            fallback: 'Nao foi possivel carregar as notificacoes.',
+            fallback: 'Não foi possível carregar as notificações.',
           ),
         );
       }
@@ -331,7 +331,7 @@ class _NotificationPageState extends State<NotificationPage> {
     if (_notifications.isEmpty) {
       return const Center(
         child: Text(
-          'Nenhuma notificacao encontrada.',
+          'Nenhuma notificação encontrada.',
           style: TextStyle(color: AppColors.branco, fontSize: 16),
         ),
       );

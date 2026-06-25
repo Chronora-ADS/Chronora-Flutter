@@ -28,7 +28,7 @@ class SideMenu extends StatefulWidget {
 }
 
 class _SideMenuState extends State<SideMenu> {
-  String _loadedUserName = 'Usuario';
+  String _loadedUserName = 'Usuário';
   double _loadedUserRating = 0.0;
   String? _loadedUserPhotoUrl;
   bool _isModerator = false;
@@ -92,8 +92,8 @@ class _SideMenuState extends State<SideMenu> {
       final roles = decoded['roles'];
       final isMod = roles is List && roles.contains('ROLE_MODERATOR');
 
-      final name = (decoded['name'] ?? 'Usuario').toString().trim();
-      final resolvedName = name.isEmpty ? 'Usuario' : name;
+      final name = (decoded['name'] ?? 'Usuário').toString().trim();
+      final resolvedName = name.isEmpty ? 'Usuário' : name;
       double resolvedRating = 0.0;
       if (ratingRaw is num) {
         resolvedRating = ratingRaw.toDouble();
@@ -335,7 +335,7 @@ class _SideMenuState extends State<SideMenu> {
                     const SizedBox(width: 6),
                     const Flexible(
                       child: Text(
-                        'Sua avaliacao',
+                        'Sua avaliação',
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: AppColors.branco,

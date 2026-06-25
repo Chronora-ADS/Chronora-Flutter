@@ -10,7 +10,7 @@ class ChronosWalletService {
   Future<int> fetchCurrentBalance() async {
     final token = await AuthSessionService.getValidAccessToken();
     if (token == null) {
-      throw Exception('Usuario nao autenticado.');
+      throw Exception('Usuário não autenticado.');
     }
 
     final response = await ApiService.get('/user/get', token: token);
@@ -18,7 +18,7 @@ class ChronosWalletService {
       throw Exception(
         ApiService.extractErrorMessage(
           response.body,
-          fallback: 'Nao foi possivel carregar o saldo atual.',
+          fallback: 'Não foi possível carregar o saldo atual.',
         ),
       );
     }
@@ -57,7 +57,7 @@ class ChronosWalletService {
 
   Future<BuyPaymentResponse> createBuyPayment(int chronosAmount) async {
     final token = await AuthSessionService.getValidAccessToken();
-    if (token == null) throw Exception('Usuario nao autenticado.');
+    if (token == null) throw Exception('Usuário não autenticado.');
 
     final response = await ApiService.post(
       '/payment/buy/create',
@@ -67,7 +67,7 @@ class ChronosWalletService {
 
     if (response.statusCode != 200) {
       throw Exception(ApiService.extractErrorMessage(response.body,
-          fallback: 'Nao foi possivel iniciar o pagamento.'));
+          fallback: 'Não foi possível iniciar o pagamento.'));
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -114,7 +114,7 @@ class ChronosWalletService {
 
     if (response.statusCode != 200 && response.statusCode != 201) {
       final detail = _extractMpError(response.body);
-      throw Exception('Erro ao processar cartao: $detail');
+      throw Exception('Erro ao processar cartão: $detail');
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -144,7 +144,7 @@ class ChronosWalletService {
     int installments = 1,
   }) async {
     final token = await AuthSessionService.getValidAccessToken();
-    if (token == null) throw Exception('Usuario nao autenticado.');
+    if (token == null) throw Exception('Usuário não autenticado.');
 
     final response = await ApiService.post(
       '/payment/buy/create',
@@ -161,7 +161,7 @@ class ChronosWalletService {
 
     if (response.statusCode != 200) {
       throw Exception(ApiService.extractErrorMessage(response.body,
-          fallback: 'Pagamento recusado. Verifique os dados do cartao.'));
+          fallback: 'Pagamento recusado. Verifique os dados do cartão.'));
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -173,7 +173,7 @@ class ChronosWalletService {
 
   Future<String> checkBuyPaymentStatus(int transactionId) async {
     final token = await AuthSessionService.getValidAccessToken();
-    if (token == null) throw Exception('Usuario nao autenticado.');
+    if (token == null) throw Exception('Usuário não autenticado.');
 
     final response =
         await ApiService.get('/payment/buy/status/$transactionId', token: token);
@@ -191,7 +191,7 @@ class ChronosWalletService {
     required String pixKey,
   }) async {
     final token = await AuthSessionService.getValidAccessToken();
-    if (token == null) throw Exception('Usuario nao autenticado.');
+    if (token == null) throw Exception('Usuário não autenticado.');
 
     final response = await ApiService.post(
       '/payment/sell/create',
@@ -201,7 +201,7 @@ class ChronosWalletService {
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(ApiService.extractErrorMessage(response.body,
-          fallback: 'Nao foi possivel processar a venda.'));
+          fallback: 'Não foi possível processar a venda.'));
     }
   }
 

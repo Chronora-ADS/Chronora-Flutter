@@ -117,10 +117,10 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     return [
       _RequestSectionGroup(
         key: 'created_by_me',
-        title: 'Pedidos Criados por Voce',
+        title: 'Pedidos Criados por Você',
         emptyMessage: _searchQuery.trim().isEmpty
-            ? 'Nenhum pedido criado por voce foi encontrado.'
-            : 'Nenhum pedido criado por voce combina com a busca.',
+            ? 'Nenhum pedido criado por você foi encontrado.'
+            : 'Nenhum pedido criado por você combina com a busca.',
         countsByStatus: _countsByStatusForGroup(
           'created_by_me',
           sectionCounts,
@@ -132,10 +132,10 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       ),
       _RequestSectionGroup(
         key: 'accepted_from_others',
-        title: 'Pedidos de Outros Usuarios Aceitos por Voce',
+        title: 'Pedidos de Outros Usuários Aceitos por Você',
         emptyMessage: _searchQuery.trim().isEmpty
-            ? 'Nenhum pedido de outro usuario aceito por voce foi encontrado.'
-            : 'Nenhum pedido de outro usuario aceito por voce combina com a busca.',
+            ? 'Nenhum pedido de outro usuário aceito por você foi encontrado.'
+            : 'Nenhum pedido de outro usuário aceito por você combina com a busca.',
         countsByStatus: _countsByStatusForGroup(
           'accepted_from_others',
           sectionCounts,
@@ -645,7 +645,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       controller: _searchController,
       onChanged: _handleSearchChanged,
       decoration: InputDecoration(
-        hintText: 'Buscar por titulo, categoria ou criador',
+        hintText: 'Buscar por título, categoria ou criador',
         hintStyle: TextStyle(color: AppColors.cinza.withValues(alpha: 0.78)),
         filled: true,
         fillColor: _surfaceElevatedColor,
@@ -922,7 +922,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
     if (_currentUser.name.isEmpty && _currentUser.email.isEmpty) {
       return _buildFeedbackText(
-        'Nao foi possivel identificar o usuario logado para carregar seus pedidos.',
+        'Não foi possível identificar o usuário logado para carregar seus pedidos.',
       );
     }
 
@@ -1369,7 +1369,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       case 'AGUARDANDO_CONFIRMACAO':
         return 'Aguardando Confirmacao';
       case 'CONCLUIDO':
-        return 'Pedidos Concluidos';
+        return 'Pedidos Concluídos';
       case 'CANCELADO':
         return 'Pedidos Cancelados';
       default:
@@ -1388,7 +1388,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       case 'AGUARDANDO_CONFIRMACAO':
         return 'aguardando confirmacao';
       case 'CONCLUIDO':
-        return 'concluido';
+        return 'concluído';
       case 'CANCELADO':
         return 'cancelado';
       default:
@@ -1407,7 +1407,7 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       case 'AGUARDANDO_CONFIRMACAO':
         return 'Nenhum pedido aguardando confirmacao encontrado.';
       case 'CONCLUIDO':
-        return 'Nenhum pedido concluido encontrado.';
+        return 'Nenhum pedido concluído encontrado.';
       case 'CANCELADO':
         return 'Nenhum pedido cancelado encontrado.';
       default:

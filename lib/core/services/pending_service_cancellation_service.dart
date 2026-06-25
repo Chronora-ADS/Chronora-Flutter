@@ -23,7 +23,7 @@ class PendingServiceCancellationJustification {
 
   String get displayRequesterName {
     final name = requesterName.trim();
-    return name.isEmpty ? 'Cliente nao informado' : name;
+    return name.isEmpty ? 'Cliente não informado' : name;
   }
 
   Map<String, dynamic> toJson() {

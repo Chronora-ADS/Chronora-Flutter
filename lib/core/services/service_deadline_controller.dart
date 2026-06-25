@@ -30,7 +30,7 @@ class ServiceDeadlineController {
       throw Exception(
         ApiService.extractErrorMessage(
           response.body,
-          fallback: 'Nao foi possivel renovar o prazo.',
+          fallback: 'Não foi possível renovar o prazo.',
         ),
       );
     }
@@ -48,7 +48,7 @@ class ServiceDeadlineController {
       throw Exception(
         ApiService.extractErrorMessage(
           response.body,
-          fallback: 'Nao foi possivel cancelar o pedido.',
+          fallback: 'Não foi possível cancelar o pedido.',
         ),
       );
     }
@@ -57,7 +57,7 @@ class ServiceDeadlineController {
   Future<String> _getToken() async {
     final token = await AuthSessionService.getValidAccessToken();
     if (token == null) {
-      throw Exception('Usuario nao autenticado.');
+      throw Exception('Usuário não autenticado.');
     }
     return token;
   }

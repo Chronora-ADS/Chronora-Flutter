@@ -437,7 +437,7 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
           Text(
             detail?.title.isNotEmpty == true
                 ? detail!.title
-                : 'Titulo do pedido',
+                : 'Título do pedido',
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -531,7 +531,7 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
           SizedBox(width: 10),
           Expanded(
             child: Text(
-              'O prestador concluiu o servico. Confirme para finalizar.',
+              'O prestador concluiu o serviço. Confirme para finalizar.',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 14,
@@ -566,7 +566,7 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
         child: Text(
           _isProvider
               ? (_isAwaitingConfirmation
-                  ? 'Aguardando confirmacao...'
+                  ? 'Aguardando confirmação...'
                   : 'Concluir pedido')
               : 'Finalizar pedido',
           style: const TextStyle(

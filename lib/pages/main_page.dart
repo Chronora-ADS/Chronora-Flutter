@@ -31,7 +31,7 @@ class _MainPageState extends State<MainPage> {
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
   int _walletRefreshVersion = 0;
-  String _userName = 'Usuario';
+  String _userName = 'Usuário';
   double _userRating = 0.0;
   String? _userPhotoUrl;
   String _submittedSearchQuery = '';
@@ -105,7 +105,7 @@ class _MainPageState extends State<MainPage> {
       if (data is! Map<String, dynamic> || !mounted) return;
 
       setState(() {
-        _userName = (data['name'] ?? 'Usuario').toString();
+        _userName = (data['name'] ?? 'Usuário').toString();
         final ratingRaw =
             data['rating'] ?? data['userRating'] ?? data['avaliacao'];
         if (ratingRaw is num) {
@@ -246,7 +246,7 @@ class _MainPageState extends State<MainPage> {
         setState(() {
           isLoading = false;
           _isLoadingMore = false;
-          errorMessage = 'Falha ao carregar os servicos: $error';
+          errorMessage = 'Falha ao carregar os serviços: $error';
         });
       }
     } finally {
@@ -436,7 +436,7 @@ class _MainPageState extends State<MainPage> {
                             textInputAction: TextInputAction.search,
                             onSubmitted: _submitSearch,
                             decoration: InputDecoration(
-                              hintText: 'Pintura de parede, aula de ingles...',
+                              hintText: 'Pintura de parede, aula de inglês...',
                               hintStyle: const TextStyle(
                                 color: AppColors.textoPlaceholder,
                               ),
@@ -464,7 +464,7 @@ class _MainPageState extends State<MainPage> {
                         Column(
                           children: [
                             const Text(
-                              'As horas acumuladas no seu banco representam oportunidades reais de acao.',
+                              'As horas acumuladas no seu banco representam oportunidades reais de ação.',
                               style: TextStyle(
                                 color: AppColors.branco,
                                 fontSize: 16,
@@ -522,7 +522,7 @@ class _MainPageState extends State<MainPage> {
                             ),
                             const SizedBox(height: 8),
                             const Text(
-                              'ou realize o de alguem',
+                              'ou realize o de alguém',
                               style: TextStyle(
                                 color: AppColors.branco,
                                 fontSize: 14,

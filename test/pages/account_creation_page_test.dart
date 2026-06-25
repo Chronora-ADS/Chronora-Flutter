@@ -14,7 +14,7 @@ void main() {
       await tester.pumpWidget(buildPage());
 
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Numero de celular (com DDD)'),
+        find.widgetWithText(TextFormField, 'Número de celular (com DDD)'),
         '11987654321',
       );
 
@@ -29,7 +29,7 @@ void main() {
       await tester.enterText(find.widgetWithText(TextFormField, 'Nome completo'), 'Ana Silva');
       await tester.enterText(find.widgetWithText(TextFormField, 'E-mail'), 'ana@email.com');
       await tester.enterText(
-        find.widgetWithText(TextFormField, 'Numero de celular (com DDD)'),
+        find.widgetWithText(TextFormField, 'Número de celular (com DDD)'),
         '11987654321',
       );
       await tester.enterText(find.widgetWithText(TextFormField, 'Senha'), 'senhafraca');
@@ -37,7 +37,7 @@ void main() {
       await tester.tap(find.text('Criar Conta').last);
       await tester.pump();
 
-      expect(find.text('Senha deve conter pelo menos uma letra maiuscula'), findsOneWidget);
+      expect(find.text('Senha deve conter pelo menos uma letra maiúscula'), findsOneWidget);
     });
   });
 }

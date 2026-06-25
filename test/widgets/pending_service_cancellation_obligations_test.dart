@@ -25,10 +25,10 @@ void main() {
 
       expect(find.text('Conteudo privado'), findsOneWidget);
       expect(
-        find.text('Voce possui 1 pendencia obrigatoria.'),
+        find.text('Você possui 1 pendência obrigatória.'),
         findsOneWidget,
       );
-      expect(find.text('Ver pendencias'), findsOneWidget);
+      expect(find.text('Ver pendências'), findsOneWidget);
     });
 
     testWidgets('bloqueia rota sensivel enquanto pendencia estiver aberta',
@@ -49,7 +49,7 @@ void main() {
 
       expect(find.text('Formulario liberado'), findsNothing);
       expect(find.text('Antes de criar pedido'), findsOneWidget);
-      expect(find.text('Ver pendencias'), findsOneWidget);
+      expect(find.text('Ver pendências'), findsOneWidget);
     });
 
     testWidgets('modal de justificativa exibe pedido e cliente',
