@@ -96,7 +96,7 @@ class MyRequestsService {
     final token = await AuthSessionService.getValidAccessToken();
     if (token == null) {
       throw const MyRequestsException(
-        'Voce precisa estar logado para visualizar seus pedidos.',
+        'Você precisa estar logado para visualizar seus pedidos.',
       );
     }
 
@@ -121,7 +121,7 @@ class MyRequestsService {
     final token = await AuthSessionService.getValidAccessToken();
     if (token == null) {
       throw const MyRequestsException(
-        'Voce precisa estar logado para visualizar seus pedidos.',
+        'Você precisa estar logado para visualizar seus pedidos.',
       );
     }
 
@@ -136,7 +136,7 @@ class MyRequestsService {
     final token = await AuthSessionService.getValidAccessToken();
     if (token == null) {
       throw const MyRequestsException(
-        'Voce precisa estar logado para visualizar seus pedidos.',
+        'Você precisa estar logado para visualizar seus pedidos.',
       );
     }
 

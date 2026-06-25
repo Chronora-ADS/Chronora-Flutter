@@ -73,7 +73,7 @@ class PendingServiceCancellationObligations {
                       children: [
                         const Expanded(
                           child: Text(
-                            'Pendencias obrigatorias',
+                            'Pendências obrigatórias',
                             style: TextStyle(
                               color: AppColors.preto,
                               fontSize: 22,
@@ -159,7 +159,7 @@ class PendingServiceCancellationObligations {
     try {
       final token = await AuthSessionService.getValidAccessToken();
       if (token == null) {
-        throw Exception('Usuario nao autenticado. Faca login novamente.');
+        throw Exception('Usuário não autenticado. Faça login novamente.');
       }
 
       final response = await ApiService.put(
@@ -172,7 +172,7 @@ class PendingServiceCancellationObligations {
         throw Exception(
           ApiService.extractErrorMessage(
             response.body,
-            fallback: 'Nao foi possivel registrar a justificativa.',
+            fallback: 'Não foi possível registrar a justificativa.',
           ),
         );
       }
@@ -183,7 +183,7 @@ class PendingServiceCancellationObligations {
         return true;
       }
 
-      AppSnackBar.show(context, 'Justificativa registrada nas notificacoes.');
+      AppSnackBar.show(context, 'Justificativa registrada nas notificações.');
       return true;
     } catch (error) {
       if (context.mounted) {
@@ -191,7 +191,7 @@ class PendingServiceCancellationObligations {
           context,
           _friendlyErrorMessage(
             error,
-            fallback: 'Nao foi possivel registrar a justificativa.',
+            fallback: 'Não foi possível registrar a justificativa.',
           ),
           isError: true,
         );
@@ -209,9 +209,9 @@ class PendingServiceCancellationObligations {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Pendencia obrigatoria'),
+          title: const Text('Pendência obrigatória'),
           content: Text(
-            'Antes de $actionLabel, resolva a justificativa pendente de cancelamento de servico.',
+            'Antes de $actionLabel, resolva a justificativa pendente de cancelamento de serviço.',
           ),
           actions: [
             TextButton(
@@ -227,7 +227,7 @@ class PendingServiceCancellationObligations {
                   }
                 });
               },
-              child: const Text('Ver pendencias'),
+              child: const Text('Ver pendências'),
             ),
           ],
         );
@@ -375,8 +375,8 @@ class _PendingBottomBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final count = pending.length;
     final message = count == 1
-        ? 'Voce possui 1 pendencia obrigatoria.'
-        : 'Voce possui $count pendencias obrigatorias.';
+        ? 'Você possui 1 pendência obrigatória.'
+        : 'Você possui $count pendências obrigatórias.';
 
     return Material(
       color: Colors.transparent,
@@ -432,7 +432,7 @@ class _PendingBottomBanner extends StatelessWidget {
                 ),
               ),
               child: const Text(
-                'Ver pendencias',
+                'Ver pendências',
                 style: TextStyle(fontWeight: FontWeight.w800),
               ),
             ),
@@ -492,7 +492,7 @@ class _PendingBlockedPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'Resolva a justificativa obrigatoria de cancelamento de servico para liberar esta acao.',
+                    'Resolva a justificativa obrigatória de cancelamento de serviço para liberar esta ação.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppColors.preto,
@@ -515,7 +515,7 @@ class _PendingBlockedPage extends StatelessWidget {
                       ),
                     ),
                     child: const Text(
-                      'Ver pendencias',
+                      'Ver pendências',
                       style: TextStyle(fontWeight: FontWeight.w800),
                     ),
                   ),

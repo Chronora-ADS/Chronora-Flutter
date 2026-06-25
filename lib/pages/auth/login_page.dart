@@ -104,7 +104,7 @@ class _LoginPageState extends State<LoginPage> {
   String _buildLoginErrorMessage(int statusCode, String body) {
     final extractedMessage = ApiService.extractErrorMessage(
       body,
-      fallback: 'Nao foi possivel fazer login.',
+      fallback: 'Não foi possível fazer login.',
     );
     final normalizedMessage = extractedMessage.toLowerCase();
 

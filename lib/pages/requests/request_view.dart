@@ -74,7 +74,7 @@ class _RequestViewState extends State<RequestView> {
 
     if (serviceId == null) {
       setState(() {
-        _errorMessage = 'ID do servico nao informado.';
+        _errorMessage = 'ID do serviço não informado.';
         _isLoading = false;
       });
       return;
@@ -114,7 +114,7 @@ class _RequestViewState extends State<RequestView> {
     try {
       final token = await AuthSessionService.getValidAccessToken();
       if (token == null) {
-        throw Exception('Usuario nao autenticado.');
+        throw Exception('Usuário não autenticado.');
       }
 
       final currentUser = await _fetchCurrentUser(token);
@@ -124,7 +124,7 @@ class _RequestViewState extends State<RequestView> {
         throw Exception(
           ApiService.extractErrorMessage(
             response.body,
-            fallback: 'Nao foi possivel carregar o pedido.',
+            fallback: 'Não foi possível carregar o pedido.',
           ),
         );
       }
@@ -213,7 +213,7 @@ class _RequestViewState extends State<RequestView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Nao'),
+              child: const Text('Não'),
             ),
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, true),
@@ -229,7 +229,7 @@ class _RequestViewState extends State<RequestView> {
     try {
       final token = await AuthSessionService.getValidAccessToken();
       if (token == null) {
-        throw Exception('Usuario nao autenticado.');
+        throw Exception('Usuário não autenticado.');
       }
 
       final response = detail?.acceptedRequestInfo?.hasAcceptedUser != null
@@ -247,7 +247,7 @@ class _RequestViewState extends State<RequestView> {
         throw Exception(
           ApiService.extractErrorMessage(
             response.body,
-            fallback: 'Nao foi possivel cancelar o pedido.',
+            fallback: 'Não foi possível cancelar o pedido.',
           ),
         );
       }
@@ -301,13 +301,13 @@ class _RequestViewState extends State<RequestView> {
     try {
       final token = await AuthSessionService.getValidAccessToken();
       if (token == null) {
-        throw Exception('Usuario nao autenticado.');
+        throw Exception('Usuário não autenticado.');
       }
 
       final latestDetail = await _fetchServiceDetailSnapshot(serviceId, token);
       final latestAcceptedInfo = latestDetail?.acceptedRequestInfo;
       if (_isAcceptedByAnotherProvider(latestAcceptedInfo)) {
-        throw Exception('O pedido ja foi aceito por outro usuario.');
+        throw Exception('O pedido já foi aceito por outro usuário.');
       }
 
       final response = await ApiService.put(
@@ -320,7 +320,7 @@ class _RequestViewState extends State<RequestView> {
         throw Exception(
           ApiService.extractErrorMessage(
             response.body,
-            fallback: 'Nao foi possivel aceitar o pedido.',
+            fallback: 'Não foi possível aceitar o pedido.',
           ),
         );
       }
@@ -407,7 +407,7 @@ class _RequestViewState extends State<RequestView> {
     final acceptedInfo = _acceptedRequestInfo ?? detail?.acceptedRequestInfo;
 
     if (detail == null || acceptedInfo?.hasAcceptedUser != true) {
-      AppSnackBar.show(context, 'O pedido ainda nao foi aceito.',
+      AppSnackBar.show(context, 'O pedido ainda não foi aceito.',
           isError: true);
       return;
     }
@@ -499,15 +499,15 @@ class _RequestViewState extends State<RequestView> {
     final rawMessage = error.toString().toLowerCase();
 
     if (rawMessage.contains('ja foi aceito')) {
-      return 'Erro, o pedido ja foi aceito por outro usuario.';
+      return 'Erro, o pedido já foi aceito por outro usuário.';
     }
 
     if (rawMessage.contains('mais de um pedido')) {
-      return 'Erro, voce nao pode aceitar mais de um pedido ao mesmo tempo.';
+      return 'Erro, você não pode aceitar mais de um pedido ao mesmo tempo.';
     }
 
     if (rawMessage.contains('proprio pedido')) {
-      return 'Erro, voce nao pode aceitar o proprio pedido.';
+      return 'Erro, você não pode aceitar o próprio pedido.';
     }
 
     return error.toString().replaceFirst('Exception: ', '');
@@ -1045,7 +1045,7 @@ class _RequestViewState extends State<RequestView> {
             ),
           ),
           child: const Text(
-            'Pedido ja aceito',
+            'Pedido já aceito',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
         ),

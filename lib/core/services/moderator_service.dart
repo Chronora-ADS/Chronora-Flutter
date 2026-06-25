@@ -6,7 +6,7 @@ import 'auth_session_service.dart';
 class ModeratorService {
   Future<List<PaymentTransactionSummary>> getAllTransactions() async {
     final token = await AuthSessionService.getValidAccessToken();
-    if (token == null) throw Exception('Nao autenticado.');
+    if (token == null) throw Exception('Não autenticado.');
 
     final response =
         await ApiService.get('/moderator/transactions', token: token);
@@ -24,13 +24,13 @@ class ModeratorService {
 
   Future<List<ModeratorUser>> getAllUsers() async {
     final token = await AuthSessionService.getValidAccessToken();
-    if (token == null) throw Exception('Nao autenticado.');
+    if (token == null) throw Exception('Não autenticado.');
 
     final response = await ApiService.get('/moderator/users', token: token);
 
     if (response.statusCode != 200) {
       throw Exception(ApiService.extractErrorMessage(response.body,
-          fallback: 'Erro ao carregar usuarios.'));
+          fallback: 'Erro ao carregar usuários.'));
     }
 
     final list = jsonDecode(response.body) as List<dynamic>;
@@ -41,7 +41,7 @@ class ModeratorService {
 
   Future<List<ModeratorService2>> getAllServices() async {
     final token = await AuthSessionService.getValidAccessToken();
-    if (token == null) throw Exception('Nao autenticado.');
+    if (token == null) throw Exception('Não autenticado.');
 
     final response = await ApiService.get('/moderator/services', token: token);
 
@@ -58,7 +58,7 @@ class ModeratorService {
 
   Future<PlatformStats> getStats() async {
     final token = await AuthSessionService.getValidAccessToken();
-    if (token == null) throw Exception('Nao autenticado.');
+    if (token == null) throw Exception('Não autenticado.');
 
     final response = await ApiService.get('/moderator/stats', token: token);
 

@@ -353,7 +353,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   Future<void> _copyPhoneNumber(String phone) async {
     await Clipboard.setData(ClipboardData(text: phone));
     if (!mounted) return;
-    AppSnackBar.show(context, 'Numero copiado para a area de transferencia');
+    AppSnackBar.show(context, 'Número copiado para a área de transferência');
   }
 
   void _updateRequestCardHeight() {
@@ -537,7 +537,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     await _expireAcceptedRequestAndLeave(
       const SnackBar(
         content: Text(
-          'A segunda chamada expirou. O servico foi cancelado e o pedido voltou para aberto.',
+          'A segunda chamada expirou. O serviço foi cancelado e o pedido voltou para aberto.',
         ),
         backgroundColor: AppColors.vermelho,
       ),
@@ -548,7 +548,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     await _expireAcceptedRequestAndLeave(
       const SnackBar(
         content: Text(
-          'O tempo para decidir acabou. O servico foi cancelado e o pedido voltou para aberto.',
+          'O tempo para decidir acabou. O serviço foi cancelado e o pedido voltou para aberto.',
         ),
         backgroundColor: AppColors.vermelho,
       ),
@@ -582,7 +582,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
     await _leaveAcceptedView(
       const _LeaveMessage(
-        'A segunda chamada expirou. O servico foi cancelado e o pedido voltou para aberto.',
+        'A segunda chamada expirou. O serviço foi cancelado e o pedido voltou para aberto.',
         isError: true,
       ),
     );
@@ -638,7 +638,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
     final serviceId = _resolvedServiceDetail?.id;
     if (serviceId == null) {
-      AppSnackBar.show(context, 'Servico nao encontrado.', isError: true);
+      AppSnackBar.show(context, 'Serviço não encontrado.', isError: true);
       return;
     }
 
@@ -648,7 +648,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
       if (token == null) {
-        throw Exception('Usuario nao autenticado.');
+        throw Exception('Usuário não autenticado.');
       }
 
       final response = await ApiService.put(
@@ -661,7 +661,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         throw Exception(
           ApiService.extractErrorMessage(
             response.body,
-            fallback: 'Nao foi possivel iniciar a segunda chamada.',
+            fallback: 'Não foi possível iniciar a segunda chamada.',
           ),
         );
       }
@@ -683,7 +683,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       _startAcceptedRequestSync();
 
       AppSnackBar.show(
-          context, 'Segunda chamada iniciada. Um novo codigo foi gerado.');
+          context, 'Segunda chamada iniciada. Um novo código foi gerado.');
     } catch (error) {
       if (!mounted) return;
 
@@ -691,7 +691,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         context,
         _friendlyErrorMessage(
           error,
-          fallback: 'Nao foi possivel iniciar a segunda chamada.',
+          fallback: 'Não foi possível iniciar a segunda chamada.',
         ),
         isError: true,
       );
@@ -742,7 +742,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
     final serviceId = _resolvedServiceDetail?.id;
     if (serviceId == null) {
-      AppSnackBar.show(context, 'Servico nao encontrado.', isError: true);
+      AppSnackBar.show(context, 'Serviço não encontrado.', isError: true);
       return;
     }
 
@@ -754,7 +754,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
       if (token == null) {
-        throw Exception('Usuario nao autenticado.');
+        throw Exception('Usuário não autenticado.');
       }
 
       final response = await ApiService.put(
@@ -767,7 +767,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         throw Exception(
           ApiService.extractErrorMessage(
             response.body,
-            fallback: 'Nao foi possivel cancelar o servico.',
+            fallback: 'Não foi possível cancelar o serviço.',
           ),
         );
       }
@@ -790,7 +790,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         context,
         _friendlyErrorMessage(
           error,
-          fallback: 'Nao foi possivel cancelar o servico.',
+          fallback: 'Não foi possível cancelar o serviço.',
         ),
         isError: true,
       );
@@ -839,7 +839,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
           onSuccess: () async {
             AppSnackBar.show(
               pageContext,
-              'Codigo validado. Retornando para a pagina inicial.',
+              'Código validado. Retornando para a página inicial.',
             );
 
             await _leaveAcceptedView();
@@ -902,8 +902,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         await _leaveAcceptedView(
           _LeaveMessage(
             wasReopened
-                ? 'O servico foi cancelado e o pedido voltou para aberto.'
-                : 'Pedido confirmado. Retornando para a pagina inicial.',
+                ? 'O serviço foi cancelado e o pedido voltou para aberto.'
+                : 'Pedido confirmado. Retornando para a página inicial.',
             isError: wasReopened,
           ),
         );
@@ -1116,7 +1116,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             child: Text(
               serviceDetail?.title.isNotEmpty == true
                   ? serviceDetail!.title
-                  : 'Titulo do pedido Lorem Ipsum',
+                  : 'Título do pedido Lorem Ipsum',
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -1245,7 +1245,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       child: Text(
         description != null && description.isNotEmpty
             ? description
-            : 'Preciso de um profissional para realizar a pintura de uma parede interna, com acabamento uniforme e atencao aos detalhes.',
+            : 'Preciso de um profissional para realizar a pintura de uma parede interna, com acabamento uniforme e atenção aos detalhes.',
         style: const TextStyle(
           color: AppColors.branco,
           fontSize: 17.5,
@@ -1491,7 +1491,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         children: [
           Expanded(
             child: Text(
-              'Codigo de autenticacao de inicio',
+              'Código de autenticação de início',
               style: TextStyle(
                 fontSize: 14,
                 color: AppColors.preto,
@@ -1521,7 +1521,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             if (!_hasAuthenticationCode) ...[
               const SizedBox(height: 6),
               const Text(
-                'Codigo ainda nao carregado do servidor.',
+                'Código ainda não carregado do servidor.',
                 style: TextStyle(
                   color: AppColors.vermelho,
                   fontSize: 14,
@@ -1532,7 +1532,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             const SizedBox(height: 6),
             Text(
               !_hasAuthenticationCodeExpiration
-                  ? 'Tempo indisponivel no momento.'
+                  ? 'Tempo indisponível no momento.'
                   : _isAuthenticationCodeExpired
                       ? 'Tempo restante: 00:00'
                       : 'Tempo restante: $_formattedAuthenticationCodeCountdown',
@@ -1548,7 +1548,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             if (!_hasAuthenticationCodeExpiration) ...[
               const SizedBox(height: 6),
               const Text(
-                'A expiracao do codigo ainda nao foi carregada do servidor.',
+                'A expiração do código ainda não foi carregada do servidor.',
                 style: TextStyle(
                   color: AppColors.vermelho,
                   fontSize: 14,
@@ -1558,7 +1558,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             ] else if (_isAuthenticationCodeExpired) ...[
               const SizedBox(height: 6),
               const Text(
-                'O tempo do codigo expirou.',
+                'O tempo do código expirou.',
                 style: TextStyle(
                   color: AppColors.vermelho,
                   fontSize: 14,
@@ -1622,7 +1622,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
           ),
         ),
         child: Text(
-          _isCancellingService ? 'Cancelando servico...' : 'Cancelar servico',
+          _isCancellingService ? 'Cancelando serviço...' : 'Cancelar serviço',
           style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w700,
@@ -1693,7 +1693,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
   String _formatPhoneNumber(int? phoneNumber) {
     if (phoneNumber == null) {
-      return 'Telefone indisponivel';
+      return 'Telefone indisponível';
     }
 
     final digits = phoneNumber.toString().replaceAll(RegExp(r'\D'), '');
@@ -1985,7 +1985,7 @@ class _TimeExpiredActionDialogState extends State<_TimeExpiredActionDialog> {
               ),
               const SizedBox(height: 14),
               const Text(
-                'O codigo expirou. Cancele o servico com este fornecedor ou inicie uma segunda chamada com um novo codigo.',
+                'O código expirou. Cancele o serviço com este fornecedor ou inicie uma segunda chamada com um novo código.',
                 style: TextStyle(
                   color: AppColors.preto,
                   fontSize: 15,
@@ -2050,7 +2050,7 @@ class _TimeExpiredActionDialogState extends State<_TimeExpiredActionDialog> {
                       ),
                     ),
                     child: const Text(
-                      'Cancelar servico',
+                      'Cancelar serviço',
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                   );
@@ -2148,7 +2148,7 @@ class _CancelServiceConfirmationDialog extends StatelessWidget {
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Cancelar servico',
+                      'Cancelar serviço',
                       style: TextStyle(
                         color: AppColors.preto,
                         fontSize: 24,
@@ -2160,7 +2160,7 @@ class _CancelServiceConfirmationDialog extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               const Text(
-                'Deseja cancelar o servico com este fornecedor? O pedido voltara para a lista de pedidos em aberto.',
+                'Deseja cancelar o serviço com este fornecedor? O pedido voltará para a lista de pedidos em aberto.',
                 style: TextStyle(
                   color: AppColors.preto,
                   fontSize: 15,
@@ -2307,14 +2307,14 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
     if (!_hasExpiration) {
       setState(() {
         _validationMessage =
-            'A expiracao do codigo ainda nao foi carregada do servidor.';
+            'A expiração do código ainda não foi carregada do servidor.';
       });
       return;
     }
 
     if (_isExpired) {
       setState(() {
-        _validationMessage = 'O tempo do codigo expirou.';
+        _validationMessage = 'O tempo do código expirou.';
       });
       return;
     }
@@ -2322,7 +2322,7 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
     final serviceId = widget.serviceId;
     if (serviceId == null) {
       setState(() {
-        _validationMessage = 'Servico nao encontrado.';
+        _validationMessage = 'Serviço não encontrado.';
       });
       return;
     }
@@ -2330,7 +2330,7 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
     final typedCode = _codeController.text.trim();
     if (typedCode.length != 4) {
       setState(() {
-        _validationMessage = 'Informe os 4 digitos do codigo.';
+        _validationMessage = 'Informe os 4 dígitos do código.';
       });
       return;
     }
@@ -2344,7 +2344,7 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
       if (token == null) {
-        throw Exception('Usuario nao autenticado.');
+        throw Exception('Usuário não autenticado.');
       }
 
       final response = await ApiService.put(
@@ -2389,18 +2389,18 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
     final rawMessage = error.toString().toLowerCase();
 
     if (rawMessage.contains('codigo de verificacao expirado')) {
-      return 'O tempo do codigo expirou.';
+      return 'O tempo do código expirou.';
     }
 
     if (rawMessage.contains('codigo de verificacao incorreto')) {
-      return 'Codigo invalido.';
+      return 'Código inválido.';
     }
 
     if (rawMessage.contains('codigo de verificacao indisponivel')) {
-      return 'Esse pedido nao esta mais aguardando confirmacao.';
+      return 'Esse pedido não está mais aguardando confirmação.';
     }
 
-    return 'Nao foi possivel confirmar o codigo.';
+    return 'Não foi possível confirmar o código.';
   }
 
   @override
@@ -2458,7 +2458,7 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
                 ),
                 const SizedBox(height: 14),
                 const Text(
-                  'Digite o codigo de autenticacao de 4 digitos.',
+                  'Digite o código de autenticação de 4 dígitos.',
                   style: TextStyle(
                     color: AppColors.preto,
                     fontSize: 15,
@@ -2467,7 +2467,7 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Codigo de autenticacao',
+                  'Código de autenticação',
                   style: TextStyle(
                     color: AppColors.preto,
                     fontSize: 15,
@@ -2516,7 +2516,7 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
                 const SizedBox(height: 10),
                 Text(
                   !_hasExpiration
-                      ? 'Tempo indisponivel no momento.'
+                      ? 'Tempo indisponível no momento.'
                       : 'Tempo restante: ${_isExpired ? '00:00' : _formattedCountdown}',
                   style: TextStyle(
                     color: !_hasExpiration || _isExpired
@@ -2529,7 +2529,7 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
                 if (!_hasExpiration) ...[
                   const SizedBox(height: 8),
                   const Text(
-                    'A expiracao do codigo ainda nao foi carregada do servidor.',
+                    'A expiração do código ainda não foi carregada do servidor.',
                     style: TextStyle(
                       color: AppColors.vermelho,
                       fontSize: 14,
@@ -2539,7 +2539,7 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
                 ] else if (_isExpired) ...[
                   const SizedBox(height: 8),
                   const Text(
-                    'O tempo do codigo expirou.',
+                    'O tempo do código expirou.',
                     style: TextStyle(
                       color: AppColors.vermelho,
                       fontSize: 14,

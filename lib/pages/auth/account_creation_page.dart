@@ -103,54 +103,54 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
 
   String? _validateName(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Nome e obrigatorio';
+      return 'Nome é obrigatório';
     }
     return null;
   }
 
   String? _validateEmail(String? value) {
     if (value == null || value.isEmpty) {
-      return 'E-mail e obrigatorio';
+      return 'E-mail é obrigatório';
     }
     if (!value.contains('@')) {
-      return 'E-mail invalido';
+      return 'E-mail inválido';
     }
     return null;
   }
 
   String? _validatePhone(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Telefone e obrigatorio';
+      return 'Telefone é obrigatório';
     }
     final digitsOnly = value.replaceAll(RegExp(r'\D'), '');
     if (digitsOnly.length < 10) {
-      return 'Telefone invalido';
+      return 'Telefone inválido';
     }
     return null;
   }
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Senha e obrigatoria';
+      return 'Senha é obrigatória';
     }
     if (value.length < 8) {
       return 'Senha deve ter pelo menos 8 caracteres';
     }
     if (!RegExp(r'[A-Z]').hasMatch(value)) {
-      return 'Senha deve conter pelo menos uma letra maiuscula';
+      return 'Senha deve conter pelo menos uma letra maiúscula';
     }
     if (!RegExp(r'\d').hasMatch(value)) {
-      return 'Senha deve conter pelo menos um numero';
+      return 'Senha deve conter pelo menos um número';
     }
     return null;
   }
 
   String? _validateConfirmPassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Confirmacao de senha e obrigatoria';
+      return 'Confirmação de senha é obrigatória';
     }
     if (value != _passwordController.text) {
-      return 'Senhas nao coincidem';
+      return 'Senhas não coincidem';
     }
     return null;
   }
@@ -266,7 +266,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                   ),
                   const SizedBox(height: 16),
                   AuthTextField(
-                    hintText: 'Numero de celular (com DDD)',
+                    hintText: 'Número de celular (com DDD)',
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
                     validator: _validatePhone,

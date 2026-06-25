@@ -21,7 +21,7 @@ class ServiceCatalogService {
 
     if (token == null) {
       throw const ServiceCatalogException(
-        'Voce precisa estar logado para visualizar os servicos.',
+        'Você precisa estar logado para visualizar os serviços.',
       );
     }
 
@@ -56,7 +56,7 @@ class ServiceCatalogService {
 
     if (response.statusCode != 200) {
       throw ServiceCatalogException(
-        'Erro ${response.statusCode} ao carregar os servicos.',
+        'Erro ${response.statusCode} ao carregar os serviços.',
         statusCode: response.statusCode,
       );
     }

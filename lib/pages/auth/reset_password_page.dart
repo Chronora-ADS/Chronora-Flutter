@@ -60,15 +60,15 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
   String? _validatePassword(String? value) {
     final password = value?.trim() ?? '';
-    if (password.isEmpty) return 'Nova senha e obrigatoria';
+    if (password.isEmpty) return 'Nova senha é obrigatória';
     if (password.length < 6) return 'A senha deve ter pelo menos 6 caracteres';
-    if (password.length > 72) return 'A senha deve ter ate 72 caracteres';
+    if (password.length > 72) return 'A senha deve ter até 72 caracteres';
     return null;
   }
 
   String? _validateConfirmPassword(String? value) {
     if (value != _passwordController.text) {
-      return 'As senhas nao conferem';
+      return 'As senhas não conferem';
     }
     return null;
   }
@@ -78,7 +78,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
     final token = _accessToken;
     if (token == null || token.isEmpty) {
-      _showSnackBar('Link de recuperacao invalido ou expirado.');
+      _showSnackBar('Link de recuperação inválido ou expirado.');
       return;
     }
 
@@ -94,7 +94,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         await AuthSessionService.clearSession();
         if (!mounted) return;
 
-        _showSnackBar('Senha redefinida com sucesso. Faca login novamente.');
+        _showSnackBar('Senha redefinida com sucesso. Faça login novamente.');
         Navigator.pushNamedAndRemoveUntil(
           context,
           AppRoutes.login,
@@ -123,7 +123,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         return data['message'].toString();
       }
     } catch (_) {}
-    return 'Nao foi possivel redefinir a senha.';
+    return 'Não foi possível redefinir a senha.';
   }
 
   @override
@@ -209,7 +209,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       mainAxisSize: MainAxisSize.min,
       children: [
         const Text(
-          'Link invalido',
+          'Link inválido',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
@@ -217,7 +217,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         ),
         const SizedBox(height: 12),
         const Text(
-          'Solicite um novo link de recuperacao de senha.',
+          'Solicite um novo link de recuperação de senha.',
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 20),

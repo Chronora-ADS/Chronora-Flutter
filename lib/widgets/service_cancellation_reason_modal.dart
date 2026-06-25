@@ -44,7 +44,7 @@ class _ServiceCancellationReasonModalState
     if (reason.length > _maxLength) {
       setState(() {
         _validationMessage =
-            'A justificativa deve ter no maximo $_maxLength caracteres.';
+            'A justificativa deve ter no máximo $_maxLength caracteres.';
       });
       return;
     }
@@ -108,7 +108,7 @@ class _ServiceCancellationReasonModalState
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text(
-                        'Justificativa obrigatoria',
+                        'Justificativa obrigatória',
                         style: TextStyle(
                           color: AppColors.preto,
                           fontSize: 22,
@@ -117,7 +117,7 @@ class _ServiceCancellationReasonModalState
                       ),
                       const SizedBox(height: 10),
                       const Text(
-                        'Formalize o motivo do cancelamento do servico.',
+                        'Formalize o motivo do cancelamento do serviço.',
                         style: TextStyle(
                           color: AppColors.preto,
                           fontSize: 15,

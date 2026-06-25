@@ -254,7 +254,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         base64Image = await _convertImageToBase64();
       }
       if (base64Image == null || base64Image.isEmpty) {
-        AppSnackBar.show(context, 'Nao foi possivel processar a imagem do pedido', isError: true);
+        AppSnackBar.show(context, 'Não foi possível processar a imagem do pedido', isError: true);
         setState(() {
           _isLoading = false;
         });
@@ -327,7 +327,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           return;
         }
         if (timeChronos > 100) {
-          AppSnackBar.show(context, 'Tempo em Chronos deve ser no maximo 100', isError: true);
+          AppSnackBar.show(context, 'Tempo em Chronos deve ser no máximo 100', isError: true);
           setState(() {
             _isLoading = false;
           });
@@ -592,7 +592,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     if (requiredMessage != null) return requiredMessage;
 
     if (value!.length > 2500) {
-      return 'A descricao nao pode exceder 2500 caracteres';
+      return 'A descrição não pode exceder 2500 caracteres';
     }
 
     final wordCount = value
@@ -602,7 +602,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         .length;
 
     if (wordCount < 20) {
-      return 'A descricao deve ter pelo menos 20 palavras';
+      return 'A descrição deve ter pelo menos 20 palavras';
     }
     return null;
   }
