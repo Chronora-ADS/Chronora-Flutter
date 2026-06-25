@@ -23,7 +23,7 @@ class AuthSessionService {
     );
 
     if (accessToken == null || accessToken.isEmpty) {
-      throw const FormatException('Token de acesso nao encontrado na resposta.');
+      throw const FormatException('Token de acesso não encontrado na resposta.');
     }
 
     final prefs = await SharedPreferences.getInstance();

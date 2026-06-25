@@ -44,7 +44,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
-      if (token == null) throw Exception('Usuario nao autenticado.');
+      if (token == null) throw Exception('Usuário não autenticado.');
 
       final endpoint = widget.isFinish
           ? '/service/finishService/${widget.serviceId}'
@@ -57,8 +57,8 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
           ApiService.extractErrorMessage(
             response.body,
             fallback: widget.isFinish
-                ? 'Nao foi possivel concluir o pedido.'
-                : 'Nao foi possivel cancelar o pedido.',
+                ? 'Não foi possível concluir o pedido.'
+                : 'Não foi possível cancelar o pedido.',
           ),
         );
       }

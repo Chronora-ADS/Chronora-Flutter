@@ -777,7 +777,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     if (requiredMessage != null) return requiredMessage;
 
     if (value!.length > 2500) {
-      return 'A descricao nao pode exceder 2500 caracteres';
+      return 'A descrição não pode exceder 2500 caracteres';
     }
     return null;
   }

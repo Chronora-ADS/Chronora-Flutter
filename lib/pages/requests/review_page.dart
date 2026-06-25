@@ -51,7 +51,7 @@ class _ReviewPageState extends State<ReviewPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
-      if (token == null) throw Exception('Usuario nao autenticado.');
+      if (token == null) throw Exception('Usuário não autenticado.');
 
       final response = await ApiService.get(
         '/service/get/${widget.serviceId}',
@@ -61,7 +61,7 @@ class _ReviewPageState extends State<ReviewPage> {
       if (!mounted) return;
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception('Nao foi possivel carregar os dados do pedido.');
+        throw Exception('Não foi possível carregar os dados do pedido.');
       }
 
       final json = jsonDecode(response.body) as Map<String, dynamic>;
@@ -93,7 +93,7 @@ class _ReviewPageState extends State<ReviewPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
-      if (token == null) throw Exception('Usuario nao autenticado.');
+      if (token == null) throw Exception('Usuário não autenticado.');
 
       final response = await ApiService.post(
         '/review/submit/${widget.serviceId}',
@@ -107,7 +107,7 @@ class _ReviewPageState extends State<ReviewPage> {
         throw Exception(
           ApiService.extractErrorMessage(
             response.body,
-            fallback: 'Nao foi possivel enviar a avaliacao.',
+            fallback: 'Não foi possível enviar a avaliação.',
           ),
         );
       }
@@ -216,7 +216,7 @@ class _ReviewPageState extends State<ReviewPage> {
     if (_service == null) {
       return Center(
         child: Text(
-          'Nao foi possivel carregar o pedido.',
+          'Não foi possível carregar o pedido.',
           style: TextStyle(
             color: AppColors.branco.withValues(alpha: 0.7),
             fontSize: 15,
@@ -231,7 +231,7 @@ class _ReviewPageState extends State<ReviewPage> {
     if (reviewee == null) {
       return Center(
         child: Text(
-          'Nao foi possivel identificar o usuario a ser avaliado.',
+          'Não foi possível identificar o usuário a ser avaliado.',
           style: TextStyle(
             color: AppColors.branco.withValues(alpha: 0.7),
             fontSize: 15,

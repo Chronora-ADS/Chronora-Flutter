@@ -70,9 +70,9 @@ class AppRoutes {
       orderInProgress: (context) => _protected(const OrderInProgressPage()),
       moderatorPanel: (context) => _protected(const ModeratorPanelPage()),
       settings: (context) => _protected(const ComingSoonPage(
-            title: 'Configuracoes',
+            title: 'Configurações',
             description:
-                'As configuracoes ainda nao foram implementadas nesta versao do app.',
+                'As configurações ainda não foram implementadas nesta versão do app.',
           )),
     };
   }

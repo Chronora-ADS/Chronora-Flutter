@@ -16,7 +16,7 @@ class ProfileController {
     try {
       final token = await AuthSessionService.getValidAccessToken();
       if (token == null) {
-        errorMessage = 'Usuario nao autenticado.';
+        errorMessage = 'Usuário não autenticado.';
         return;
       }
 
@@ -24,7 +24,7 @@ class ProfileController {
       if (response.statusCode != 200) {
         errorMessage = ApiService.extractErrorMessage(
           response.body,
-          fallback: 'Nao foi possivel carregar o perfil.',
+          fallback: 'Não foi possível carregar o perfil.',
         );
         return;
       }
@@ -53,13 +53,13 @@ class ProfileController {
     try {
       final token = await AuthSessionService.getValidAccessToken();
       if (token == null) {
-        errorMessage = 'Usuario nao autenticado.';
+        errorMessage = 'Usuário não autenticado.';
         return false;
       }
 
       final parsedId = int.tryParse(id);
       if (parsedId == null) {
-        errorMessage = 'ID do usuario invalido.';
+        errorMessage = 'ID do usuário inválido.';
         return false;
       }
 
@@ -86,7 +86,7 @@ class ProfileController {
         }
         errorMessage = ApiService.extractErrorMessage(
           response.body,
-          fallback: 'Nao foi possivel atualizar o perfil.',
+          fallback: 'Não foi possível atualizar o perfil.',
         );
         return false;
       }
@@ -115,7 +115,7 @@ class ProfileController {
     try {
       final token = await AuthSessionService.getValidAccessToken();
       if (token == null) {
-        errorMessage = 'Usuario nao autenticado.';
+        errorMessage = 'Usuário não autenticado.';
         return false;
       }
 
@@ -132,7 +132,7 @@ class ProfileController {
 
       errorMessage = ApiService.extractErrorMessage(
         response.body,
-        fallback: 'Nao foi possivel deletar a conta.',
+        fallback: 'Não foi possível deletar a conta.',
       );
       return false;
     } catch (e) {
@@ -154,6 +154,6 @@ class ProfileController {
       return userData;
     }
 
-    throw const FormatException('Formato de resposta invalido.');
+    throw const FormatException('Formato de resposta inválido.');
   }
 }
