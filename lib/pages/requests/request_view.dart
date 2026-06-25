@@ -546,6 +546,22 @@ class _RequestViewState extends State<RequestView> {
     return acceptedInfo?.hasAcceptedUser == true;
   }
 
+  bool _canEditRequest(
+    ServiceDetailModel detail,
+    AcceptedRequestInfo? acceptedInfo,
+  ) {
+    if (acceptedInfo?.hasAcceptedUser == true) {
+      return false;
+    }
+
+    final normalizedStatus = detail.status.trim().toUpperCase();
+    return normalizedStatus != 'ACEITO' &&
+        normalizedStatus != 'AGUARDANDO_CONFIRMACAO' &&
+        normalizedStatus != 'EM_ANDAMENTO' &&
+        normalizedStatus != 'CONCLUIDO' &&
+        normalizedStatus != 'CANCELADO';
+  }
+
   String _buildAcceptRequestErrorMessage(Object error) {
     final rawMessage = error.toString().toLowerCase();
 
@@ -1010,6 +1026,7 @@ class _RequestViewState extends State<RequestView> {
   Widget _buildActionButtons(ServiceDetailModel detail) {
     final acceptedInfo = _acceptedRequestInfo ?? detail.acceptedRequestInfo;
     final canOpenAcceptedRequest = _canOpenAcceptedRequest(acceptedInfo);
+    final canEditRequest = _canEditRequest(detail, acceptedInfo);
     final normalizedStatus = detail.status.trim().toUpperCase();
     final isTerminal =
         normalizedStatus == 'CONCLUIDO' || normalizedStatus == 'CANCELADO';
@@ -1022,20 +1039,27 @@ class _RequestViewState extends State<RequestView> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: _editRequest,
+              onPressed: canEditRequest ? _editRequest : null,
               style: OutlinedButton.styleFrom(
-                backgroundColor: AppColors.amareloUmPoucoEscuro,
+                backgroundColor: canEditRequest
+                    ? AppColors.amareloUmPoucoEscuro
+                    : AppColors.cinza,
                 foregroundColor: AppColors.branco,
-                side: const BorderSide(color: AppColors.amareloUmPoucoEscuro),
+                disabledForegroundColor: Colors.black45,
+                side: BorderSide(
+                  color: canEditRequest
+                      ? AppColors.amareloUmPoucoEscuro
+                      : AppColors.cinza,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 8),
               ),
-              child: const Text(
+              child: Text(
                 'Editar pedido',
                 style: TextStyle(
-                  color: AppColors.branco,
+                  color: canEditRequest ? AppColors.branco : Colors.black45,
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
