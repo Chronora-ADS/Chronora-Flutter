@@ -72,6 +72,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   bool _isHandlingExpiration = false;
   bool _isLeavingAcceptedView = false;
   bool _isSecondCallPromptOpen = false;
+  bool _isStartDialogOpen = false;
   bool _didShowProviderExpiredMessage = false;
   bool _isCancellingService = false;
 
@@ -516,7 +517,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   }
 
   Future<void> _handleAuthenticationCodeExpired() async {
-    if (_isLeavingAcceptedView) return;
+    if (_isLeavingAcceptedView || _isStartDialogOpen) return;
 
     if (!_isSecondCall) {
       if (_isRequesterView) {
@@ -834,28 +835,43 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   }
 
   Future<void> _openStartRequestDialog() async {
+    if (_isStartDialogOpen || _isLeavingAcceptedView) return;
+
+    _isStartDialogOpen = true;
+    _countdownTimer?.cancel();
     final pageContext = context;
     final serviceId = _resolvedServiceDetail?.id;
 
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return _StartRequestDialog(
-          serviceId: serviceId,
-          authenticationCode: _authenticationCode,
-          authenticationCodeExpiresAt: _authenticationCodeExpiresAt,
-          onSuccess: () async {
-            AppSnackBar.show(
-              pageContext,
-              'Codigo validado. Retornando para a pagina inicial.',
-            );
+    try {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) {
+          return _StartRequestDialog(
+            serviceId: serviceId,
+            authenticationCode: _authenticationCode,
+            authenticationCodeExpiresAt: _authenticationCodeExpiresAt,
+            onSuccess: () async {
+              AppSnackBar.show(
+                pageContext,
+                'Codigo validado. Acompanhe o pedido em Pedidos em Andamento.',
+              );
 
-            await _leaveAcceptedView();
-          },
-        );
-      },
-    );
+              await _leaveAcceptedView(
+                null,
+                null,
+                AppRoutes.orderInProgress,
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      _isStartDialogOpen = false;
+      if (!_isLeavingAcceptedView) {
+        _startAuthenticationCodeCountdown();
+      }
+    }
   }
 
   void _startAcceptedRequestSync() {
@@ -937,7 +953,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
       if (_isAuthenticationCodeExpired &&
           !_isHandlingExpiration &&
-          !_isSecondCallPromptOpen) {
+          !_isSecondCallPromptOpen &&
+          !_isStartDialogOpen) {
         await _handleAuthenticationCodeExpired();
       }
     } catch (_) {}
@@ -946,6 +963,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   Future<void> _leaveAcceptedView([
     _LeaveMessage? leaveMessage,
     Object? mainArguments,
+    String? destination,
   ]) async {
     if (_isLeavingAcceptedView) return;
     _isLeavingAcceptedView = true;
@@ -968,7 +986,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
     Navigator.pushNamedAndRemoveUntil(
       context,
-      AppRoutes.main,
+      destination ?? AppRoutes.main,
       (route) => false,
       arguments: mainArguments,
     );
