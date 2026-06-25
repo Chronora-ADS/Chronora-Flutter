@@ -28,10 +28,14 @@ class OrderInProgressPage extends StatefulWidget {
 }
 
 class _OrderInProgressPageState extends State<OrderInProgressPage> {
+  static const String _orderInProgressServiceIdKey =
+      'order_in_progress_service_id';
+
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
   bool _didLoadArguments = false;
   bool _isLoadingServiceDetail = false;
+  bool _isResolvingFallbackServiceId = false;
 
   ServiceDetailModel? _serviceDetail;
   int? _serviceId;
@@ -58,13 +62,18 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
     if (arguments is ServiceDetailModel) {
       _serviceDetail = arguments;
       _serviceId = arguments.id;
+    } else if (arguments is int) {
+      _serviceId = arguments;
+    } else if (arguments is String) {
+      _serviceId = int.tryParse(arguments);
     } else if (arguments is Map) {
       final detail = arguments['serviceDetail'];
       if (detail is ServiceDetailModel) {
         _serviceDetail = detail;
         _serviceId = detail.id;
       }
-      final rawId = arguments['serviceId'];
+      final rawId =
+          arguments['serviceId'] ?? arguments['service_id'] ?? arguments['id'];
       if (_serviceId == null) {
         if (rawId is int) {
           _serviceId = rawId;
@@ -77,12 +86,45 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
       _serviceId = widget.serviceDetail?.id ?? widget.serviceId;
     }
 
-    if (_serviceDetail == null && _serviceId != null) {
-      _loadServiceDetail();
+    if (_serviceId == null) {
+      _isResolvingFallbackServiceId = true;
+      _loadFallbackServiceId();
+    }
+
+    if (_serviceId != null) {
+      if (_serviceDetail == null) {
+        _loadServiceDetail();
+      } else {
+        _syncStatus();
+      }
     }
 
     _loadCurrentUser();
     _startSync();
+  }
+
+  Future<void> _loadFallbackServiceId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final fallbackServiceId = prefs.getInt(_orderInProgressServiceIdKey);
+      if (fallbackServiceId == null || !mounted || _serviceId != null) {
+        return;
+      }
+
+      setState(() {
+        _serviceId = fallbackServiceId;
+      });
+      await _loadServiceDetail();
+    } catch (_) {
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isResolvingFallbackServiceId = false;
+        });
+      } else {
+        _isResolvingFallbackServiceId = false;
+      }
+    }
   }
 
   @override
@@ -296,7 +338,10 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
   }
 
   Widget _buildContent() {
-    if (_isLoadingServiceDetail && _serviceDetail == null) {
+    if (_serviceDetail == null &&
+        (_isLoadingServiceDetail ||
+            _isResolvingFallbackServiceId ||
+            _serviceId != null)) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.only(top: 60),

@@ -42,6 +42,8 @@ class RequestAcceptedView extends StatefulWidget {
 }
 
 class _RequestAcceptedViewState extends State<RequestAcceptedView> {
+  static const String _orderInProgressServiceIdKey =
+      'order_in_progress_service_id';
   static const Duration _authenticationCodeLifetime = Duration(minutes: 2);
   static const Duration _secondCallDecisionTimeout = Duration(minutes: 2);
 
@@ -712,6 +714,62 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     return null;
   }
 
+  Future<ServiceDetailModel?> _fetchLatestServiceDetailSnapshot([
+    int? serviceIdOverride,
+  ]) async {
+    final serviceId =
+        serviceIdOverride ?? _serviceId ?? _resolvedServiceDetail?.id;
+    if (serviceId == null) {
+      return null;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      if (token == null) {
+        return null;
+      }
+
+      final response =
+          await ApiService.get('/service/get/$serviceId', token: token);
+      if (response.statusCode != 200) {
+        return null;
+      }
+
+      return _parseServiceDetailFromResponse(response.body);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _isOrderInProgressStatus(String status) {
+    final normalizedStatus = status.trim().toUpperCase();
+    return normalizedStatus == 'EM_ANDAMENTO' ||
+        normalizedStatus == 'AGUARDANDO_CONFIRMACAO';
+  }
+
+  Map<String, Object?> _buildOrderInProgressArguments(
+    ServiceDetailModel? detail, {
+    int? serviceId,
+  }) {
+    final resolvedDetail = detail ?? _resolvedServiceDetail;
+    final resolvedServiceId = serviceId ?? resolvedDetail?.id ?? _serviceId;
+
+    return {
+      if (resolvedServiceId != null) 'serviceId': resolvedServiceId,
+      if (resolvedDetail != null) 'serviceDetail': resolvedDetail,
+    };
+  }
+
+  Future<void> _storeOrderInProgressServiceId(int? serviceId) async {
+    if (serviceId == null) {
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_orderInProgressServiceIdKey, serviceId);
+  }
+
   Future<bool> _openCancelAcceptedServiceFlow({
     bool skipConfirmation = false,
   }) async {
@@ -825,8 +883,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
     _isStartDialogOpen = true;
     _countdownTimer?.cancel();
-    final pageContext = context;
-    final serviceId = _resolvedServiceDetail?.id;
+    final serviceId = _serviceId ?? _resolvedServiceDetail?.id;
 
     try {
       await showDialog<void>(
@@ -837,15 +894,41 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             serviceId: serviceId,
             authenticationCode: _authenticationCode,
             authenticationCodeExpiresAt: _authenticationCodeExpiresAt,
-            onSuccess: () async {
+            onSuccess: (startedServiceId) async {
+              _serviceId ??= startedServiceId;
+              final latestDetail =
+                  await _fetchLatestServiceDetailSnapshot(startedServiceId);
+              final detailForNavigation =
+                  latestDetail ?? _resolvedServiceDetail;
+              if (mounted && latestDetail != null) {
+                setState(() {
+                  _resolvedServiceDetail = latestDetail;
+                  _serviceId = latestDetail.id ?? _serviceId;
+                  _syncAcceptedRequestInfoFromServiceDetail();
+                });
+              }
+
+              if (!mounted) {
+                return;
+              }
+
+              await _storeOrderInProgressServiceId(startedServiceId);
+
+              if (!mounted) {
+                return;
+              }
+
               AppSnackBar.show(
-                pageContext,
+                context,
                 'Codigo validado. Acompanhe o pedido em Pedidos em Andamento.',
               );
 
               await _leaveAcceptedView(
                 null,
-                null,
+                _buildOrderInProgressArguments(
+                  detailForNavigation,
+                  serviceId: startedServiceId,
+                ),
                 AppRoutes.orderInProgress,
               );
             },
@@ -900,11 +983,23 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       }
 
       final latestDetail = ServiceDetailModel.fromJson(decoded);
+      final normalizedStatus = latestDetail.status.trim().toUpperCase();
+
+      if (_isOrderInProgressStatus(normalizedStatus)) {
+        await _storeOrderInProgressServiceId(serviceId);
+        await _leaveAcceptedView(
+          null,
+          _buildOrderInProgressArguments(latestDetail, serviceId: serviceId),
+          AppRoutes.orderInProgress,
+        );
+        return;
+      }
 
       // Descarta dados desatualizados do sync para não reverter a contagem de
       // chamadas já confirmada localmente (evita reabrir dialog de segunda
       // chamada com dados da 1ª chamada que chegaram com atraso do backend).
-      if (latestDetail.verificationCodeCallCount < _authenticationCodeCallCount) {
+      if (latestDetail.verificationCodeCallCount <
+          _authenticationCodeCallCount) {
         return;
       }
 
@@ -916,7 +1011,6 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
               (latestAcceptedInfo?.expiresAt?.trim().isNotEmpty ?? false);
 
       if (!hasActiveAcceptedRequest) {
-        final normalizedStatus = latestDetail.status.trim().toUpperCase();
         final wasReopened = normalizedStatus == 'CRIADO';
         await _leaveAcceptedView(
           _LeaveMessage(
@@ -2258,7 +2352,7 @@ class _StartRequestDialog extends StatefulWidget {
   final int? serviceId;
   final String authenticationCode;
   final DateTime? authenticationCodeExpiresAt;
-  final Future<void> Function() onSuccess;
+  final Future<void> Function(int serviceId) onSuccess;
 
   const _StartRequestDialog({
     required this.serviceId,
@@ -2383,7 +2477,7 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
       if (!mounted) return;
 
       Navigator.of(context).pop();
-      await widget.onSuccess();
+      await widget.onSuccess(serviceId);
     } catch (error) {
       if (!mounted) return;
 
