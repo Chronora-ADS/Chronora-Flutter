@@ -11,6 +11,7 @@ import 'package:chronora/widgets/wallet_modal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'review_page.dart';
+import 'request_accepted_view.dart';
 
 class MeusPedidosPage extends StatefulWidget {
   const MeusPedidosPage({super.key});
@@ -1293,12 +1294,29 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
               ServiceCard(
                 service: service,
                 onView: () async {
-                  if (status == 'EM_ANDAMENTO' ||
-                      status == 'AGUARDANDO_CONFIRMACAO') {
+                  final normalizedStatus = _normalizeStatus(status);
+
+                  if (normalizedStatus == 'EM_ANDAMENTO' ||
+                      normalizedStatus == 'AGUARDANDO_CONFIRMACAO') {
                     await Navigator.pushNamed(
                       context,
                       AppRoutes.orderInProgress,
                       arguments: {'serviceId': service.id},
+                    );
+                    await _loadMyRequests();
+                    return;
+                  }
+
+                  if (normalizedStatus == 'ACEITO') {
+                    await Navigator.pushNamed(
+                      context,
+                      AppRoutes.requestAcceptedView,
+                      arguments: {
+                        'serviceId': service.id,
+                        'audience': isProvider
+                            ? RequestAcceptedAudience.provider
+                            : RequestAcceptedAudience.requester,
+                      },
                     );
                     await _loadMyRequests();
                     return;

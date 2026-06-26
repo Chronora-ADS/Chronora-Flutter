@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
+import '../../core/models/service_detail_model.dart';
 import '../../core/services/auth_session_service.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../core/services/service_deadline_controller.dart';
@@ -14,6 +15,7 @@ import '../../widgets/header.dart';
 import '../../widgets/notification_card.dart';
 import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
+import '../requests/request_accepted_view.dart';
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
@@ -166,6 +168,35 @@ class _NotificationPageState extends State<NotificationPage> {
   }
 
   Future<void> _openNotification(NotificationEntry notification) async {
+    final normalizedStatus =
+        _normalizeServiceStatus(notification.service.status);
+
+    if (normalizedStatus == 'EM_ANDAMENTO' ||
+        normalizedStatus == 'AGUARDANDO_CONFIRMACAO') {
+      await Navigator.pushNamed(
+        context,
+        AppRoutes.orderInProgress,
+        arguments: {'serviceId': notification.service.id},
+      );
+      await _loadNotifications();
+      return;
+    }
+
+    if (normalizedStatus == 'ACEITO' || normalizedStatus.isEmpty) {
+      final didOpenResolvedRoute = await _openNotificationResolvedRoute(
+        notification.service.id,
+      );
+
+      if (didOpenResolvedRoute) {
+        await _loadNotifications();
+        return;
+      }
+
+      if (!mounted) {
+        return;
+      }
+    }
+
     final result = await Navigator.pushNamed(
       context,
       AppRoutes.requestViewWithId(notification.service.id),
@@ -174,6 +205,138 @@ class _NotificationPageState extends State<NotificationPage> {
     if (result == true) {
       await _loadNotifications();
     }
+  }
+
+  Future<bool> _openNotificationResolvedRoute(int serviceId) async {
+    try {
+      final token = await AuthSessionService.getValidAccessToken();
+      if (token == null) {
+        return false;
+      }
+
+      final currentUserId = await _loadCurrentUserId(token);
+      final response =
+          await ApiService.get('/service/get/$serviceId', token: token);
+      if (response.statusCode != 200) {
+        return false;
+      }
+
+      final detail = ServiceDetailModel.fromJson(
+        _extractServiceDetailMap(jsonDecode(response.body)),
+      );
+      final status = _normalizeServiceStatus(detail.status);
+
+      if (!mounted) {
+        return true;
+      }
+
+      if (status == 'EM_ANDAMENTO' || status == 'AGUARDANDO_CONFIRMACAO') {
+        await Navigator.pushNamed(
+          context,
+          AppRoutes.orderInProgress,
+          arguments: {'serviceId': serviceId},
+        );
+        return true;
+      }
+
+      if (status != 'ACEITO') {
+        return false;
+      }
+
+      final audience = _resolveAcceptedAudience(detail, currentUserId);
+      if (audience == null) {
+        return false;
+      }
+
+      final acceptedInfo = detail.acceptedRequestInfo;
+      await Navigator.pushNamed(
+        context,
+        AppRoutes.requestAcceptedView,
+        arguments: {
+          'serviceId': serviceId,
+          'serviceDetail': detail,
+          'audience': audience,
+          'acceptedUserName': acceptedInfo?.acceptedUser?.name,
+          'acceptedUserPhone': acceptedInfo?.acceptedUser?.phoneNumber,
+          'acceptedUserRating': acceptedInfo?.acceptedUser?.rating,
+          'acceptedAt': acceptedInfo?.acceptedAt,
+          'authenticationCode': acceptedInfo?.authenticationCode,
+          'authenticationCodeExpiresAt': acceptedInfo?.expiresAt,
+          'verificationCodeCallCount': detail.verificationCodeCallCount,
+        },
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  RequestAcceptedAudience? _resolveAcceptedAudience(
+    ServiceDetailModel detail,
+    int? currentUserId,
+  ) {
+    if (currentUserId == null) {
+      return null;
+    }
+
+    if (detail.userCreator.id == currentUserId) {
+      return RequestAcceptedAudience.requester;
+    }
+
+    final acceptedUserId = detail.acceptedRequestInfo?.acceptedUser?.id;
+    if (acceptedUserId == currentUserId) {
+      return RequestAcceptedAudience.provider;
+    }
+
+    return null;
+  }
+
+  Future<int?> _loadCurrentUserId(String token) async {
+    final response = await ApiService.get('/user/get', token: token);
+    if (response.statusCode != 200) {
+      return null;
+    }
+
+    final decoded = jsonDecode(response.body);
+    final userData = decoded is Map<String, dynamic> && decoded['user'] is Map
+        ? (decoded['user'] as Map).cast<String, dynamic>()
+        : decoded is Map<String, dynamic>
+            ? decoded
+            : const <String, dynamic>{};
+
+    return _toNullableInt(userData['id']);
+  }
+
+  Map<String, dynamic> _extractServiceDetailMap(dynamic decoded) {
+    if (decoded is Map<String, dynamic>) {
+      for (final key in const ['service', 'serviceEntity', 'data', 'content']) {
+        final value = decoded[key];
+        if (value is Map<String, dynamic>) {
+          return value;
+        }
+        if (value is Map) {
+          return value.cast<String, dynamic>();
+        }
+      }
+      return decoded;
+    }
+
+    if (decoded is Map) {
+      return decoded.cast<String, dynamic>();
+    }
+
+    return const <String, dynamic>{};
+  }
+
+  int? _toNullableInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  String _normalizeServiceStatus(String value) {
+    return value.trim().toUpperCase();
   }
 
   Future<void> _renewDeadline(NotificationEntry notification) async {

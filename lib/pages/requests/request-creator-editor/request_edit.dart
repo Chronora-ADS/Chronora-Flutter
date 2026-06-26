@@ -779,6 +779,16 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     if (value!.length > 2500) {
       return 'A descrição não pode exceder 2500 caracteres';
     }
+
+    final wordCount = value
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .length;
+
+    if (wordCount < 20) {
+      return 'A descrição deve ter pelo menos 20 palavras';
+    }
     return null;
   }
 
@@ -852,7 +862,8 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           ),
           filled: true,
           fillColor: const Color(0xFFE9EAEC),
-          errorStyle: const TextStyle(fontSize: 12, height: 0.1),
+          errorMaxLines: 3,
+          errorStyle: const TextStyle(fontSize: 12, height: 1.2),
           alignLabelWithHint: true,
         ),
       ),
