@@ -908,15 +908,11 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
                 });
               }
 
-              if (!mounted) {
-                return;
-              }
+              if (!mounted) return;
 
               await _storeOrderInProgressServiceId(startedServiceId);
 
-              if (!mounted) {
-                return;
-              }
+              if (!mounted) return;
 
               await _leaveAcceptedView(
                 const _LeaveMessage(
