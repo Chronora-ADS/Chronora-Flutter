@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
+import '../../core/utils/app_snackbar.dart';
 import '../../widgets/header.dart';
 import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
@@ -28,9 +29,21 @@ class OrderOutcomePage extends StatefulWidget {
 class _OrderOutcomePageState extends State<OrderOutcomePage> {
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
-  bool _showBanner = true;
 
   bool get _isConcluded => widget.outcome == OrderOutcome.concluido;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      AppSnackBar.show(
+        context,
+        _isConcluded ? 'Pedido finalizado com sucesso!' : 'Pedido cancelado.',
+        isError: !_isConcluded,
+      );
+    });
+  }
 
   void _toggleDrawer() => setState(() => _isDrawerOpen = !_isDrawerOpen);
   void _openWallet() => setState(() {
@@ -49,7 +62,6 @@ class _OrderOutcomePageState extends State<OrderOutcomePage> {
           Column(
             children: [
               Header(onMenuPressed: _toggleDrawer),
-              if (_showBanner) _buildBanner(),
               Expanded(child: _buildBody()),
             ],
           ),
@@ -84,38 +96,6 @@ class _OrderOutcomePageState extends State<OrderOutcomePage> {
         'assets/img/Comb3.png',
         width: 110,
         errorBuilder: (_, __, ___) => const SizedBox(),
-      ),
-    );
-  }
-
-  Widget _buildBanner() {
-    final color = _isConcluded ? const Color(0xFF2E7D32) : AppColors.vermelho;
-    final icon = _isConcluded ? Icons.check_circle : Icons.cancel;
-    final text =
-        _isConcluded ? 'Um pedido foi finalizado' : 'Um pedido foi cancelado';
-
-    return Container(
-      color: color,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.white, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: () => setState(() => _showBanner = false),
-            child: const Icon(Icons.close, color: Colors.white, size: 20),
-          ),
-        ],
       ),
     );
   }

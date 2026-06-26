@@ -567,18 +567,18 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.green.shade700,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.amareloUmPoucoEscuro,
+        borderRadius: BorderRadius.circular(10),
       ),
       child: const Row(
         children: [
-          Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+          Icon(Icons.check_circle_outline, color: AppColors.branco, size: 20),
           SizedBox(width: 10),
           Expanded(
             child: Text(
               'O prestador concluiu o serviço. Confirme para finalizar.',
               style: TextStyle(
-                color: Colors.white,
+                color: AppColors.branco,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
