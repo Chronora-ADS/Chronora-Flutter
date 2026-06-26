@@ -335,7 +335,7 @@ class _SideMenuState extends State<SideMenu> {
                     const SizedBox(width: 6),
                     const Flexible(
                       child: Text(
-                        'Sua avaliação',
+                        'Avaliação',
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: AppColors.branco,
