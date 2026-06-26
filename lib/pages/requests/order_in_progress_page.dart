@@ -8,6 +8,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/services/api_service.dart';
+import '../../core/utils/app_snackbar.dart';
 import '../../widgets/header.dart';
 import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
@@ -36,6 +37,7 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
   bool _didLoadArguments = false;
   bool _isLoadingServiceDetail = false;
   bool _isResolvingFallbackServiceId = false;
+  bool _didShowAwaitingNotification = false;
 
   ServiceDetailModel? _serviceDetail;
   int? _serviceId;
@@ -174,6 +176,16 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
         _serviceDetail = updated;
         _serviceId = updated.id ?? _serviceId;
       });
+
+      if (newStatus == 'AGUARDANDO_CONFIRMACAO' &&
+          !_didShowAwaitingNotification &&
+          !_isProvider) {
+        _didShowAwaitingNotification = true;
+        AppSnackBar.show(
+          context,
+          'O prestador concluiu o serviço. Confirme para finalizar.',
+        );
+      }
     } catch (_) {}
   }
 
@@ -365,8 +377,6 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
         ),
         const SizedBox(height: 20),
         _buildCard(),
-        const SizedBox(height: 16),
-        if (_isAwaitingConfirmation && !_isProvider) _buildAwaitingBanner(),
         const SizedBox(height: 16),
         _buildFinishButton(),
         const SizedBox(height: 12),
@@ -562,32 +572,6 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
     );
   }
 
-  Widget _buildAwaitingBanner() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.amareloUmPoucoEscuro,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.check_circle_outline, color: AppColors.branco, size: 20),
-          SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'O prestador concluiu o serviço. Confirme para finalizar.',
-              style: TextStyle(
-                color: AppColors.branco,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildFinishButton() {
     // Prestador: bloqueado quando ja concluiu (aguardando confirmacao do solicitante)
