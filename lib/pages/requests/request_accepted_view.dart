@@ -918,13 +918,10 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
                 return;
               }
 
-              AppSnackBar.show(
-                context,
-                'Codigo validado. Acompanhe o pedido em Pedidos em Andamento.',
-              );
-
               await _leaveAcceptedView(
-                null,
+                const _LeaveMessage(
+                  'Codigo validado. Acompanhe o pedido em Pedidos em Andamento.',
+                ),
                 _buildOrderInProgressArguments(
                   detailForNavigation,
                   serviceId: startedServiceId,
@@ -988,7 +985,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       if (_isOrderInProgressStatus(normalizedStatus)) {
         await _storeOrderInProgressServiceId(serviceId);
         await _leaveAcceptedView(
-          null,
+          _LeaveMessage(
+            'Pedido iniciado por $_acceptedUserName. Acompanhe em Pedidos em Andamento.',
+          ),
           _buildOrderInProgressArguments(latestDetail, serviceId: serviceId),
           AppRoutes.orderInProgress,
         );
