@@ -825,7 +825,6 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
     _isStartDialogOpen = true;
     _countdownTimer?.cancel();
-    final pageContext = context;
     final serviceId = _resolvedServiceDetail?.id;
 
     try {
@@ -838,13 +837,10 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             authenticationCode: _authenticationCode,
             authenticationCodeExpiresAt: _authenticationCodeExpiresAt,
             onSuccess: () async {
-              AppSnackBar.show(
-                pageContext,
-                'Codigo validado. Acompanhe o pedido em Pedidos em Andamento.',
-              );
-
               await _leaveAcceptedView(
-                null,
+                const _LeaveMessage(
+                  'Codigo validado. Acompanhe o pedido em Pedidos em Andamento.',
+                ),
                 null,
                 AppRoutes.orderInProgress,
               );
@@ -917,6 +913,16 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
       if (!hasActiveAcceptedRequest) {
         final normalizedStatus = latestDetail.status.trim().toUpperCase();
+        if (normalizedStatus == 'EM_ANDAMENTO') {
+          await _leaveAcceptedView(
+            _LeaveMessage(
+              'Pedido iniciado por $_acceptedUserName. Acompanhe em Pedidos em Andamento.',
+            ),
+            null,
+            AppRoutes.orderInProgress,
+          );
+          return;
+        }
         final wasReopened = normalizedStatus == 'CRIADO';
         await _leaveAcceptedView(
           _LeaveMessage(
