@@ -787,10 +787,10 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
                               color: Colors.black, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(width: 6),
-                        // Tooltip com ponto de interrogação
                         Tooltip(
-                          message:
-                              'O valor de compra de Chronos é equivalente à 25% de 10 reais. No final, é aplicado uma taxa de 10% sobre o total.',
+                          message: '1 Chrono equivale a 15 minutos.',
+                          triggerMode: TooltipTriggerMode.tap,
+                          showDuration: const Duration(seconds: 3),
                           decoration: BoxDecoration(
                             color: Colors.black,
                             borderRadius: BorderRadius.circular(8),

@@ -430,10 +430,10 @@ class _SellChronosPageState extends State<SellChronosPage> {
                                   fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(width: 6),
-                            // Tooltip com ponto de interrogação
                             Tooltip(
-                              message:
-                                  'O valor de venda Chronos é equivalente à 20% de 10 reais. No final, é aplicado uma taxa de 10% sobre o total.',
+                              message: '1 Chrono equivale a 15 minutos.',
+                              triggerMode: TooltipTriggerMode.tap,
+                              showDuration: const Duration(seconds: 3),
                               decoration: BoxDecoration(
                                 color: Colors.black,
                                 borderRadius: BorderRadius.circular(8),
