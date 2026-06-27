@@ -10,6 +10,7 @@ import 'core/constants/app_colors.dart';
 import 'core/constants/app_routes.dart';
 import 'core/services/auth_session_service.dart';
 import 'core/services/client_log_service.dart';
+import 'core/services/global_notification_service.dart';
 import 'pages/auth/login_page.dart';
 import 'pages/auth/reset_password_page.dart';
 import 'pages/main_page.dart';
@@ -173,10 +174,12 @@ class _AuthGateState extends State<_AuthGate> {
 
         final isLoggedIn = snapshot.data ?? false;
         if (isLoggedIn) {
+          GlobalNotificationService.instance.start(_navigatorKey);
           return const PendingServiceCancellationOverlay(
             child: MainPage(),
           );
         }
+        GlobalNotificationService.instance.stop();
         return const LoginPage();
       },
     );
