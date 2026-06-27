@@ -981,9 +981,11 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       if (_isOrderInProgressStatus(normalizedStatus)) {
         await _storeOrderInProgressServiceId(serviceId);
         await _leaveAcceptedView(
-          _LeaveMessage(
-            'Pedido iniciado por $_acceptedUserName. Acompanhe em Pedidos em Andamento.',
-          ),
+          _isRequesterView
+              ? _LeaveMessage(
+                  'Pedido iniciado por $_acceptedUserName. Acompanhe em Pedidos em Andamento.',
+                )
+              : null,
           _buildOrderInProgressArguments(latestDetail, serviceId: serviceId),
           AppRoutes.orderInProgress,
         );
