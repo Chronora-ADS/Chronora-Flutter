@@ -916,7 +916,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
               await _leaveAcceptedView(
                 const _LeaveMessage(
-                  'Codigo validado. Acompanhe o pedido em Pedidos em Andamento.',
+                  'Codigo validado. Acompanhe o pedido iniciado em Pedidos em Andamento.',
                 ),
                 _buildOrderInProgressArguments(
                   detailForNavigation,
