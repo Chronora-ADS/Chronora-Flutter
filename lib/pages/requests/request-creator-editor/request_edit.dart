@@ -290,7 +290,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
     final token = await AuthSessionService.getValidAccessToken();
     if (token == null) {
-      throw Exception('Usuario nao autenticado. Faca login novamente.');
+      throw Exception('Usuário não autenticado. Faça login novamente.');
     }
 
     final response =
@@ -326,7 +326,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     _isRedirectingAcceptedRequest = true;
     AppSnackBar.show(
       context,
-      'Este pedido ja foi aceito e nao pode mais ser editado.',
+      'Este pedido já foi aceito e não pode mais ser editado.',
       isError: true,
     );
     Navigator.pushNamedAndRemoveUntil(
@@ -585,7 +585,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           return;
         }
         if (timeChronos > 100) {
-          AppSnackBar.show(context, 'Tempo em Chronos deve ser no maximo 100',
+          AppSnackBar.show(context, 'Tempo em Chronos deve ser no máximo 100',
               isError: true);
           setState(() {
             _isLoading = false;

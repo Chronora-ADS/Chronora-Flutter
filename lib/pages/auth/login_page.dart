@@ -94,14 +94,14 @@ class _LoginPageState extends State<LoginPage> {
       await ApiService.post('/auth/resend-confirmation', {'email': email});
       _showSnackBar('E-mail de confirmação reenviado. Verifique sua caixa de entrada.');
     } catch (_) {
-      _showSnackBar('Nao foi possivel reenviar o e-mail. Tente novamente.');
+      _showSnackBar('Não foi possível reenviar o e-mail. Tente novamente.');
     }
   }
 
   String _buildLoginErrorMessage(int statusCode, String body) {
     final extracted = ApiService.extractErrorMessage(
       body,
-      fallback: 'Nao foi possivel fazer login.',
+      fallback: 'Não foi possível fazer login.',
     );
     final normalized = extracted.toLowerCase();
 
@@ -154,7 +154,7 @@ class _LoginPageState extends State<LoginPage> {
       } else {
         final errorMessage = ApiService.extractErrorMessage(
           response.body,
-          fallback: 'Nao foi possivel fazer login.',
+          fallback: 'Não foi possível fazer login.',
         );
         if (errorMessage.contains('EMAIL_NOT_CONFIRMED')) {
           _showEmailNotConfirmedDialog();

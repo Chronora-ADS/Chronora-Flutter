@@ -916,7 +916,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
               await _leaveAcceptedView(
                 const _LeaveMessage(
-                  'Codigo validado. Acompanhe o pedido iniciado em Pedidos em Andamento.',
+                  'Código validado. Acompanhe o pedido iniciado em Pedidos em Andamento.',
                 ),
                 _buildOrderInProgressArguments(
                   detailForNavigation,
@@ -2502,15 +2502,15 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
   String _buildStartRequestErrorMessage(Object error) {
     final rawMessage = error.toString().toLowerCase();
 
-    if (rawMessage.contains('codigo de verificacao expirado')) {
+    if (rawMessage.contains('código de verificação expirado')) {
       return 'O tempo do código expirou.';
     }
 
-    if (rawMessage.contains('codigo de verificacao incorreto')) {
+    if (rawMessage.contains('código de verificação incorreto')) {
       return 'Código inválido.';
     }
 
-    if (rawMessage.contains('codigo de verificacao indisponivel')) {
+    if (rawMessage.contains('código de verificação indisponível')) {
       return 'Esse pedido não está mais aguardando confirmação.';
     }
 

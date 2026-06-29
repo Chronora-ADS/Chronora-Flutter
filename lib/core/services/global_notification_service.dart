@@ -141,13 +141,13 @@ class GlobalNotificationService {
     }
 
     if (message.startsWith('Pedido cancelado por') ||
-        message.startsWith('Servico cancelado por')) {
+        message.startsWith('Serviço cancelado por')) {
       final name = actorName.isNotEmpty ? actorName : '';
       final suffix = name.isNotEmpty ? ' por $name.' : '.';
       return ('Pedido cancelado$suffix', true);
     }
 
-    if (message == 'Pedido cancelado.' || message == 'Servico cancelado') {
+    if (message == 'Pedido cancelado.' || message == 'Serviço cancelado') {
       return ('Um pedido foi cancelado.', true);
     }
 
@@ -159,7 +159,7 @@ class GlobalNotificationService {
       return ('Prazo do pedido chegou. Renove o prazo ou cancele o pedido.', true);
     }
 
-    if (message == 'Voce foi avaliado') {
+    if (message == 'Você foi avaliado') {
       return ('Você recebeu uma nova avaliação!', false);
     }
 
