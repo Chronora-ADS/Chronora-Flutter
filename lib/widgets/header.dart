@@ -4,15 +4,14 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/api/api_service.dart';
 import '../../core/services/auth_session_service.dart';
+import 'wallet_modal.dart';
 
 class Header extends StatefulWidget implements PreferredSizeWidget {
   final VoidCallback? onMenuPressed;
-  final VoidCallback? onWalletPressed;
 
   const Header({
     super.key,
     this.onMenuPressed,
-    this.onWalletPressed,
   });
 
   @override
@@ -34,7 +33,7 @@ class _HeaderState extends State<Header> {
 
   Future<void> _fetchUserData() async {
     try {
-      final String? token = await _getToken();
+      final String? token = await AuthSessionService.getValidAccessToken();
 
       if (token == null) {
         setState(() {
@@ -47,9 +46,9 @@ class _HeaderState extends State<Header> {
       final response = await ApiService.get('/user/get', token: token);
 
       if (response.statusCode == 200) {
-        final userData = _parseResponse(response.body);
+        final jsonData = json.decode(response.body);
         setState(() {
-          _coinCount = userData['timeChronos'] ?? 0;
+          _coinCount = (jsonData is Map ? jsonData['timeChronos'] : null) ?? 0;
           _isLoading = false;
         });
       } else {
@@ -58,7 +57,7 @@ class _HeaderState extends State<Header> {
           _coinCount = 0;
         });
       }
-    } catch (error) {
+    } catch (_) {
       setState(() {
         _isLoading = false;
         _coinCount = 0;
@@ -66,24 +65,16 @@ class _HeaderState extends State<Header> {
     }
   }
 
-  Map<String, dynamic> _parseResponse(String responseBody) {
-    try {
-      // Tenta fazer parse como JSON primeiro
-      final jsonData = json.decode(responseBody);
-
-      // Verifica se é um objeto UserEntity completo
-      if (jsonData is Map<String, dynamic>) {
-        final chronos = jsonData['timeChronos'] ?? 0;
-        return {'timeChronos': chronos};
-      }
-      return {'timeChronos': 0};
-    } catch (e) {
-      return {'timeChronos': 0};
-    }
-  }
-
-  Future<String?> _getToken() async {
-    return AuthSessionService.getValidAccessToken();
+  void _openWallet() {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(20),
+        child: WalletModal(onClose: () => Navigator.of(context).pop()),
+      ),
+    );
   }
 
   @override
@@ -107,7 +98,7 @@ class _HeaderState extends State<Header> {
       ),
       actions: [
         GestureDetector(
-          onTap: widget.onWalletPressed,
+          onTap: _openWallet,
           child: Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Row(
