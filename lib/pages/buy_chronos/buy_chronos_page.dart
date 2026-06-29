@@ -34,7 +34,7 @@ class BuyChronosController extends ChangeNotifier {
   bool isLoading = false;
   bool isLoadingBalance = true;
   final ChronosWalletService _walletService;
-  String selectedPaymentMethod = 'PIX';
+  String selectedPaymentMethod = 'Cartão';
   BuyPaymentResponse? pendingPayment;
 
   // Controllers
@@ -853,19 +853,19 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
 
           const SizedBox(height: 16),
 
-          // Seletor de método de pagamento
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Expanded(child: _buildMethodOption('PIX', Icons.pix, controller)),
-                Expanded(child: _buildMethodOption('Cartão', Icons.credit_card, controller)),
-              ],
-            ),
-          ),
+          // TODO: reativar ao ir para produção (PIX desabilitado temporariamente)
+          // Container(
+          //   decoration: BoxDecoration(
+          //     color: Colors.grey[200],
+          //     borderRadius: BorderRadius.circular(8),
+          //   ),
+          //   child: Row(
+          //     children: [
+          //       Expanded(child: _buildMethodOption('PIX', Icons.pix, controller)),
+          //       Expanded(child: _buildMethodOption('Cartão', Icons.credit_card, controller)),
+          //     ],
+          //   ),
+          // ),
 
           const SizedBox(height: 25),
 
@@ -977,37 +977,38 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
     );
   }
 
-  Widget _buildMethodOption(
-      String method, IconData icon, BuyChronosController controller) {
-    final selected = controller.selectedPaymentMethod == method;
-    return GestureDetector(
-      onTap: () => controller.setPaymentMethod(method),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFFC29503) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon,
-                size: 18,
-                color: selected ? Colors.white : Colors.black54),
-            const SizedBox(width: 6),
-            Text(
-              method,
-              style: TextStyle(
-                color: selected ? Colors.white : Colors.black54,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // TODO: reativar ao ir para produção (PIX desabilitado temporariamente)
+  // Widget _buildMethodOption(
+  //     String method, IconData icon, BuyChronosController controller) {
+  //   final selected = controller.selectedPaymentMethod == method;
+  //   return GestureDetector(
+  //     onTap: () => controller.setPaymentMethod(method),
+  //     child: Container(
+  //       padding: const EdgeInsets.symmetric(vertical: 10),
+  //       decoration: BoxDecoration(
+  //         color: selected ? const Color(0xFFC29503) : Colors.transparent,
+  //         borderRadius: BorderRadius.circular(8),
+  //       ),
+  //       child: Row(
+  //         mainAxisAlignment: MainAxisAlignment.center,
+  //         children: [
+  //           Icon(icon,
+  //               size: 18,
+  //               color: selected ? Colors.white : Colors.black54),
+  //           const SizedBox(width: 6),
+  //           Text(
+  //             method,
+  //             style: TextStyle(
+  //               color: selected ? Colors.white : Colors.black54,
+  //               fontWeight: FontWeight.bold,
+  //               fontSize: 13,
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _labelValueRow(String label, String value) {
     return Row(
