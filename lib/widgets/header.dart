@@ -7,10 +7,12 @@ import '../../core/services/auth_session_service.dart';
 
 class Header extends StatefulWidget implements PreferredSizeWidget {
   final VoidCallback? onMenuPressed;
+  final VoidCallback? onWalletPressed;
 
   const Header({
     super.key,
     this.onMenuPressed,
+    this.onWalletPressed,
   });
 
   @override
@@ -104,30 +106,35 @@ class _HeaderState extends State<Header> {
         ],
       ),
       actions: [
-        Row(
-          children: [
-            Image.asset('assets/img/Coin.png', width: 24, height: 24),
-            const SizedBox(width: 4),
-            _isLoading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(AppColors.preto),
-                    ),
-                  )
-                : Text(
-                    _coinCount.toString(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.preto,
-                    ),
-                  ),
-            const SizedBox(width: 16),
-          ],
+        GestureDetector(
+          onTap: widget.onWalletPressed,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Row(
+              children: [
+                Image.asset('assets/img/Coin.png', width: 24, height: 24),
+                const SizedBox(width: 4),
+                _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(AppColors.preto),
+                        ),
+                      )
+                    : Text(
+                        _coinCount.toString(),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.preto,
+                        ),
+                      ),
+              ],
+            ),
+          ),
         ),
       ],
       elevation: 0,

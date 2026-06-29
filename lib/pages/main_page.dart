@@ -417,6 +417,7 @@ class _MainPageState extends State<MainPage> {
               Header(
                 key: ValueKey(_walletRefreshVersion),
                 onMenuPressed: _toggleDrawer,
+                onWalletPressed: _openWallet,
               ),
               Expanded(
                 child: BackgroundDefaultWidget(
