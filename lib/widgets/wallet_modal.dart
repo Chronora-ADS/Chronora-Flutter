@@ -1,10 +1,7 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/api/api_service.dart';
 import '../../core/constants/app_routes.dart';
-import '../../core/services/auth_session_service.dart';
+import '../../core/services/chronos_wallet_service.dart';
 import 'pending_service_cancellation_obligations.dart';
 
 class WalletModal extends StatefulWidget {
@@ -17,64 +14,31 @@ class WalletModal extends StatefulWidget {
 }
 
 class _WalletModalState extends State<WalletModal> {
-  int _coinCount = 0;
+  int _balance = 0;
+  int _inActiveServices = 0;
   bool _isLoading = true;
+
+  final _service = ChronosWalletService();
 
   @override
   void initState() {
     super.initState();
-    _fetchUserData();
+    _fetchSummary();
   }
 
-  Future<void> _fetchUserData() async {
+  Future<void> _fetchSummary() async {
     try {
-      final String? token = await _getToken();
-
-      if (token == null) {
-        setState(() {
-          _isLoading = false;
-          _coinCount = 0;
-        });
-        return;
-      }
-
-      final response = await ApiService.get('/user/get', token: token);
-
-      if (response.statusCode == 200) {
-        final userData = _parseResponse(response.body);
-        setState(() {
-          _coinCount = userData['timeChronos'] ?? 0;
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _isLoading = false;
-          _coinCount = 0;
-        });
-      }
-    } catch (error) {
+      final summary = await _service.fetchWalletSummary();
+      if (!mounted) return;
       setState(() {
+        _balance = summary.balance;
+        _inActiveServices = summary.chronosInActiveServices;
         _isLoading = false;
-        _coinCount = 0;
       });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
     }
-  }
-
-  Map<String, dynamic> _parseResponse(String responseBody) {
-    try {
-      final jsonData = json.decode(responseBody);
-      if (jsonData is Map<String, dynamic>) {
-        final chronos = jsonData['timeChronos'] ?? 0;
-        return {'timeChronos': chronos};
-      }
-      return {'timeChronos': 0};
-    } catch (e) {
-      return {'timeChronos': 0};
-    }
-  }
-
-  Future<String?> _getToken() async {
-    return AuthSessionService.getValidAccessToken();
   }
 
   @override
@@ -114,40 +78,52 @@ class _WalletModalState extends State<WalletModal> {
             ],
           ),
           const SizedBox(height: 10),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            child: Row(
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: SizedBox(
+                width: 40,
+                height: 40,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.preto),
+                ),
+              ),
+            )
+          else ...[
+            Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _isLoading
-                    ? const SizedBox(
-                        width: 40,
-                        height: 40,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(AppColors.preto),
-                        ),
-                      )
-                    : Text(
-                        _coinCount.toString(), // Usa o valor buscado localmente
-                        style: const TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.preto,
-                        ),
-                      ),
-                const SizedBox(width: 8),
-                Image.asset(
-                  'assets/img/Coin.png',
-                  width: 32,
-                  height: 32,
+                Text(
+                  _balance.toString(),
+                  style: const TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.preto,
+                  ),
                 ),
+                const SizedBox(width: 8),
+                Image.asset('assets/img/Coin.png', width: 32, height: 32),
               ],
             ),
-          ),
-          const SizedBox(height: 10),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F5F5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  _buildSummaryRow('Na carteira', _balance),
+                  const SizedBox(height: 6),
+                  _buildSummaryRow('Em pedidos', _inActiveServices),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
           Container(
             width: double.infinity,
             decoration: const BoxDecoration(
@@ -160,10 +136,7 @@ class _WalletModalState extends State<WalletModal> {
                   context,
                   actionLabel: 'comprar Chronos',
                 );
-                if (!canContinue || !context.mounted) {
-                  return;
-                }
-
+                if (!canContinue || !context.mounted) return;
                 widget.onClose();
                 Navigator.pushNamed(context, AppRoutes.buyChronos);
               },
@@ -211,6 +184,35 @@ class _WalletModalState extends State<WalletModal> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSummaryRow(String label, int value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            color: AppColors.preto,
+          ),
+        ),
+        Row(
+          children: [
+            Text(
+              value.toString(),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: AppColors.preto,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Image.asset('assets/img/Coin.png', width: 16, height: 16),
+          ],
+        ),
+      ],
     );
   }
 }

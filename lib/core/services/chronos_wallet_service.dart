@@ -7,6 +7,22 @@ import '../constants/app_config.dart';
 import 'auth_session_service.dart';
 
 class ChronosWalletService {
+  Future<WalletSummary> fetchWalletSummary() async {
+    final token = await AuthSessionService.getValidAccessToken();
+    if (token == null) throw Exception('Usuário não autenticado.');
+
+    final response = await ApiService.get('/user/wallet/summary', token: token);
+    if (response.statusCode != 200) {
+      throw Exception('Não foi possível carregar o resumo da carteira.');
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return WalletSummary(
+      balance: (data['balance'] as num?)?.toInt() ?? 0,
+      chronosInActiveServices: (data['chronosInActiveServices'] as num?)?.toInt() ?? 0,
+    );
+  }
+
   Future<int> fetchCurrentBalance() async {
     final token = await AuthSessionService.getValidAccessToken();
     if (token == null) {
@@ -228,6 +244,16 @@ class ChronosWalletService {
       return body;
     }
   }
+}
+
+class WalletSummary {
+  final int balance;
+  final int chronosInActiveServices;
+
+  const WalletSummary({
+    required this.balance,
+    required this.chronosInActiveServices,
+  });
 }
 
 class BuyPaymentResponse {
