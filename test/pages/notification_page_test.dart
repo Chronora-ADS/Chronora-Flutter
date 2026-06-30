@@ -182,7 +182,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Nova notificacao do backend'), findsOneWidget);
-      expect(find.text('Pedido: Pedido envelopado'), findsOneWidget);
+      expect(find.text('Pedido envelopado'), findsOneWidget);
       expect(find.text('Nenhuma notificacao encontrada.'), findsNothing);
     });
 
