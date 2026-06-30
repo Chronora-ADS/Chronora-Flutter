@@ -52,6 +52,11 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
   bool get _isAwaitingConfirmation =>
       _serviceDetail?.status.trim().toUpperCase() == 'AGUARDANDO_CONFIRMACAO';
 
+  // TODO: reverter apos apresentacao - atalho temporario permitindo o solicitante
+  // finalizar direto a partir de EM_ANDAMENTO, sem esperar o prestador confirmar
+  bool get _isInProgress =>
+      _serviceDetail?.status.trim().toUpperCase() == 'EM_ANDAMENTO';
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -575,9 +580,10 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
 
   Widget _buildFinishButton() {
     // Prestador: bloqueado quando ja concluiu (aguardando confirmacao do solicitante)
-    // Solicitante: bloqueado enquanto prestador nao concluiu
-    final bool canFinish =
-        _isProvider ? !_isAwaitingConfirmation : _isAwaitingConfirmation;
+    // Solicitante: liberado quando aguardando confirmacao OU (atalho temporario) em andamento
+    final bool canFinish = _isProvider
+        ? !_isAwaitingConfirmation
+        : (_isAwaitingConfirmation || _isInProgress);
 
     return SizedBox(
       width: double.infinity,

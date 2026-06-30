@@ -533,14 +533,16 @@ class _NotificationPageState extends State<NotificationPage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Pedido: ${notification.service.title}',
-                  style: const TextStyle(
-                    color: AppColors.amareloUmPoucoEscuro,
-                    fontWeight: FontWeight.w700,
+                if (notification.service.title.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    notification.service.title,
+                    style: const TextStyle(
+                      color: AppColors.amareloUmPoucoEscuro,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
+                ],
                 const SizedBox(height: 8),
                 Text(
                   _formatDateTime(notification.notificationTime),
