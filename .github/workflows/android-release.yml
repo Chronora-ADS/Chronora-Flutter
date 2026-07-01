@@ -31,6 +31,9 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
+      - name: Criar google-services.json
+        run: echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > android/app/google-services.json
+
       - name: Decodificar keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/chronora-release.jks
 
