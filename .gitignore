@@ -55,9 +55,8 @@ app.*.map.json
 android/key.properties
 *.jks
 
-# Firebase — NUNCA versionar
+# Firebase — google-services.json contém chave de projeto, nao versionar
 android/app/google-services.json
-lib/firebase_options.dart
 macos/Flutter/GeneratedPluginRegistrant.swift
 pubspec.lock
 /macos/Flutter
