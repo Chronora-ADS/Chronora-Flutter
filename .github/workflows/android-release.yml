@@ -47,10 +47,10 @@ jobs:
           EOF
 
       - name: Gerar APK release
-        run: flutter build apk --flavor dev --release --dart-define=API_BASE_URL=https://chronora-java-master.onrender.com
+        run: flutter build apk --flavor prod --release --dart-define=API_BASE_URL=https://chronora-java-master.onrender.com
 
       - name: Renomear APK
-        run: mv build/app/outputs/flutter-apk/app-dev-release.apk build/app/outputs/flutter-apk/chronora-teste.apk
+        run: mv build/app/outputs/flutter-apk/app-prod-release.apk build/app/outputs/flutter-apk/chronora-teste.apk
 
       - name: Criar Release no GitHub
         uses: softprops/action-gh-release@v2
