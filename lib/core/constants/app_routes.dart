@@ -6,7 +6,7 @@ import 'package:chronora/pages/buy_chronos/buy_chronos_page.dart';
 import 'package:chronora/pages/main_page.dart';
 import 'package:chronora/pages/moderator/moderator_panel_page.dart';
 import 'package:chronora/pages/notification/notification_page.dart';
-import 'package:chronora/pages/placeholder/coming_soon_page.dart';
+import 'package:chronora/pages/settings/settings_page.dart';
 import 'package:chronora/pages/profile_page.dart';
 import 'package:chronora/pages/requests/my_requests.dart';
 import 'package:chronora/pages/requests/request-creator-editor/request_creation.dart';
@@ -69,11 +69,7 @@ class AppRoutes {
       myOrders: (context) => _protected(const MeusPedidosPage()),
       orderInProgress: (context) => _protected(const OrderInProgressPage()),
       moderatorPanel: (context) => _protected(const ModeratorPanelPage()),
-      settings: (context) => _protected(const ComingSoonPage(
-            title: 'Configurações',
-            description:
-                'As configurações ainda não foram implementadas nesta versão do app.',
-          )),
+      settings: (context) => _protected(const SettingsPage()),
     };
   }
 

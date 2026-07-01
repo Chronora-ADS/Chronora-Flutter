@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/auth_session_service.dart';
+import '../../core/services/fcm_token_service.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../widgets/auth_text_field.dart';
 import '../../widgets/backgrounds/background_auth_widget.dart';
@@ -145,6 +146,11 @@ class _LoginPageState extends State<LoginPage> {
           await prefs.setBool('remember_me', true);
         } else {
           await prefs.remove('remember_me');
+        }
+
+        final token = await AuthSessionService.getValidAccessToken();
+        if (token != null) {
+          FcmTokenService.registerToken(token);
         }
 
         if (!mounted) return;

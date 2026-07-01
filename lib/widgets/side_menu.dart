@@ -221,13 +221,13 @@ class _SideMenuState extends State<SideMenu> {
                               context, AppRoutes.moderatorPanel);
                         },
                       ),
-                    // _buildMenuItem(
-                    //   icon: 'assets/img/SettingsWhite.png',
-                    //   title: 'Configurações',
-                    //   onTap: () {
-                    //     Navigator.pushNamed(context, AppRoutes.settings);
-                    //   },
-                    // ),
+                    _buildMenuItem(
+                      icon: 'assets/img/SettingsWhite.png',
+                      title: 'Configurações',
+                      onTap: () {
+                        Navigator.pushNamed(context, AppRoutes.settings);
+                      },
+                    ),
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,

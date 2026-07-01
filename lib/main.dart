@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:app_links/app_links.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,10 +13,17 @@ import 'core/constants/app_routes.dart';
 import 'core/services/auth_session_service.dart';
 import 'core/services/client_log_service.dart';
 import 'core/services/global_notification_service.dart';
+import 'core/services/theme_service.dart';
+import 'firebase_options.dart';
 import 'pages/auth/login_page.dart';
 import 'pages/auth/reset_password_page.dart';
 import 'pages/main_page.dart';
 import 'widgets/pending_service_cancellation_obligations.dart';
+
+@pragma('vm:entry-point')
+Future<void> _fcmBackgroundHandler(RemoteMessage message) async {
+  // FCM exibe a notificação automaticamente quando o app está fechado
+}
 
 final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
@@ -22,7 +31,10 @@ Future<void> main() async {
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      FirebaseMessaging.onBackgroundMessage(_fcmBackgroundHandler);
       ClientLogService.initializeGlobalHandlers();
+      await ThemeService.init();
 
       Uri? initialUri;
       if (!kIsWeb) {
@@ -96,29 +108,47 @@ class _ChronoraFlutterState extends State<ChronoraFlutter> {
     final isRecovery =
         effectiveUri != null && _isPasswordRecoveryUrl(effectiveUri);
 
-    return MaterialApp(
-      navigatorKey: _navigatorKey,
-      title: 'Chronora',
-      theme: ThemeData(
-        primarySwatch: Colors.amber,
-        fontFamily: 'Roboto',
-        scaffoldBackgroundColor: const Color(0xFF0B0C0C),
-        scrollbarTheme: ScrollbarThemeData(
-          thumbColor: WidgetStateProperty.all(AppColors.branco),
-          trackColor: WidgetStateProperty.all(Colors.transparent),
-        ),
-      ),
-      home: isRecovery
-          ? ResetPasswordPage(
-              accessToken: ResetPasswordPage.extractAccessToken(effectiveUri),
-            )
-          : const _AuthGate(),
-      routes: AppRoutes.routes,
-      onGenerateRoute: AppRoutes.onGenerateRoute,
-      scrollBehavior: const MaterialScrollBehavior().copyWith(
-        scrollbars: true,
-      ),
-      debugShowCheckedModeBanner: false,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeService.notifier,
+      builder: (context, themeMode, _) {
+        return MaterialApp(
+          navigatorKey: _navigatorKey,
+          title: 'Chronora',
+          themeMode: themeMode,
+          theme: ThemeData(
+            primarySwatch: Colors.amber,
+            fontFamily: 'Roboto',
+            brightness: Brightness.light,
+            scaffoldBackgroundColor: const Color(0xFFF5F5F5),
+            scrollbarTheme: ScrollbarThemeData(
+              thumbColor: WidgetStateProperty.all(AppColors.preto),
+              trackColor: WidgetStateProperty.all(Colors.transparent),
+            ),
+          ),
+          darkTheme: ThemeData(
+            primarySwatch: Colors.amber,
+            fontFamily: 'Roboto',
+            brightness: Brightness.dark,
+            scaffoldBackgroundColor: const Color(0xFF0B0C0C),
+            scrollbarTheme: ScrollbarThemeData(
+              thumbColor: WidgetStateProperty.all(AppColors.branco),
+              trackColor: WidgetStateProperty.all(Colors.transparent),
+            ),
+          ),
+          home: isRecovery
+              ? ResetPasswordPage(
+                  accessToken:
+                      ResetPasswordPage.extractAccessToken(effectiveUri),
+                )
+              : const _AuthGate(),
+          routes: AppRoutes.routes,
+          onGenerateRoute: AppRoutes.onGenerateRoute,
+          scrollBehavior: const MaterialScrollBehavior().copyWith(
+            scrollbars: true,
+          ),
+          debugShowCheckedModeBanner: false,
+        );
+      },
     );
   }
 }
