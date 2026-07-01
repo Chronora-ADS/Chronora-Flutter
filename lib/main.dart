@@ -31,8 +31,10 @@ Future<void> main() async {
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
-      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-      FirebaseMessaging.onBackgroundMessage(_fcmBackgroundHandler);
+      if (!kIsWeb) {
+        await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+        FirebaseMessaging.onBackgroundMessage(_fcmBackgroundHandler);
+      }
       ClientLogService.initializeGlobalHandlers();
       await ThemeService.init();
 
