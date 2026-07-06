@@ -7,11 +7,8 @@ class FcmTokenService {
     try {
       final messaging = FirebaseMessaging.instance;
 
-      final settings = await messaging.requestPermission();
-      if (settings.authorizationStatus != AuthorizationStatus.authorized &&
-          settings.authorizationStatus != AuthorizationStatus.provisional) {
-        return;
-      }
+      // Solicita permissão mas não bloqueia o registro do token caso negada
+      await messaging.requestPermission();
 
       final fcmToken = await messaging.getToken();
       if (fcmToken == null) return;

@@ -12,6 +12,7 @@ import 'core/constants/app_colors.dart';
 import 'core/constants/app_routes.dart';
 import 'core/services/auth_session_service.dart';
 import 'core/services/client_log_service.dart';
+import 'core/services/fcm_token_service.dart';
 import 'core/services/global_notification_service.dart';
 import 'core/services/theme_service.dart';
 import 'firebase_options.dart';
@@ -186,8 +187,13 @@ class _AuthGateState extends State<_AuthGate> {
       final response = await ApiService.get('/user/get', token: token);
       if (response.statusCode == 401 || response.statusCode == 403) {
         await AuthSessionService.clearSession();
+        return false;
       }
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        FcmTokenService.registerToken(token);
+        return true;
+      }
+      return false;
     } catch (_) {
       return false;
     }
