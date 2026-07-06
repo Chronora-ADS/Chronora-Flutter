@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/api/api_service.dart';
@@ -21,6 +22,15 @@ import 'pages/auth/reset_password_page.dart';
 import 'pages/main_page.dart';
 import 'widgets/pending_service_cancellation_obligations.dart';
 
+final FlutterLocalNotificationsPlugin _localNotifications =
+    FlutterLocalNotificationsPlugin();
+
+const AndroidNotificationChannel _channel = AndroidNotificationChannel(
+  'chronora_high_importance',
+  'Notificações Chronora',
+  importance: Importance.high,
+);
+
 @pragma('vm:entry-point')
 Future<void> _fcmBackgroundHandler(RemoteMessage message) async {
   // FCM exibe a notificação automaticamente quando o app está fechado
@@ -35,6 +45,8 @@ Future<void> main() async {
       if (!kIsWeb) {
         await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
         FirebaseMessaging.onBackgroundMessage(_fcmBackgroundHandler);
+        await _initLocalNotifications();
+        _listenForegroundMessages();
       }
       ClientLogService.initializeGlobalHandlers();
       await ThemeService.init();
@@ -56,6 +68,40 @@ Future<void> main() async {
       );
     },
   );
+}
+
+Future<void> _initLocalNotifications() async {
+  await _localNotifications
+      .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(_channel);
+
+  const initSettings = InitializationSettings(
+    android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+  );
+  await _localNotifications.initialize(initSettings);
+}
+
+void _listenForegroundMessages() {
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    final notification = message.notification;
+    if (notification == null) return;
+
+    _localNotifications.show(
+      notification.hashCode,
+      notification.title,
+      notification.body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          _channel.id,
+          _channel.name,
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        ),
+      ),
+    );
+  });
 }
 
 class ChronoraFlutter extends StatefulWidget {
