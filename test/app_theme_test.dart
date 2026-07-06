@@ -12,12 +12,9 @@ void main() {
     await tester.pumpWidget(const ChronoraFlutter());
 
     final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
-    final darkThumbColor =
+    final thumbColor =
         app.darkTheme?.scrollbarTheme.thumbColor?.resolve(<WidgetState>{});
-    final lightThumbColor =
-        app.theme?.scrollbarTheme.thumbColor?.resolve(<WidgetState>{});
 
-    expect(darkThumbColor, AppColors.branco);
-    expect(lightThumbColor, AppColors.preto);
+    expect(thumbColor, AppColors.branco);
   });
 }

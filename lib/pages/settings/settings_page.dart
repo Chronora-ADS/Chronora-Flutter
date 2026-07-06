@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
-import '../../core/services/theme_service.dart';
 import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/backgrounds/background_default_widget.dart';
 import '../../widgets/header.dart';
@@ -75,10 +74,6 @@ class _SettingsPageState extends State<SettingsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildSectionTitle('Aparência'),
-        const SizedBox(height: 8),
-        _buildAppearanceCard(),
-        const SizedBox(height: 20),
         _buildSectionTitle('Sobre'),
         const SizedBox(height: 8),
         _buildAboutCard(),
@@ -96,44 +91,6 @@ class _SettingsPageState extends State<SettingsPage> {
           fontWeight: FontWeight.bold,
           color: AppColors.amareloUmPoucoEscuro,
         ),
-      ),
-    );
-  }
-
-  Widget _buildAppearanceCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.branco,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: ValueListenableBuilder<ThemeMode>(
-        valueListenable: ThemeService.notifier,
-        builder: (context, themeMode, _) {
-          final isDark = themeMode == ThemeMode.dark;
-          return SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text(
-              'Tema escuro',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AppColors.preto,
-              ),
-            ),
-            subtitle: Text(
-              isDark ? 'Ativado' : 'Desativado',
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.cinza,
-              ),
-            ),
-            value: isDark,
-            activeThumbColor: AppColors.amareloUmPoucoEscuro,
-            onChanged: (_) => ThemeService.toggle(),
-          );
-        },
       ),
     );
   }

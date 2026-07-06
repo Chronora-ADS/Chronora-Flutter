@@ -15,7 +15,6 @@ import 'core/services/auth_session_service.dart';
 import 'core/services/client_log_service.dart';
 import 'core/services/fcm_token_service.dart';
 import 'core/services/global_notification_service.dart';
-import 'core/services/theme_service.dart';
 import 'firebase_options.dart';
 import 'pages/auth/login_page.dart';
 import 'pages/auth/reset_password_page.dart';
@@ -52,7 +51,6 @@ Future<void> main() async {
         _setupNotificationTapHandlers();
       }
       ClientLogService.initializeGlobalHandlers();
-      await ThemeService.init();
 
       Uri? initialUri;
       if (!kIsWeb) {
@@ -152,47 +150,42 @@ class _ChronoraFlutterState extends State<ChronoraFlutter> {
     final isRecovery =
         effectiveUri != null && _isPasswordRecoveryUrl(effectiveUri);
 
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: ThemeService.notifier,
-      builder: (context, themeMode, _) {
-        return MaterialApp(
-          navigatorKey: _navigatorKey,
-          title: 'Chronora',
-          themeMode: themeMode,
-          theme: ThemeData(
-            primarySwatch: Colors.amber,
-            fontFamily: 'Roboto',
-            brightness: Brightness.light,
-            scaffoldBackgroundColor: const Color(0xFFF5F5F5),
-            scrollbarTheme: ScrollbarThemeData(
-              thumbColor: WidgetStateProperty.all(AppColors.preto),
-              trackColor: WidgetStateProperty.all(Colors.transparent),
-            ),
-          ),
-          darkTheme: ThemeData(
-            primarySwatch: Colors.amber,
-            fontFamily: 'Roboto',
-            brightness: Brightness.dark,
-            scaffoldBackgroundColor: const Color(0xFF0B0C0C),
-            scrollbarTheme: ScrollbarThemeData(
-              thumbColor: WidgetStateProperty.all(AppColors.branco),
-              trackColor: WidgetStateProperty.all(Colors.transparent),
-            ),
-          ),
-          home: isRecovery
-              ? ResetPasswordPage(
-                  accessToken:
-                      ResetPasswordPage.extractAccessToken(effectiveUri),
-                )
-              : const _AuthGate(),
-          routes: AppRoutes.routes,
-          onGenerateRoute: AppRoutes.onGenerateRoute,
-          scrollBehavior: const MaterialScrollBehavior().copyWith(
-            scrollbars: true,
-          ),
-          debugShowCheckedModeBanner: false,
-        );
-      },
+    return MaterialApp(
+      navigatorKey: _navigatorKey,
+      title: 'Chronora',
+      themeMode: ThemeMode.dark,
+      theme: ThemeData(
+        primarySwatch: Colors.amber,
+        fontFamily: 'Roboto',
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0B0C0C),
+        scrollbarTheme: ScrollbarThemeData(
+          thumbColor: WidgetStateProperty.all(AppColors.branco),
+          trackColor: WidgetStateProperty.all(Colors.transparent),
+        ),
+      ),
+      darkTheme: ThemeData(
+        primarySwatch: Colors.amber,
+        fontFamily: 'Roboto',
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0B0C0C),
+        scrollbarTheme: ScrollbarThemeData(
+          thumbColor: WidgetStateProperty.all(AppColors.branco),
+          trackColor: WidgetStateProperty.all(Colors.transparent),
+        ),
+      ),
+      home: isRecovery
+          ? ResetPasswordPage(
+              accessToken:
+                  ResetPasswordPage.extractAccessToken(effectiveUri),
+            )
+          : const _AuthGate(),
+      routes: AppRoutes.routes,
+      onGenerateRoute: AppRoutes.onGenerateRoute,
+      scrollBehavior: const MaterialScrollBehavior().copyWith(
+        scrollbars: true,
+      ),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
