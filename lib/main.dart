@@ -31,6 +31,9 @@ const AndroidNotificationChannel _channel = AndroidNotificationChannel(
   importance: Importance.high,
 );
 
+// Verdadeiro quando o app foi aberto pelo toque em uma notificação FCM
+bool _shouldOpenNotificationsOnStart = false;
+
 @pragma('vm:entry-point')
 Future<void> _fcmBackgroundHandler(RemoteMessage message) async {
   // FCM exibe a notificação automaticamente quando o app está fechado
@@ -46,7 +49,7 @@ Future<void> main() async {
         await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
         FirebaseMessaging.onBackgroundMessage(_fcmBackgroundHandler);
         await _initLocalNotifications();
-        _listenForegroundMessages();
+        _setupNotificationTapHandlers();
       }
       ClientLogService.initializeGlobalHandlers();
       await ThemeService.init();
@@ -82,25 +85,17 @@ Future<void> _initLocalNotifications() async {
   await _localNotifications.initialize(initSettings);
 }
 
-void _listenForegroundMessages() {
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    final notification = message.notification;
-    if (notification == null) return;
+void _setupNotificationTapHandlers() {
+  // App estava em background e o usuário tocou na notificação
+  FirebaseMessaging.onMessageOpenedApp.listen((_) {
+    _navigatorKey.currentState?.pushNamed(AppRoutes.notifications);
+  });
 
-    _localNotifications.show(
-      notification.hashCode,
-      notification.title,
-      notification.body,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channel.id,
-          _channel.name,
-          importance: Importance.high,
-          priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
-        ),
-      ),
-    );
+  // App estava fechado e o usuário tocou na notificação
+  FirebaseMessaging.instance.getInitialMessage().then((message) {
+    if (message != null) {
+      _shouldOpenNotificationsOnStart = true;
+    }
   });
 }
 
@@ -259,6 +254,12 @@ class _AuthGateState extends State<_AuthGate> {
         final isLoggedIn = snapshot.data ?? false;
         if (isLoggedIn) {
           GlobalNotificationService.instance.start(_navigatorKey);
+          if (_shouldOpenNotificationsOnStart) {
+            _shouldOpenNotificationsOnStart = false;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _navigatorKey.currentState?.pushNamed(AppRoutes.notifications);
+            });
+          }
           return const PendingServiceCancellationOverlay(
             child: MainPage(),
           );

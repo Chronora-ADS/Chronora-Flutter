@@ -17,7 +17,7 @@ class GlobalNotificationService {
   bool _initialized = false;
   GlobalKey<NavigatorState>? _navigatorKey;
 
-  static const Duration _pollInterval = Duration(seconds: 15);
+  static const Duration _pollInterval = Duration(seconds: 60);
 
   void start(GlobalKey<NavigatorState> navigatorKey) {
     _navigatorKey = navigatorKey;
