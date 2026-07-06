@@ -1,5 +1,5 @@
-import 'package:chronora/pages/requests/request-creator-editor/request_creation.dart';
 import 'package:chronora/core/models/service_tracking_type.dart';
+import 'package:chronora/pages/requests/request-creator-editor/request_creation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -69,7 +69,7 @@ void main() {
     );
 
     testWidgets(
-      'Cenario: Quando seleciona campos customizados, exibe a descricao da metrica',
+      'Cenario: Quando seleciona tipo de progresso, exibe marcos prontos e campo manual',
       (tester) async {
         SharedPreferences.setMockInitialValues({});
         await tester.pumpWidget(const MaterialApp(home: RequestCreationPage()));
@@ -82,11 +82,23 @@ void main() {
 
         await tester.tap(trackingDropdown);
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Campos customizados').last);
+        await tester.tap(find.text('Por tempo').last);
+        await tester.pumpAndSettle();
+
+        final milestoneDropdown =
+            find.byType(DropdownButtonFormField<String>).last;
+        expect(milestoneDropdown, findsOneWidget);
+
+        await tester.tap(milestoneDropdown);
+        await tester.pumpAndSettle();
+        expect(find.text('10% por hora'), findsOneWidget);
+        expect(find.text('Marco diferente'), findsOneWidget);
+
+        await tester.tap(find.text('Marco diferente').last);
         await tester.pumpAndSettle();
 
         expect(
-          find.text('Ex.: Por m² pintado ou por capítulo traduzido'),
+          find.text('Descreva como deseja medir este marco'),
           findsOneWidget,
         );
       },

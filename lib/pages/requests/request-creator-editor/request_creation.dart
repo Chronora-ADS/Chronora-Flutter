@@ -25,6 +25,23 @@ class RequestCreationPage extends StatefulWidget {
 
 class _RequestCreationPageState extends State<RequestCreationPage> {
   static const int _maxCategories = 10;
+  static const String _customTrackingMilestoneOption = 'Marco diferente';
+  static const Map<ServiceTrackingType, List<String>> _trackingMilestones = {
+    ServiceTrackingType.time: [
+      '10% por hora',
+      '20% a cada 2 horas',
+      '25% a cada etapa de tempo',
+      '50% na metade do prazo',
+      _customTrackingMilestoneOption,
+    ],
+    ServiceTrackingType.custom: [
+      '25% por etapa entregue',
+      '20% por item concluído',
+      '50% na primeira versão aprovada',
+      '100% após validação final',
+      _customTrackingMilestoneOption,
+    ],
+  };
 
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
@@ -33,10 +50,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   final TextEditingController _deadlineController = TextEditingController();
   final TextEditingController _categoriesController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
-  final TextEditingController _trackingDescriptionController =
+  final TextEditingController _customTrackingMilestoneController =
       TextEditingController();
   String? _selectedModality;
   ServiceTrackingType? _selectedTrackingType;
+  String? _selectedTrackingMilestone;
 
   late List<String> _categoriesTags;
 
@@ -62,7 +80,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     _deadlineController.dispose();
     _categoriesController.dispose();
     _searchController.dispose();
-    _trackingDescriptionController.dispose();
+    _customTrackingMilestoneController.dispose();
     super.dispose();
   }
 
@@ -120,6 +138,33 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   void _showFeedback(String message, {bool isError = true}) {
     if (!mounted) return;
     AppSnackBar.show(context, message, isError: isError);
+  }
+
+  bool get _shouldShowTrackingMilestones {
+    return _selectedTrackingType != null &&
+        _selectedTrackingType != ServiceTrackingType.completion;
+  }
+
+  bool get _shouldShowCustomTrackingMilestone {
+    return _selectedTrackingMilestone == _customTrackingMilestoneOption;
+  }
+
+  String? _resolvedTrackingDescription() {
+    if (!_shouldShowTrackingMilestones) {
+      return null;
+    }
+
+    final selectedMilestone = _selectedTrackingMilestone?.trim();
+    if (selectedMilestone == null || selectedMilestone.isEmpty) {
+      return null;
+    }
+
+    if (selectedMilestone == _customTrackingMilestoneOption) {
+      final customMilestone = _customTrackingMilestoneController.text.trim();
+      return customMilestone.isEmpty ? null : customMilestone;
+    }
+
+    return selectedMilestone;
   }
 
   void _stopLoading() {
@@ -251,6 +296,16 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       AppSnackBar.show(
         context,
         'Selecione como o progresso sera medido',
+        isError: true,
+      );
+      return;
+    }
+
+    final trackingDescription = _resolvedTrackingDescription();
+    if (_shouldShowTrackingMilestones && trackingDescription == null) {
+      AppSnackBar.show(
+        context,
+        'Selecione ou descreva um marco de progresso',
         isError: true,
       );
       return;
@@ -407,9 +462,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         modality: ModalityOptions.toBackendValue(_selectedModality!),
         serviceImage: base64Image,
         trackingType: _selectedTrackingType!,
-        trackingDescription: _selectedTrackingType == ServiceTrackingType.custom
-            ? _trackingDescriptionController.text.trim()
-            : null,
+        trackingDescription: trackingDescription,
       );
 
       final response = await ApiService.post(
@@ -428,7 +481,8 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           _categoriesTags.clear();
           _selectedModality = null;
           _selectedTrackingType = null;
-          _trackingDescriptionController.clear();
+          _selectedTrackingMilestone = null;
+          _customTrackingMilestoneController.clear();
           _selectedImage = null;
           _imageFileName = null;
           _imageBytes = null;
@@ -989,87 +1043,177 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Como o progresso será medido?',
-          style: TextStyle(
-            color: Color(0xFF0B0C0C),
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<ServiceTrackingType>(
-          initialValue: _selectedTrackingType,
-          validator: (value) =>
-              value == null ? 'Selecione como o progresso será medido' : null,
-          decoration: InputDecoration(
-            hintText: 'Selecione uma opção',
-            hintStyle: TextStyle(color: Colors.black.withOpacity(0.7)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide.none,
-            ),
-            filled: true,
-            fillColor: const Color(0xFFE9EAEC),
-            suffixIcon: const Icon(
-              Icons.arrow_drop_down,
-              color: Color(0xFFC29503),
-            ),
-          ),
-          items: ServiceTrackingType.values
-              .map(
-                (trackingType) => DropdownMenuItem(
-                  value: trackingType,
-                  child: Text(trackingType.label),
-                ),
-              )
-              .toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedTrackingType = value;
-              if (value != ServiceTrackingType.custom) {
-                _trackingDescriptionController.clear();
-              }
-            });
-          },
-        ),
-        if (_selectedTrackingType == ServiceTrackingType.custom) ...[
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _trackingDescriptionController,
-            minLines: 2,
-            maxLines: 4,
-            maxLength: 500,
-            validator: (value) {
-              if (_selectedTrackingType != ServiceTrackingType.custom) {
-                return null;
-              }
-              if (value == null || value.trim().isEmpty) {
-                return 'Descreva como o progresso será medido';
-              }
-              if (value.trim().length > 500) {
-                return 'Use no máximo 500 caracteres';
-              }
-              return null;
-            },
-            decoration: InputDecoration(
-              hintText: 'Ex.: Por m² pintado ou por capítulo traduzido',
-              hintStyle: TextStyle(color: Colors.black.withOpacity(0.7)),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
+        Container(
+          height: 46,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE9EAEC),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.3),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
               ),
+            ],
+          ),
+          child: DropdownButtonFormField<ServiceTrackingType>(
+            initialValue: _selectedTrackingType,
+            validator: (value) =>
+                value == null ? 'Selecione como o progresso será medido' : null,
+            decoration: InputDecoration(
+              hintText: 'Como o progresso será medido?',
+              hintStyle: TextStyle(color: Colors.black.withOpacity(0.7)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide.none,
               ),
               filled: true,
               fillColor: const Color(0xFFE9EAEC),
+              suffixIcon: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Image.asset(
+                  'assets/img/down-arrow.png',
+                  width: 24,
+                  height: 24,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.arrow_drop_down, size: 24),
+                ),
+              ),
+              errorStyle: const TextStyle(fontSize: 12, height: 0.1),
+            ),
+            items: ServiceTrackingType.values
+                .map(
+                  (trackingType) => DropdownMenuItem(
+                    value: trackingType,
+                    child: Text(trackingType.label),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              setState(() {
+                _selectedTrackingType = value;
+                _selectedTrackingMilestone = null;
+                _customTrackingMilestoneController.clear();
+              });
+            },
+          ),
+        ),
+        if (_shouldShowTrackingMilestones) ...[
+          const SizedBox(height: 12),
+          _buildTrackingMilestoneDropdown(),
+        ],
+        if (_shouldShowCustomTrackingMilestone) ...[
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFE9EAEC),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.3),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: TextFormField(
+              controller: _customTrackingMilestoneController,
+              minLines: 2,
+              maxLines: 4,
+              maxLength: 500,
+              validator: (value) {
+                if (!_shouldShowCustomTrackingMilestone) {
+                  return null;
+                }
+                if (value == null || value.trim().isEmpty) {
+                  return 'Descreva o marco de progresso';
+                }
+                if (value.trim().length > 500) {
+                  return 'Use no máximo 500 caracteres';
+                }
+                return null;
+              },
+              decoration: InputDecoration(
+                hintText: 'Descreva como deseja medir este marco',
+                hintStyle: TextStyle(color: Colors.black.withOpacity(0.7)),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: const Color(0xFFE9EAEC),
+              ),
             ),
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildTrackingMilestoneDropdown() {
+    final options = _trackingMilestones[_selectedTrackingType] ?? const [];
+
+    return Container(
+      height: 46,
+      decoration: BoxDecoration(
+        color: const Color(0xFFE9EAEC),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: DropdownButtonFormField<String>(
+        initialValue: _selectedTrackingMilestone,
+        validator: (value) =>
+            value == null ? 'Selecione um marco de progresso' : null,
+        decoration: InputDecoration(
+          hintText: 'Selecione um marco de progresso',
+          hintStyle: TextStyle(color: Colors.black.withOpacity(0.7)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: const Color(0xFFE9EAEC),
+          suffixIcon: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Image.asset(
+              'assets/img/down-arrow.png',
+              width: 24,
+              height: 24,
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.arrow_drop_down, size: 24),
+            ),
+          ),
+          errorStyle: const TextStyle(fontSize: 12, height: 0.1),
+        ),
+        items: options
+            .map(
+              (option) => DropdownMenuItem(
+                value: option,
+                child: Text(option),
+              ),
+            )
+            .toList(),
+        onChanged: (value) {
+          setState(() {
+            _selectedTrackingMilestone = value;
+            if (value != _customTrackingMilestoneOption) {
+              _customTrackingMilestoneController.clear();
+            }
+          });
+        },
+      ),
     );
   }
 

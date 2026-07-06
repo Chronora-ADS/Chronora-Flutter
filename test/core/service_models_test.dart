@@ -146,6 +146,24 @@ void main() {
       expect(json['trackingDescription'], 'Por metro quadrado pintado');
     });
 
+    test('serializa marco de tempo na criacao do pedido', () {
+      final request = CreateRequestModel(
+        title: 'Aula de ingles',
+        description: 'Aulas semanais com acompanhamento de progresso.',
+        timeChronos: 10,
+        deadline: '2026-07-10',
+        categories: const ['Educacao'],
+        modality: 'REMOTO',
+        trackingType: ServiceTrackingType.time,
+        trackingDescription: ' 10% por hora ',
+      );
+
+      final json = request.toJson();
+
+      expect(json['trackingType'], 'TIME');
+      expect(json['trackingDescription'], '10% por hora');
+    });
+
     test('parseia rating de usuario aceito em payload plano', () {
       final service = ServiceDetailModel.fromJson({
         'id': 42,

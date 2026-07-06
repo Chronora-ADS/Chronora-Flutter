@@ -36,8 +36,8 @@ class CreateRequestModel {
       'modality': modalityToApi(modality),
       if (serviceImage != null) 'serviceImage': serviceImage,
       'trackingType': trackingType.apiValue,
-      if (trackingType == ServiceTrackingType.custom)
-        'trackingDescription': trackingDescription?.trim(),
+      if (trackingDescription?.trim().isNotEmpty ?? false)
+        'trackingDescription': trackingDescription!.trim(),
     };
   }
 
