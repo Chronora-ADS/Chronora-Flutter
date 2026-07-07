@@ -3,6 +3,7 @@ import 'package:chronora/pages/auth/forgot_password_page.dart';
 import 'package:chronora/pages/auth/login_page.dart';
 import 'package:chronora/pages/auth/reset_password_page.dart';
 import 'package:chronora/pages/buy_chronos/buy_chronos_page.dart';
+import 'package:chronora/pages/chronos/extrato_page.dart';
 import 'package:chronora/pages/main_page.dart';
 import 'package:chronora/pages/moderator/moderator_panel_page.dart';
 import 'package:chronora/pages/notification/notification_page.dart';
@@ -37,6 +38,7 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String orderInProgress = '/order-in-progress';
   static const String moderatorPanel = '/moderator-panel';
+  static const String chronosExtrato = '/chronos-extrato';
 
   static String requestViewWithId(int id) => '$requestView/$id';
   static String requestEditingWithId(int id) => '$requestEditing/$id';
@@ -70,6 +72,7 @@ class AppRoutes {
       orderInProgress: (context) => _protected(const OrderInProgressPage()),
       moderatorPanel: (context) => _protected(const ModeratorPanelPage()),
       settings: (context) => _protected(const SettingsPage()),
+      chronosExtrato: (context) => _protected(const ExtratoPage()),
     };
   }
 

@@ -123,7 +123,32 @@ class _WalletModalState extends State<WalletModal> {
               ),
             ),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () {
+              widget.onClose();
+              Navigator.pushNamed(context, AppRoutes.chronosExtrato);
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFFAAAAAA), width: 1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Center(
+                child: Text(
+                  'Ver extrato',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: AppColors.preto,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           Container(
             width: double.infinity,
             decoration: const BoxDecoration(

@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_routes.dart';
 import '../../core/constants/app_colors.dart';
@@ -357,6 +358,43 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     await Clipboard.setData(ClipboardData(text: phone));
     if (!mounted) return;
     AppSnackBar.show(context, 'Número copiado para a área de transferência');
+  }
+
+  Future<void> _openWhatsApp(int? phone) async {
+    if (phone == null) return;
+    final url = Uri.parse('https://wa.me/$phone');
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (!mounted) return;
+      AppSnackBar.show(context, 'Não foi possível abrir o WhatsApp', isError: true);
+    }
+  }
+
+  Widget _buildWhatsAppButton(int? phone) {
+    return GestureDetector(
+      onTap: () => _openWhatsApp(phone),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF25D366),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.chat_rounded, color: Colors.white, size: 18),
+            SizedBox(width: 8),
+            Text(
+              'Abrir WhatsApp',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _updateRequestCardHeight() {
@@ -1398,24 +1436,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
                 const SizedBox(height: 2),
                 _buildRatingRow(_resolveRequesterRating(creator)),
                 if (_isRequesterView) ...[
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Text(
-                        _formatPhoneNumber(creator?.phoneNumber),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: AppColors.preto,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(
-                        Icons.phone_in_talk,
-                        color: AppColors.preto,
-                        size: 20,
-                      ),
-                    ],
-                  ),
+                  const SizedBox(height: 8),
+                  _buildWhatsAppButton(creator?.phoneNumber),
                 ],
               ],
             ),
@@ -1426,8 +1448,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   }
 
   Widget _buildCalloutCard() {
-    final phone =
-        _formatPhoneNumber(_resolvedServiceDetail?.userCreator.phoneNumber);
+    final rawPhone = _resolvedServiceDetail?.userCreator.phoneNumber;
 
     return Container(
       width: double.infinity,
@@ -1464,7 +1485,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 18),
                 child: Text(
-                  'Antes de aceitar o\npedido, contate o solicitante\npelo telefone:',
+                  'Antes de aceitar o pedido,\nentre em contato com o solicitante:',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: AppColors.preto,
@@ -1475,34 +1496,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
                 ),
               ),
               const SizedBox(height: 18),
-              InkWell(
-                onTap: () => _copyPhoneNumber(phone),
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        phone,
-                        style: const TextStyle(
-                          color: AppColors.preto,
-                          fontSize: 19,
-                          fontWeight: FontWeight.w800,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(
-                        Icons.phone_in_talk,
-                        color: AppColors.preto,
-                        size: 24,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              _buildWhatsAppButton(rawPhone),
             ],
           ),
         ],
@@ -1539,24 +1533,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
                 ),
                 const SizedBox(height: 2),
                 _buildRatingRow(_resolveAcceptedUserRating(acceptedUser)),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Text(
-                      acceptedPhone,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: AppColors.preto,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(
-                      Icons.phone_in_talk,
-                      color: AppColors.preto,
-                      size: 20,
-                    ),
-                  ],
-                ),
+                const SizedBox(height: 8),
+                _buildWhatsAppButton(acceptedUser?.phoneNumber ?? _acceptedUserPhone),
               ],
             ),
           ),
