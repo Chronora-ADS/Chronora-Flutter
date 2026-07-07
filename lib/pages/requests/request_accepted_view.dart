@@ -354,12 +354,6 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     }
   }
 
-  Future<void> _copyPhoneNumber(String phone) async {
-    await Clipboard.setData(ClipboardData(text: phone));
-    if (!mounted) return;
-    AppSnackBar.show(context, 'Número copiado para a área de transferência');
-  }
-
   Future<void> _openWhatsApp(int? phone) async {
     if (phone == null) return;
     final url = Uri.parse('https://wa.me/$phone');
@@ -1508,9 +1502,6 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     final acceptedUser =
         _resolvedServiceDetail?.acceptedRequestInfo?.acceptedUser;
     final acceptedName = _resolveAcceptedUserName(acceptedUser);
-    final acceptedPhone = _formatPhoneNumber(
-      acceptedUser?.phoneNumber ?? _acceptedUserPhone,
-    );
 
     return _InfoCard(
       header: 'Aceito as ${_formatTimeFromDateTime(_acceptedAt)} por:',
@@ -1781,24 +1772,6 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     }
 
     return modality;
-  }
-
-  String _formatPhoneNumber(int? phoneNumber) {
-    if (phoneNumber == null) {
-      return 'Telefone indisponível';
-    }
-
-    final digits = phoneNumber.toString().replaceAll(RegExp(r'\D'), '');
-    if (digits.length < 10) {
-      return digits;
-    }
-
-    final normalized =
-        digits.length > 11 ? digits.substring(digits.length - 11) : digits;
-    final ddd = normalized.substring(0, 2);
-    final prefix = normalized.substring(2, 7);
-    final suffix = normalized.substring(7);
-    return '+55 $ddd $prefix-$suffix';
   }
 
   String _formatTime(String? rawDateTime) {
