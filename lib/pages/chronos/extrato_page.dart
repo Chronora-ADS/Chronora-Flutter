@@ -14,9 +14,22 @@ class ExtratoPage extends StatefulWidget {
 }
 
 class _ExtratoPageState extends State<ExtratoPage> {
-  List<_ExtractItem> _items = const [];
+  List<_ExtractItem> _allItems = const [];
+  String? _selectedFilter; // null = todos
   bool _isLoading = true;
   String? _error;
+
+  static const _filters = [
+    (label: 'Todos', value: null),
+    (label: 'Compras', value: 'COMPRA'),
+    (label: 'Vendas', value: 'VENDA'),
+    (label: 'Pedidos', value: 'PEDIDO_CRIADO'),
+    (label: 'Recebimentos', value: 'RECEBIMENTO_SERVICO'),
+  ];
+
+  List<_ExtractItem> get _filtered => _selectedFilter == null
+      ? _allItems
+      : _allItems.where((e) => e.type == _selectedFilter).toList();
 
   @override
   void initState() {
@@ -25,6 +38,10 @@ class _ExtratoPageState extends State<ExtratoPage> {
   }
 
   Future<void> _fetch() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final token = await AuthSessionService.getValidAccessToken();
       if (token == null) throw Exception('Usuário não autenticado.');
@@ -35,7 +52,7 @@ class _ExtratoPageState extends State<ExtratoPage> {
       final List<dynamic> data = jsonDecode(response.body) as List<dynamic>;
       if (!mounted) return;
       setState(() {
-        _items = data
+        _allItems = data
             .map((e) => _ExtractItem.fromJson(e as Map<String, dynamic>))
             .toList();
         _isLoading = false;
@@ -84,19 +101,13 @@ class _ExtratoPageState extends State<ExtratoPage> {
           children: [
             const Icon(Icons.error_outline, color: AppColors.vermelho, size: 48),
             const SizedBox(height: 12),
-            Text(
+            const Text(
               'Erro ao carregar extrato',
-              style: const TextStyle(color: AppColors.branco, fontSize: 16),
+              style: TextStyle(color: AppColors.branco, fontSize: 16),
             ),
             const SizedBox(height: 8),
             TextButton(
-              onPressed: () {
-                setState(() {
-                  _isLoading = true;
-                  _error = null;
-                });
-                _fetch();
-              },
+              onPressed: _fetch,
               child: const Text('Tentar novamente',
                   style: TextStyle(color: AppColors.amareloClaro)),
             ),
@@ -105,29 +116,100 @@ class _ExtratoPageState extends State<ExtratoPage> {
       );
     }
 
-    if (_items.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.history, color: Color(0xFF555555), size: 64),
-            SizedBox(height: 16),
-            Text(
-              'Nenhuma transação encontrada',
-              style: TextStyle(color: Color(0xFF888888), fontSize: 16),
-            ),
-          ],
-        ),
-      );
-    }
+    final items = _filtered;
+    final grouped = _groupByPeriod(items);
 
-    return RefreshIndicator(
-      onRefresh: _fetch,
-      color: AppColors.amareloClaro,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _items.length,
-        itemBuilder: (context, index) => _buildItem(_items[index]),
+    return Column(
+      children: [
+        _buildFilterRow(),
+        Expanded(
+          child: items.isEmpty
+              ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.history, color: Color(0xFF555555), size: 64),
+                      SizedBox(height: 16),
+                      Text(
+                        'Nenhuma transação encontrada',
+                        style: TextStyle(color: Color(0xFF888888), fontSize: 16),
+                      ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _fetch,
+                  color: AppColors.amareloClaro,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                    itemCount: grouped.length,
+                    itemBuilder: (context, index) {
+                      final entry = grouped[index];
+                      if (entry is _PeriodHeader) {
+                        return _buildPeriodHeader(entry.label);
+                      }
+                      return _buildItem(entry as _ExtractItem);
+                    },
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterRow() {
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        itemCount: _filters.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final f = _filters[i];
+          final selected = _selectedFilter == f.value;
+          return GestureDetector(
+            onTap: () => setState(() => _selectedFilter = f.value),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: selected
+                    ? AppColors.amareloClaro
+                    : const Color(0xFF1A1A1A),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: selected
+                      ? AppColors.amareloClaro
+                      : const Color(0xFF333333),
+                ),
+              ),
+              child: Text(
+                f.label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: selected ? AppColors.preto : const Color(0xFF888888),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPeriodHeader(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Color(0xFF666666),
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }
@@ -151,8 +233,8 @@ class _ExtratoPageState extends State<ExtratoPage> {
         '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A1A),
         borderRadius: BorderRadius.circular(12),
@@ -160,16 +242,18 @@ class _ExtratoPageState extends State<ExtratoPage> {
       child: Row(
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(
-              isGain ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+              isGain
+                  ? Icons.arrow_downward_rounded
+                  : Icons.arrow_upward_rounded,
               color: color,
-              size: 20,
+              size: 18,
             ),
           ),
           const SizedBox(width: 12),
@@ -211,8 +295,8 @@ class _ExtratoPageState extends State<ExtratoPage> {
                         ),
                         child: const Text(
                           'Pendente',
-                          style: TextStyle(
-                              color: Color(0xFFFFA500), fontSize: 10),
+                          style:
+                              TextStyle(color: Color(0xFFFFA500), fontSize: 10),
                         ),
                       ),
                     ],
@@ -240,6 +324,53 @@ class _ExtratoPageState extends State<ExtratoPage> {
       ),
     );
   }
+
+  List<Object> _groupByPeriod(List<_ExtractItem> items) {
+    if (items.isEmpty) return [];
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final startOfWeek = today.subtract(Duration(days: today.weekday - 1));
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final startOfYear = DateTime(now.year, 1, 1);
+
+    final result = <Object>[];
+    String? lastPeriod;
+
+    for (final item in items) {
+      final d = DateTime(item.date.year, item.date.month, item.date.day);
+      final String period;
+
+      if (!d.isBefore(today)) {
+        period = 'HOJE';
+      } else if (!d.isBefore(startOfWeek)) {
+        period = 'ESTA SEMANA';
+      } else if (!d.isBefore(startOfMonth)) {
+        period = 'ESTE MÊS';
+      } else if (!d.isBefore(startOfYear)) {
+        final months = [
+          '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+          'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ];
+        period = months[item.date.month].toUpperCase();
+      } else {
+        period = '${item.date.year}';
+      }
+
+      if (period != lastPeriod) {
+        result.add(_PeriodHeader(period));
+        lastPeriod = period;
+      }
+      result.add(item);
+    }
+
+    return result;
+  }
+}
+
+class _PeriodHeader {
+  final String label;
+  const _PeriodHeader(this.label);
 }
 
 class _ExtractItem {

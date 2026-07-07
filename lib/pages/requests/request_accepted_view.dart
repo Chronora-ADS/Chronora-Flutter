@@ -1430,8 +1430,14 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
                 const SizedBox(height: 2),
                 _buildRatingRow(_resolveRequesterRating(creator)),
                 if (_isRequesterView) ...[
-                  const SizedBox(height: 8),
-                  _buildWhatsAppButton(creator?.phoneNumber),
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatPhoneNumber(creator?.phoneNumber),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.preto,
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -1524,8 +1530,15 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
                 ),
                 const SizedBox(height: 2),
                 _buildRatingRow(_resolveAcceptedUserRating(acceptedUser)),
-                const SizedBox(height: 8),
-                _buildWhatsAppButton(acceptedUser?.phoneNumber ?? _acceptedUserPhone),
+                const SizedBox(height: 4),
+                Text(
+                  _formatPhoneNumber(
+                      acceptedUser?.phoneNumber ?? _acceptedUserPhone),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.preto,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1772,6 +1785,18 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     }
 
     return modality;
+  }
+
+  String _formatPhoneNumber(int? phoneNumber) {
+    if (phoneNumber == null) return 'Telefone indisponível';
+    final digits = phoneNumber.toString().replaceAll(RegExp(r'\D'), '');
+    if (digits.length < 10) return digits;
+    final normalized =
+        digits.length > 11 ? digits.substring(digits.length - 11) : digits;
+    final ddd = normalized.substring(0, 2);
+    final prefix = normalized.substring(2, 7);
+    final suffix = normalized.substring(7);
+    return '+55 ($ddd) $prefix-$suffix';
   }
 
   String _formatTime(String? rawDateTime) {
