@@ -354,18 +354,21 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     }
   }
 
-  Future<void> _openWhatsApp(int? phone) async {
+  Future<void> _openWhatsApp(int? phone, {String? message}) async {
     if (phone == null) return;
-    final url = Uri.parse('https://wa.me/$phone');
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+    String urlStr = 'https://wa.me/$phone';
+    if (message != null && message.isNotEmpty) {
+      urlStr += '?text=${Uri.encodeComponent(message)}';
+    }
+    if (!await launchUrl(Uri.parse(urlStr), mode: LaunchMode.externalApplication)) {
       if (!mounted) return;
       AppSnackBar.show(context, 'Não foi possível abrir o WhatsApp', isError: true);
     }
   }
 
-  Widget _buildWhatsAppButton(int? phone) {
+  Widget _buildWhatsAppButton(int? phone, {String? message}) {
     return GestureDetector(
-      onTap: () => _openWhatsApp(phone),
+      onTap: () => _openWhatsApp(phone, message: message),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
@@ -1449,6 +1452,10 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
   Widget _buildCalloutCard() {
     final rawPhone = _resolvedServiceDetail?.userCreator.phoneNumber;
+    final title = _resolvedServiceDetail?.title ?? '';
+    final whatsAppMessage = title.isNotEmpty
+        ? 'Olá! Vi seu pedido "$title" no Chronora e tenho interesse em prestá-lo. Podemos conversar?'
+        : 'Olá! Vi seu pedido no Chronora e tenho interesse em prestá-lo. Podemos conversar?';
 
     return Container(
       width: double.infinity,
@@ -1496,7 +1503,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
                 ),
               ),
               const SizedBox(height: 18),
-              _buildWhatsAppButton(rawPhone),
+              _buildWhatsAppButton(rawPhone, message: whatsAppMessage),
             ],
           ),
         ],
