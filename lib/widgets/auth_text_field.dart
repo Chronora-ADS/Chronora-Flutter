@@ -67,7 +67,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
                 onFieldSubmitted: widget.onFieldSubmitted,
                 inputFormatters: widget.inputFormatters,
                 focusNode: widget.focusNode,
-                style: const TextStyle(fontSize: 20),
+                style: const TextStyle(fontSize: 20, color: Color(0xFF0B0C0C)),
                 decoration: InputDecoration(
                     hintText: widget.hintText,
                     hintStyle: const TextStyle(color: AppColors.textoPlaceholder),

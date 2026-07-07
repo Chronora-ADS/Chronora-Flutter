@@ -212,6 +212,7 @@ class _ServiceCancellationReasonModalState
                           minLines: null,
                           maxLength: _maxLength,
                           textAlignVertical: TextAlignVertical.top,
+                          style: const TextStyle(color: Color(0xFF0B0C0C)),
                           decoration: InputDecoration(
                             hintText: 'Descreva o ocorrido...',
                             counterText: '',

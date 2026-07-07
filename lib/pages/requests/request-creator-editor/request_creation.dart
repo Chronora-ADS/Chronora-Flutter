@@ -636,6 +636,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       child: TextFormField(
         controller: controller,
         validator: validator,
+        style: const TextStyle(color: Color(0xFF0B0C0C)),
         decoration: InputDecoration(
           hintText: placeholder,
           hintStyle: TextStyle(
@@ -675,6 +676,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         maxLength: 2500,
         keyboardType: TextInputType.multiline,
         textInputAction: TextInputAction.newline,
+        style: const TextStyle(color: Color(0xFF0B0C0C)),
         decoration: InputDecoration(
           hintText: 'Descrição',
           hintStyle: TextStyle(
@@ -714,6 +716,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         controller: _deadlineController,
         readOnly: true,
         validator: _dateValidator,
+        style: const TextStyle(color: Color(0xFF0B0C0C)),
         decoration: InputDecoration(
           hintText: placeholder,
           hintStyle: TextStyle(
@@ -804,6 +807,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           child: TextFormField(
             controller: _categoriesController,
             maxLength: 50,
+            style: const TextStyle(color: Color(0xFF0B0C0C)),
             decoration: InputDecoration(
               hintText: 'Categoria(s) - Pressione Enter para adicionar',
               hintStyle: TextStyle(
