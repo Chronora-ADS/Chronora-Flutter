@@ -30,32 +30,6 @@ class ServiceEnvelope {
   });
 }
 
-class MyRequestsLoadStats {
-  final int pagesFetched;
-  final int rawItemsFetched;
-  final int uniqueServicesFetched;
-  final int? totalElements;
-
-  const MyRequestsLoadStats({
-    required this.pagesFetched,
-    required this.rawItemsFetched,
-    required this.uniqueServicesFetched,
-    required this.totalElements,
-  });
-}
-
-class MyRequestsLoadResult {
-  final MyRequestsUserIdentity currentUser;
-  final List<ServiceEnvelope> services;
-  final MyRequestsLoadStats stats;
-
-  const MyRequestsLoadResult({
-    required this.currentUser,
-    required this.services,
-    required this.stats,
-  });
-}
-
 class MyRequestsStatusPage {
   final List<ServiceEnvelope> services;
   final int page;
@@ -77,6 +51,18 @@ class MyRequestsStatusPage {
   }
 }
 
+class MyServiceCounts {
+  final Map<String, int> createdByMe;
+  final Map<String, int> acceptedFromOthers;
+
+  const MyServiceCounts({
+    required this.createdByMe,
+    required this.acceptedFromOthers,
+  });
+
+  static const empty = MyServiceCounts(createdByMe: {}, acceptedFromOthers: {});
+}
+
 class MyRequestsException implements Exception {
   final String message;
 
@@ -87,35 +73,7 @@ class MyRequestsException implements Exception {
 }
 
 class MyRequestsService {
-  static const int defaultPageSize = 50;
-
-  Future<MyRequestsLoadResult> loadMyRequests({
-    int pageSize = defaultPageSize,
-  }) async {
-    final currentUser = await loadCurrentUser();
-    final token = await AuthSessionService.getValidAccessToken();
-    if (token == null) {
-      throw const MyRequestsException(
-        'Você precisa estar logado para visualizar seus pedidos.',
-      );
-    }
-
-    final pagedResult = await _fetchAllServices(
-      token: token,
-      pageSize: pageSize,
-    );
-
-    return MyRequestsLoadResult(
-      currentUser: currentUser,
-      services: pagedResult.services,
-      stats: MyRequestsLoadStats(
-        pagesFetched: pagedResult.pagesFetched,
-        rawItemsFetched: pagedResult.rawItemsFetched,
-        uniqueServicesFetched: pagedResult.services.length,
-        totalElements: pagedResult.totalElements,
-      ),
-    );
-  }
+  static const int defaultPageSize = 10;
 
   Future<MyRequestsUserIdentity> loadCurrentUser() async {
     final token = await AuthSessionService.getValidAccessToken();
@@ -128,7 +86,34 @@ class MyRequestsService {
     return _fetchCurrentUser(token);
   }
 
+  Future<MyServiceCounts> loadCounts() async {
+    final token = await AuthSessionService.getValidAccessToken();
+    if (token == null) {
+      throw const MyRequestsException(
+        'Você precisa estar logado para visualizar seus pedidos.',
+      );
+    }
+
+    final response = await ApiService.get(
+      '/service/my-services/counts',
+      token: token,
+    );
+
+    if (response.statusCode != 200) {
+      throw MyRequestsException(
+        'Erro ${response.statusCode} ao carregar contagens.',
+      );
+    }
+
+    final data = json.decode(response.body) as Map<String, dynamic>;
+    return MyServiceCounts(
+      createdByMe: _parseCountMap(data['createdByMe']),
+      acceptedFromOthers: _parseCountMap(data['acceptedFromOthers']),
+    );
+  }
+
   Future<MyRequestsStatusPage> loadStatusPage({
+    required String role,
     required String status,
     required int page,
     required int pageSize,
@@ -142,7 +127,7 @@ class MyRequestsService {
 
     final normalizedStatus = Uri.encodeComponent(status.trim().toUpperCase());
     final response = await ApiService.get(
-      '/service/get/all/$normalizedStatus?page=$page&size=$pageSize',
+      '/service/my-services?role=$role&status=$normalizedStatus&page=$page&size=$pageSize',
       token: token,
     );
 
@@ -159,6 +144,11 @@ class MyRequestsService {
       totalPages: parsedPage.totalPages,
       totalElements: parsedPage.totalElements,
     );
+  }
+
+  Map<String, int> _parseCountMap(dynamic raw) {
+    if (raw is! Map) return {};
+    return raw.map((k, v) => MapEntry(k.toString(), (v as num).toInt()));
   }
 
   @visibleForTesting
@@ -234,60 +224,6 @@ class MyRequestsService {
     } catch (_) {
       return fallbackUser;
     }
-  }
-
-  Future<_PagedServicesResult> _fetchAllServices({
-    required String token,
-    required int pageSize,
-  }) async {
-    final merged = <int, ServiceEnvelope>{};
-    var page = 0;
-    var pagesFetched = 0;
-    var rawItemsFetched = 0;
-    int? totalElements;
-
-    while (true) {
-      final response = await ApiService.get(
-        '/service/get/all?page=$page&size=$pageSize',
-        token: token,
-      );
-
-      if (response.statusCode != 200) {
-        throw MyRequestsException(
-          'Erro ${response.statusCode} ao carregar seus pedidos.',
-        );
-      }
-
-      final parsedPage = _parseServicesPage(response.body);
-      pagesFetched++;
-      rawItemsFetched += parsedPage.items.length;
-      totalElements ??= parsedPage.totalElements;
-
-      final uniqueCountBefore = merged.length;
-      for (final envelope in parsedPage.items) {
-        merged[envelope.service.id] = envelope;
-      }
-
-      final currentPage = parsedPage.page ?? page;
-      final nextPage = currentPage + 1;
-      final addedOnThisPage = merged.length - uniqueCountBefore;
-      final hasMore = parsedPage.totalPages != null
-          ? nextPage < parsedPage.totalPages!
-          : parsedPage.items.length >= pageSize && addedOnThisPage > 0;
-
-      if (!hasMore || parsedPage.items.isEmpty) {
-        break;
-      }
-
-      page = nextPage;
-    }
-
-    return _PagedServicesResult(
-      services: merged.values.toList(),
-      pagesFetched: pagesFetched,
-      rawItemsFetched: rawItemsFetched,
-      totalElements: totalElements,
-    );
   }
 
   _ParsedServicesPage _parseServicesPage(String responseBody) {
@@ -390,16 +326,3 @@ class _ParsedServicesPage {
   });
 }
 
-class _PagedServicesResult {
-  final List<ServiceEnvelope> services;
-  final int pagesFetched;
-  final int rawItemsFetched;
-  final int? totalElements;
-
-  const _PagedServicesResult({
-    required this.services,
-    required this.pagesFetched,
-    required this.rawItemsFetched,
-    required this.totalElements,
-  });
-}

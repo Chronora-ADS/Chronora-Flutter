@@ -45,14 +45,12 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
   String _searchQuery = '';
   String _errorMessage = '';
-  int _searchRevision = 0;
 
   MyRequestsUserIdentity _currentUser = const MyRequestsUserIdentity(
     id: null,
     name: '',
     email: '',
   );
-  final List<ServiceEnvelope> _allServices = [];
   String? _selectedSectionKey;
   final Map<String, _LazyStatusSectionState> _statusSections = {};
   final Map<String, int> _sectionCounts = {};
@@ -68,29 +66,33 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
       _isLoading = true;
       _errorMessage = '';
       _selectedSectionKey = null;
-      _allServices.clear();
       _statusSections.clear();
       _sectionCounts.clear();
     });
 
     try {
-      final result = await _myRequestsService.loadMyRequests();
+      final results = await Future.wait([
+        _myRequestsService.loadCurrentUser(),
+        _myRequestsService.loadCounts(),
+      ]);
+      final user = results[0] as MyRequestsUserIdentity;
+      final counts = results[1] as MyServiceCounts;
 
+      if (!mounted) return;
       setState(() {
-        _currentUser = result.currentUser;
-        _allServices
-          ..clear()
-          ..addAll(result.services);
-        _sectionCounts.addAll(_buildSectionCounts(result.services));
+        _currentUser = user;
+        _sectionCounts.addAll(_buildSectionCountsFromCounts(counts));
         _isLoading = false;
       });
       _logIdentitySummary();
     } on MyRequestsException catch (error) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
         _errorMessage = error.message;
       });
     } catch (error) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
         _errorMessage = 'Falha ao carregar seus pedidos: $error';
@@ -151,48 +153,17 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     ];
   }
 
-  Map<String, int> get _currentSectionCounts {
-    if (_searchQuery.trim().isEmpty) {
-      return _sectionCounts;
+  Map<String, int> get _currentSectionCounts => _sectionCounts;
+
+  Map<String, int> _buildSectionCountsFromCounts(MyServiceCounts counts) {
+    final result = <String, int>{};
+    for (final status in _serviceStatuses) {
+      result[_buildSectionKey('created_by_me', status)] =
+          counts.createdByMe[status] ?? 0;
+      result[_buildSectionKey('accepted_from_others', status)] =
+          counts.acceptedFromOthers[status] ?? 0;
     }
-
-    return _buildSectionCounts(
-      _allServices.where(_matchesSearch).toList(),
-    );
-  }
-
-  Map<String, int> _buildSectionCounts(List<ServiceEnvelope> services) {
-    final counts = <String, int>{
-      for (final groupKey in const [
-        'created_by_me',
-        'accepted_from_others',
-      ])
-        for (final status in _serviceStatuses)
-          _buildSectionKey(groupKey, status): 0,
-    };
-    final seenBySection = <String, Set<int>>{};
-
-    for (final envelope in services) {
-      for (final groupKey in const [
-        'created_by_me',
-        'accepted_from_others',
-      ]) {
-        if (!_belongsToGroup(groupKey, envelope)) {
-          continue;
-        }
-
-        final sectionKey = _buildSectionKey(
-          groupKey,
-          _normalizeStatus(envelope.service.status),
-        );
-        final seenIds = seenBySection.putIfAbsent(sectionKey, () => <int>{});
-        if (seenIds.add(envelope.service.id)) {
-          counts[sectionKey] = (counts[sectionKey] ?? 0) + 1;
-        }
-      }
-    }
-
-    return counts;
+    return result;
   }
 
   Map<String, int> _countsByStatusForGroup(
@@ -391,7 +362,6 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
 
     setState(() {
       _searchQuery = value;
-      _searchRevision++;
       _statusSections.clear();
     });
 
@@ -505,50 +475,25 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
     });
 
     try {
-      var page = state.nextPage;
-      var hasMore = state.hasMore;
-      final fetched = <ServiceEnvelope>[];
-      final seenIds = state.services.map((item) => item.service.id).toSet();
-      final searchQuery = _searchQuery;
-      final searchRevision = _searchRevision;
-      final isSearching = searchQuery.trim().isNotEmpty;
-      var matchingFetched = 0;
+      final role = groupKey == 'created_by_me' ? 'created' : 'accepted';
+      final result = await _myRequestsService.loadStatusPage(
+        role: role,
+        status: status,
+        page: state.nextPage,
+        pageSize: _sectionPageSize,
+      );
 
-      while (
-          (isSearching ? matchingFetched : fetched.length) < _sectionPageSize &&
-              hasMore) {
-        final result = await _myRequestsService.loadStatusPage(
-          status: status,
-          page: page,
-          pageSize: _sectionPageSize,
-        );
-
-        for (final envelope in result.services) {
-          if (!_belongsToGroup(groupKey, envelope)) {
-            continue;
-          }
-          if (seenIds.add(envelope.service.id)) {
-            fetched.add(envelope);
-            if (_matchesSearchQuery(envelope, searchQuery)) {
-              matchingFetched++;
-            }
-          }
-        }
-
-        hasMore = result.hasMore;
-        page = result.page + 1;
-
-        if (result.services.isEmpty) {
-          break;
-        }
-      }
-
-      if (!mounted || searchRevision != _searchRevision) return;
+      if (!mounted) return;
       setState(() {
-        state.services.addAll(fetched);
+        final seenIds = state.services.map((e) => e.service.id).toSet();
+        for (final envelope in result.services) {
+          if (seenIds.add(envelope.service.id)) {
+            state.services.add(envelope);
+          }
+        }
         state.services.sort((a, b) => b.service.id.compareTo(a.service.id));
-        state.nextPage = page;
-        state.hasMore = hasMore;
+        state.nextPage = result.page + 1;
+        state.hasMore = result.hasMore;
         state.hasLoaded = true;
         state.isLoading = false;
       });
@@ -559,18 +504,6 @@ class _MeusPedidosPageState extends State<MeusPedidosPage> {
         state.hasLoaded = true;
         state.isLoading = false;
       });
-    }
-  }
-
-  bool _belongsToGroup(String groupKey, ServiceEnvelope envelope) {
-    switch (groupKey) {
-      case 'created_by_me':
-        return _isCreatedByCurrentUser(envelope);
-      case 'accepted_from_others':
-        return !_isCreatedByCurrentUser(envelope) &&
-            _isAcceptedByCurrentUser(envelope);
-      default:
-        return false;
     }
   }
 
