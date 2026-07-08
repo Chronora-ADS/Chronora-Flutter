@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:chronora/core/api/api_service.dart';
+import 'package:chronora/core/utils/app_logger.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
@@ -47,8 +48,8 @@ class ClientLogService {
     final payload = {
       'level': 'error',
       'source': source,
-      'message': error.toString(),
-      'stackTrace': stackTrace?.toString(),
+      'message': AppLogger.sanitizeText(error.toString()),
+      'stackTrace': stackTrace != null ? AppLogger.sanitizeText(stackTrace.toString()) : null,
       'platform': _platformName,
       'isReleaseMode': kReleaseMode,
       'timestamp': DateTime.now().toUtc().toIso8601String(),

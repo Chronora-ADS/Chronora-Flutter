@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../constants/app_config.dart';
+import '../utils/app_logger.dart';
 
 class ApiService {
   static const String _defaultLocalBaseUrl = 'http://localhost:8085';
@@ -84,30 +85,18 @@ class ApiService {
     Map<String, dynamic> data, {
     String? token,
   }) async {
-    try {
-      final headers = _buildHeaders(token: token);
-
-      return await _client.post(
-        _buildUri(endpoint),
-        headers: headers,
-        body: jsonEncode(data),
-      );
-    } catch (e) {
-      throw Exception('Erro de conexao: $e');
-    }
+    return _execute('POST', endpoint, () => _client.post(
+      _buildUri(endpoint),
+      headers: _buildHeaders(token: token),
+      body: jsonEncode(data),
+    ));
   }
 
   static Future<http.Response> get(String endpoint, {String? token}) async {
-    try {
-      final headers = _buildHeaders(token: token);
-
-      return await _client.get(
-        _buildUri(endpoint),
-        headers: headers,
-      );
-    } catch (e) {
-      throw Exception('Erro de conexao: $e');
-    }
+    return _execute('GET', endpoint, () => _client.get(
+      _buildUri(endpoint),
+      headers: _buildHeaders(token: token),
+    ));
   }
 
   static Future<http.Response> put(
@@ -115,17 +104,11 @@ class ApiService {
     Map<String, dynamic> data, {
     String? token,
   }) async {
-    try {
-      final headers = _buildHeaders(token: token);
-
-      return await _client.put(
-        _buildUri(endpoint),
-        headers: headers,
-        body: jsonEncode(data),
-      );
-    } catch (e) {
-      throw Exception('Erro de conexao: $e');
-    }
+    return _execute('PUT', endpoint, () => _client.put(
+      _buildUri(endpoint),
+      headers: _buildHeaders(token: token),
+      body: jsonEncode(data),
+    ));
   }
 
   static Future<http.Response> patch(
@@ -133,44 +116,54 @@ class ApiService {
     Map<String, dynamic> data, {
     String? token,
   }) async {
-    try {
-      final headers = _buildHeaders(token: token);
-
-      return await _client.patch(
-        _buildUri(endpoint),
-        headers: headers,
-        body: jsonEncode(data),
-      );
-    } catch (e) {
-      throw Exception('Erro de conexao: $e');
-    }
+    return _execute('PATCH', endpoint, () => _client.patch(
+      _buildUri(endpoint),
+      headers: _buildHeaders(token: token),
+      body: jsonEncode(data),
+    ));
   }
 
   static Future<http.Response> delete(String endpoint, {String? token}) async {
-    try {
-      final headers = _buildHeaders(token: token);
-
-      return await _client.delete(
-        _buildUri(endpoint),
-        headers: headers,
-      );
-    } catch (e) {
-      throw Exception('Erro de conexao: $e');
-    }
+    return _execute('DELETE', endpoint, () => _client.delete(
+      _buildUri(endpoint),
+      headers: _buildHeaders(token: token),
+    ));
   }
 
   static Future<http.Response> putWithHeaders(
     String endpoint,
     Map<String, String> headers,
   ) async {
-    try {
-      final finalHeaders = _buildHeaders(extra: headers);
+    return _execute('PUT', endpoint, () => _client.put(
+      _buildUri(endpoint),
+      headers: _buildHeaders(extra: headers),
+    ));
+  }
 
-      return await _client.put(
-        _buildUri(endpoint),
-        headers: finalHeaders,
-      );
-    } catch (e) {
+  static Future<http.Response> _execute(
+    String method,
+    String endpoint,
+    Future<http.Response> Function() call,
+  ) async {
+    final sw = Stopwatch()..start();
+    try {
+      final response = await call();
+      sw.stop();
+      final ctx = {'method': method, 'endpoint': endpoint,
+                   'status': response.statusCode, 'ms': sw.elapsedMilliseconds};
+      if (response.statusCode >= 500) {
+        AppLogger.error('HTTP $method $endpoint', context: ctx);
+      } else if (response.statusCode >= 400) {
+        AppLogger.warn('HTTP $method $endpoint', context: ctx);
+      } else {
+        AppLogger.info('HTTP $method $endpoint', context: ctx);
+      }
+      return response;
+    } catch (e, st) {
+      sw.stop();
+      AppLogger.error('HTTP $method $endpoint falhou',
+          context: {'method': method, 'endpoint': endpoint, 'ms': sw.elapsedMilliseconds},
+          error: e, stackTrace: st);
       throw Exception('Erro de conexao: $e');
     }
   }

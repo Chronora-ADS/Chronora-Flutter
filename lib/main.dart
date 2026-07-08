@@ -14,6 +14,7 @@ import 'core/constants/app_routes.dart';
 import 'core/services/auth_session_service.dart';
 import 'core/services/client_log_service.dart';
 import 'core/services/fcm_token_service.dart';
+import 'core/utils/app_logger.dart';
 import 'core/services/global_notification_service.dart';
 import 'firebase_options.dart';
 import 'pages/auth/login_page.dart';
@@ -228,7 +229,8 @@ class _AuthGateState extends State<_AuthGate> {
         return true;
       }
       return false;
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.error('Falha ao verificar sessão ativa', error: e, stackTrace: st);
       return false;
     }
   }

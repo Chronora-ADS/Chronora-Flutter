@@ -1,6 +1,7 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 import '../api/api_service.dart';
+import '../utils/app_logger.dart';
 
 class FcmTokenService {
   static Future<void> registerToken(String authToken) async {
@@ -18,8 +19,8 @@ class FcmTokenService {
         {'token': fcmToken},
         token: authToken,
       );
-    } catch (_) {
-      // Falha silenciosa — não bloqueia o fluxo de login
+    } catch (e) {
+      AppLogger.warn('Falha ao registrar token FCM', error: e);
     }
   }
 }

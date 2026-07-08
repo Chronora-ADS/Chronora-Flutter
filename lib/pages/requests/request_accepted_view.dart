@@ -10,6 +10,7 @@ import '../../core/constants/app_routes.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/models/user_creator.dart';
+import '../../core/utils/app_logger.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../core/utils/backend_date_time_parser.dart';
 import '../../core/services/api_service.dart';
@@ -283,8 +284,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       } else {
         await _loadAcceptedUser();
       }
-    } catch (_) {
-      // Se a busca falhar, a tela ainda pode usar os dados vindos por argumento.
+    } catch (e, st) {
+      AppLogger.error('Falha ao carregar detalhes do serviço', error: e, stackTrace: st);
     } finally {
       if (mounted) {
         setState(() {
@@ -439,7 +440,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             ) ??
             _acceptedUserRating;
       });
-    } catch (_) {}
+    } catch (e, st) {
+      AppLogger.error('Falha ao carregar dados do prestador aceito', error: e, stackTrace: st);
+    }
   }
 
   Future<void> _loadRequesterUser() async {
@@ -465,7 +468,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             ) ??
             _requesterUserRating;
       });
-    } catch (_) {}
+    } catch (e, st) {
+      AppLogger.error('Falha ao carregar dados do solicitante', error: e, stackTrace: st);
+    }
   }
 
   void _applyAuthenticationCodeExpiresAt(String? rawExpiresAt) {
@@ -609,8 +614,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
           token: token,
         );
       }
-    } catch (_) {
-      // A interface ainda deve voltar ao estado inicial mesmo se a chamada falhar.
+    } catch (e) {
+      AppLogger.warn('Falha ao expirar serviço aceito no servidor', error: e);
     }
 
     await _leaveAcceptedView(
@@ -744,7 +749,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       if (decoded is Map<String, dynamic>) {
         return ServiceDetailModel.fromJson(decoded);
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.warn('Falha ao parsear ServiceDetailModel', error: e);
+    }
 
     return null;
   }
@@ -772,7 +779,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       }
 
       return _parseServiceDetailFromResponse(response.body);
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.error('Falha ao buscar snapshot do serviço', error: e, stackTrace: st);
       return null;
     }
   }
@@ -1069,7 +1077,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
           !_isStartDialogOpen) {
         await _handleAuthenticationCodeExpired();
       }
-    } catch (_) {}
+    } catch (e, st) {
+      AppLogger.error('Falha ao sincronizar estado do pedido aceito', error: e, stackTrace: st);
+    }
   }
 
   Future<void> _leaveAcceptedView([
