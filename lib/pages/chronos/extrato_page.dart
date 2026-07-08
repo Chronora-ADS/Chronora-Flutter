@@ -15,8 +15,11 @@ class ExtratoPage extends StatefulWidget {
 
 class _ExtratoPageState extends State<ExtratoPage> {
   List<_ExtractItem> _allItems = const [];
-  String? _selectedFilter; // null = todos
+  String? _selectedFilter;
   bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasNextPage = false;
+  int _currentPage = 0;
   String? _error;
 
   static const _filters = [
@@ -27,41 +30,64 @@ class _ExtratoPageState extends State<ExtratoPage> {
     (label: 'Recebimentos', value: 'RECEBIMENTO_SERVICO'),
   ];
 
-  List<_ExtractItem> get _filtered => _selectedFilter == null
-      ? _allItems
-      : _allItems.where((e) => e.type == _selectedFilter).toList();
-
   @override
   void initState() {
     super.initState();
-    _fetch();
+    _fetch(reset: true);
   }
 
-  Future<void> _fetch() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  Future<void> _fetch({bool reset = false}) async {
+    if (reset) {
+      setState(() {
+        _currentPage = 0;
+        _allItems = const [];
+        _hasNextPage = false;
+        _isLoading = true;
+        _error = null;
+      });
+    } else {
+      if (!_hasNextPage || _isLoadingMore) return;
+      setState(() => _isLoadingMore = true);
+    }
+
+    final page = _currentPage;
+    final type = _selectedFilter;
+
     try {
       final token = await AuthSessionService.getValidAccessToken();
       if (token == null) throw Exception('Usuário não autenticado.');
-      final response = await ApiService.get('/payment/history', token: token);
+
+      final typeParam = type != null ? '&type=$type' : '';
+      final response = await ApiService.get(
+        '/payment/history?page=$page&size=20$typeParam',
+        token: token,
+      );
       if (response.statusCode != 200) {
         throw Exception('Não foi possível carregar o extrato.');
       }
-      final List<dynamic> data = jsonDecode(response.body) as List<dynamic>;
+
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final content = decoded['content'] as List<dynamic>;
+      final isLast = (decoded['last'] as bool?) ?? true;
+
       if (!mounted) return;
+      final newItems = content
+          .map((e) => _ExtractItem.fromJson(e as Map<String, dynamic>))
+          .toList();
+
       setState(() {
-        _allItems = data
-            .map((e) => _ExtractItem.fromJson(e as Map<String, dynamic>))
-            .toList();
+        _allItems = page == 0 ? newItems : [..._allItems, ...newItems];
+        _hasNextPage = !isLast;
+        _currentPage = page + 1;
         _isLoading = false;
+        _isLoadingMore = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        if (page == 0) _error = e.toString();
         _isLoading = false;
+        _isLoadingMore = false;
       });
     }
   }
@@ -116,7 +142,7 @@ class _ExtratoPageState extends State<ExtratoPage> {
       );
     }
 
-    final items = _filtered;
+    final items = _allItems;
     final grouped = _groupByPeriod(items);
 
     return Column(
@@ -138,12 +164,41 @@ class _ExtratoPageState extends State<ExtratoPage> {
                   ),
                 )
               : RefreshIndicator(
-                  onRefresh: _fetch,
+                  onRefresh: () => _fetch(reset: true),
                   color: AppColors.amareloClaro,
                   child: ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                    itemCount: grouped.length,
+                    itemCount: grouped.length + (_hasNextPage || _isLoadingMore ? 1 : 0),
                     itemBuilder: (context, index) {
+                      if (index == grouped.length) {
+                        return _isLoadingMore
+                            ? const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 20),
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    color: AppColors.amareloClaro,
+                                  ),
+                                ),
+                              )
+                            : Padding(
+                                padding: const EdgeInsets.only(top: 8, bottom: 16),
+                                child: ElevatedButton(
+                                  onPressed: _fetch,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF1A1A1A),
+                                    foregroundColor: AppColors.amareloClaro,
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Carregar mais',
+                                    style: TextStyle(fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              );
+                      }
                       final entry = grouped[index];
                       if (entry is _PeriodHeader) {
                         return _buildPeriodHeader(entry.label);
@@ -169,7 +224,11 @@ class _ExtratoPageState extends State<ExtratoPage> {
           final f = _filters[i];
           final selected = _selectedFilter == f.value;
           return GestureDetector(
-            onTap: () => setState(() => _selectedFilter = f.value),
+            onTap: () {
+              if (_selectedFilter == f.value) return;
+              setState(() => _selectedFilter = f.value);
+              _fetch(reset: true);
+            },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),

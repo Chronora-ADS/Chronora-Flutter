@@ -15,6 +15,7 @@ import '../../core/utils/app_snackbar.dart';
 import '../../core/utils/backend_date_time_parser.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/pending_service_cancellation_service.dart';
+import '../../core/services/user_cache.dart';
 import '../../widgets/header.dart';
 import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
@@ -79,6 +80,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   bool _isStartDialogOpen = false;
   bool _didShowProviderExpiredMessage = false;
   bool _isCancellingService = false;
+  bool _isSyncing = false;
 
   bool get _isRequesterView =>
       _resolvedAudience == RequestAcceptedAudience.requester;
@@ -199,14 +201,15 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     _startAuthenticationCodeCountdown();
     _startAcceptedRequestSync();
 
-    if (_isRequesterView) {
-      _loadRequesterUser();
-    } else {
-      _loadAcceptedUser();
-    }
-
     if (_resolvedServiceDetail == null && _serviceId != null) {
+      // _loadServiceDetailFromBackend chama _loadRequesterUser/_loadAcceptedUser internamente
       _loadServiceDetailFromBackend();
+    } else {
+      if (_isRequesterView) {
+        _loadRequesterUser();
+      } else {
+        _loadAcceptedUser();
+      }
     }
   }
 
@@ -417,28 +420,12 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
       if (token == null) return;
-
-      final response = await ApiService.get('/user/get', token: token);
-      if (response.statusCode != 200) return;
-
-      final userData = json.decode(response.body) as Map<String, dynamic>;
-      final resolvedUserData = userData['user'] is Map<String, dynamic>
-          ? userData['user'] as Map<String, dynamic>
-          : userData;
-      if (!mounted) return;
-
+      final user = await UserCache.instance.get(token);
+      if (user == null || !mounted) return;
       setState(() {
-        final name = (resolvedUserData['name'] as String?)?.trim();
-        _acceptedUserName =
-            name != null && name.isNotEmpty ? name : _acceptedUserName;
-        _acceptedUserPhone = _toNullableInt(resolvedUserData['phoneNumber']) ??
-            _acceptedUserPhone;
-        _acceptedUserRating = _toNullableDouble(
-              resolvedUserData['rating'] ??
-                  resolvedUserData['userRating'] ??
-                  resolvedUserData['avaliacao'],
-            ) ??
-            _acceptedUserRating;
+        if (user.name.isNotEmpty) _acceptedUserName = user.name;
+        _acceptedUserPhone = user.phoneNumber ?? _acceptedUserPhone;
+        _acceptedUserRating = user.rating ?? _acceptedUserRating;
       });
     } catch (e, st) {
       AppLogger.error('Falha ao carregar dados do prestador aceito', error: e, stackTrace: st);
@@ -450,23 +437,10 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
       if (token == null) return;
-
-      final response = await ApiService.get('/user/get', token: token);
-      if (response.statusCode != 200) return;
-
-      final userData = json.decode(response.body) as Map<String, dynamic>;
-      final resolvedUserData = userData['user'] is Map<String, dynamic>
-          ? userData['user'] as Map<String, dynamic>
-          : userData;
-      if (!mounted) return;
-
+      final user = await UserCache.instance.get(token);
+      if (user == null || !mounted) return;
       setState(() {
-        _requesterUserRating = _toNullableDouble(
-              resolvedUserData['rating'] ??
-                  resolvedUserData['userRating'] ??
-                  resolvedUserData['avaliacao'],
-            ) ??
-            _requesterUserRating;
+        _requesterUserRating = user.rating ?? _requesterUserRating;
       });
     } catch (e, st) {
       AppLogger.error('Falha ao carregar dados do solicitante', error: e, stackTrace: st);
@@ -993,7 +967,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   }
 
   Future<void> _syncAcceptedRequestState() async {
-    if (_isLeavingAcceptedView) return;
+    if (_isLeavingAcceptedView || _isSyncing) return;
+    _isSyncing = true;
 
     final serviceId = _resolvedServiceDetail?.id;
     if (serviceId == null) {
@@ -1079,6 +1054,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       }
     } catch (e, st) {
       AppLogger.error('Falha ao sincronizar estado do pedido aceito', error: e, stackTrace: st);
+    } finally {
+      _isSyncing = false;
     }
   }
 

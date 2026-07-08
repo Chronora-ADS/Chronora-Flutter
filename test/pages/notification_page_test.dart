@@ -75,15 +75,28 @@ void main() {
           }
 
           if (request.url.path.endsWith('/notification/get/all')) {
+            final pageParam =
+                int.tryParse(request.url.queryParameters['page'] ?? '0') ?? 0;
+            const pageSize = 10;
+            final allItems = List.generate(12, (index) {
+              final position = index + 1;
+              return _notificationJson(
+                id: position,
+                message: 'Notificacao $position',
+                minutesAgo: index,
+              );
+            });
+            final start = pageParam * pageSize;
+            final end = (start + pageSize).clamp(0, allItems.length);
+            final pageItems = allItems.sublist(start, end);
             return http.Response(
-              jsonEncode(List.generate(12, (index) {
-                final position = index + 1;
-                return _notificationJson(
-                  id: position,
-                  message: 'Notificacao $position',
-                  minutesAgo: index,
-                );
-              })),
+              jsonEncode({
+                'content': pageItems,
+                'last': end >= allItems.length,
+                'totalElements': allItems.length,
+                'number': pageParam,
+                'size': pageSize,
+              }),
               200,
               headers: {'content-type': 'application/json'},
             );

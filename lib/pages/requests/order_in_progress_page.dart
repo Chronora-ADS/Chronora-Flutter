@@ -8,6 +8,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/services/api_service.dart';
+import '../../core/services/user_cache.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../widgets/header.dart';
 import '../../widgets/animated_side_menu_overlay.dart';
@@ -43,6 +44,7 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
   int? _serviceId;
   int? _currentUserId;
   Timer? _syncTimer;
+  bool _isSyncing = false;
 
   bool get _isProvider =>
       _currentUserId != null &&
@@ -143,10 +145,12 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
   }
 
   Future<void> _syncStatus() async {
-    final id = _serviceId ?? _serviceDetail?.id;
-    if (id == null || !mounted) return;
-
+    if (_isSyncing) return;
+    _isSyncing = true;
     try {
+      final id = _serviceId ?? _serviceDetail?.id;
+      if (id == null || !mounted) return;
+
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
       if (token == null) return;
@@ -186,7 +190,10 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
           'O prestador concluiu o serviço. Confirme para finalizar.',
         );
       }
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      _isSyncing = false;
+    }
   }
 
   Future<void> _loadCurrentUser() async {
@@ -194,21 +201,10 @@ class _OrderInProgressPageState extends State<OrderInProgressPage> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
       if (token == null) return;
-
-      final response = await ApiService.get('/user/get', token: token);
-      if (response.statusCode != 200) return;
-
-      final decoded = json.decode(response.body);
-      if (decoded is! Map<String, dynamic>) return;
-
-      final data = decoded['user'] is Map<String, dynamic>
-          ? decoded['user'] as Map<String, dynamic>
-          : decoded;
-
-      final id = data['id'];
-      if (!mounted) return;
+      final user = await UserCache.instance.get(token);
+      if (!mounted || user == null) return;
       setState(() {
-        _currentUserId = id is int ? id : int.tryParse(id.toString());
+        _currentUserId = user.id;
       });
     } catch (_) {}
   }

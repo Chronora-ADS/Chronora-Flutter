@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/services/user_cache.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../core/models/main_page_requests_model.dart';
@@ -119,9 +120,14 @@ class _RequestViewState extends State<RequestView> {
         throw Exception('Usuário não autenticado.');
       }
 
-      final currentUser = await _fetchCurrentUser(token);
-      final response =
-          await ApiService.get('/service/get/$serviceId', token: token);
+      // Kick off both requests in parallel
+      final userFuture = UserCache.instance.get(token);
+      final responseFuture =
+          ApiService.get('/service/get/$serviceId', token: token);
+
+      final currentUser = await userFuture;
+      final response = await responseFuture;
+
       if (response.statusCode != 200) {
         throw Exception(
           ApiService.extractErrorMessage(
@@ -177,29 +183,6 @@ class _RequestViewState extends State<RequestView> {
         _isLoading = false;
       });
     }
-  }
-
-  Future<_CurrentUser?> _fetchCurrentUser(String token) async {
-    try {
-      final response = await ApiService.get('/user/get', token: token);
-      if (response.statusCode != 200) {
-        return null;
-      }
-
-      final decoded = jsonDecode(response.body);
-      if (decoded is Map<String, dynamic>) {
-        final data = decoded['user'] is Map<String, dynamic>
-            ? decoded['user'] as Map<String, dynamic>
-            : decoded['data'] is Map<String, dynamic>
-                ? decoded['data'] as Map<String, dynamic>
-                : decoded;
-        return _CurrentUser.fromJson(data);
-      }
-    } catch (_) {
-      // Ignore owner lookup errors and keep the page usable.
-    }
-
-    return null;
   }
 
   Future<void> _cancelRequest() async {
@@ -1424,39 +1407,3 @@ class _RequestSummary extends StatelessWidget {
   }
 }
 
-class _CurrentUser {
-  final int? id;
-  final String? name;
-  final int? phoneNumber;
-  final double? rating;
-
-  const _CurrentUser({
-    this.id,
-    this.name,
-    this.phoneNumber,
-    this.rating,
-  });
-
-  factory _CurrentUser.fromJson(Map<String, dynamic> json) {
-    return _CurrentUser(
-      id: _toInt(json['id']),
-      name: json['name']?.toString(),
-      phoneNumber: _toInt(json['phoneNumber']),
-      rating:
-          _toDouble(json['rating'] ?? json['userRating'] ?? json['avaliacao']),
-    );
-  }
-
-  static int? _toInt(dynamic value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    if (value is String) return int.tryParse(value);
-    return null;
-  }
-
-  static double? _toDouble(dynamic value) {
-    if (value is num) return value.toDouble();
-    if (value is String) return double.tryParse(value.replaceAll(',', '.'));
-    return null;
-  }
-}

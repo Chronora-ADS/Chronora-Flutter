@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -7,6 +5,7 @@ import '../core/api/api_service.dart';
 import '../core/constants/app_colors.dart';
 import '../core/constants/app_routes.dart';
 import '../core/services/auth_session_service.dart';
+import '../core/services/user_cache.dart';
 import 'pending_service_cancellation_obligations.dart';
 
 class SideMenu extends StatefulWidget {
@@ -77,47 +76,25 @@ class _SideMenuState extends State<SideMenu> {
       final token = await AuthSessionService.getValidAccessToken();
       if (token == null) return;
 
-      final response = await ApiService.get('/user/get', token: token);
-      if (response.statusCode != 200) return;
-
-      final decoded = json.decode(response.body);
-      if (decoded is! Map<String, dynamic> || !mounted) return;
-
-      final ratingRaw =
-          decoded['rating'] ?? decoded['userRating'] ?? decoded['avaliacao'];
-      final photo = decoded['profileImageUrl'] ??
-          decoded['profileImage'] ??
-          decoded['photoUrl'];
-
-      final roles = decoded['roles'];
-      final isMod = roles is List && roles.contains('ROLE_MODERATOR');
-
-      final name = (decoded['name'] ?? 'Usuário').toString().trim();
-      final resolvedName = name.isEmpty ? 'Usuário' : name;
-      double resolvedRating = 0.0;
-      if (ratingRaw is num) {
-        resolvedRating = ratingRaw.toDouble();
-      } else if (ratingRaw is String) {
-        resolvedRating = double.tryParse(ratingRaw) ?? 0.0;
-      }
-      final resolvedPhoto = photo?.toString();
+      final user = await UserCache.instance.get(token);
+      if (user == null || !mounted) return;
 
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_kName, resolvedName);
-      await prefs.setDouble(_kRating, resolvedRating);
-      if (resolvedPhoto != null) {
-        await prefs.setString(_kPhoto, resolvedPhoto);
+      await prefs.setString(_kName, user.name);
+      await prefs.setDouble(_kRating, user.rating ?? 0.0);
+      if (user.photoUrl != null) {
+        await prefs.setString(_kPhoto, user.photoUrl!);
       } else {
         await prefs.remove(_kPhoto);
       }
-      await prefs.setBool(_kIsMod, isMod);
+      await prefs.setBool(_kIsMod, user.isModerator);
 
       if (!mounted) return;
       setState(() {
-        _loadedUserName = resolvedName;
-        _loadedUserRating = resolvedRating;
-        _loadedUserPhotoUrl = resolvedPhoto;
-        _isModerator = isMod;
+        _loadedUserName = user.name;
+        _loadedUserRating = user.rating ?? 0.0;
+        _loadedUserPhotoUrl = user.photoUrl;
+        _isModerator = user.isModerator;
       });
     } catch (_) {
       // Mantem os dados de fallback sem quebrar o menu.
@@ -405,6 +382,7 @@ class _SideMenuState extends State<SideMenu> {
   }
 
   Future<void> _logout(BuildContext context) async {
+    UserCache.instance.invalidate();
     final token = await AuthSessionService.getValidAccessToken();
 
     if (token != null) {

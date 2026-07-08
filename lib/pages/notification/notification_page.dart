@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -8,6 +7,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/models/service_detail_model.dart';
 import '../../core/services/auth_session_service.dart';
+import '../../core/services/user_cache.dart';
 import '../../core/utils/app_snackbar.dart';
 import '../../core/services/service_deadline_controller.dart';
 import '../../widgets/backgrounds/background_default_widget.dart';
@@ -30,8 +30,10 @@ class _NotificationPageState extends State<NotificationPage> {
   bool _isDrawerOpen = false;
   bool _isWalletOpen = false;
   bool _isLoading = true;
+  bool _isLoadingMore = false;
   bool _isSubmittingDeadlineAction = false;
-  int _visibleNotificationsLimit = _pageSize;
+  bool _hasMoreNotifications = false;
+  int _currentPage = 0;
   List<NotificationEntry> _notifications = const [];
   final ServiceDeadlineController _serviceDeadlineController =
       ServiceDeadlineController();
@@ -39,24 +41,34 @@ class _NotificationPageState extends State<NotificationPage> {
   @override
   void initState() {
     super.initState();
-    _loadNotifications();
+    _loadNotifications(reset: true);
   }
 
-  Future<void> _loadNotifications() async {
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-      });
+  Future<void> _loadNotifications({bool reset = false}) async {
+    if (reset) {
+      _currentPage = 0;
+      if (mounted) {
+        setState(() {
+          _notifications = const [];
+          _hasMoreNotifications = false;
+          _isLoading = true;
+        });
+      }
+    } else {
+      if (!_hasMoreNotifications || _isLoadingMore) return;
+      if (mounted) setState(() => _isLoadingMore = true);
     }
+
+    final page = _currentPage;
 
     try {
       final token = await AuthSessionService.getValidAccessToken();
-      if (token == null) {
-        throw Exception('Usuário não autenticado.');
-      }
+      if (token == null) throw Exception('Usuário não autenticado.');
 
-      final response =
-          await ApiService.get('/notification/get/all', token: token);
+      final response = await ApiService.get(
+        '/notification/get/all?page=$page&size=$_pageSize',
+        token: token,
+      );
       if (response.statusCode != 200) {
         throw Exception(
           ApiService.extractErrorMessage(
@@ -68,29 +80,36 @@ class _NotificationPageState extends State<NotificationPage> {
 
       final decoded = jsonDecode(response.body);
       final rawItems = _extractList(decoded);
-      final notifications = rawItems
+      bool isLast = true;
+      if (decoded is Map<String, dynamic>) {
+        isLast = (decoded['last'] as bool?) ?? true;
+      }
+
+      final newItems = rawItems
           .whereType<Map>()
           .map((item) => item.cast<String, dynamic>())
           .map(_extractNotificationMap)
           .map(NotificationEntry.fromJson)
           .toList();
 
-      notifications.sort(
-        (a, b) => b.notificationTime.compareTo(a.notificationTime),
-      );
+      if (page == 0) {
+        newItems.sort((a, b) => b.notificationTime.compareTo(a.notificationTime));
+      }
 
       if (!mounted) return;
       setState(() {
-        _notifications = notifications;
-        _visibleNotificationsLimit = _pageSize;
+        _notifications = page == 0 ? newItems : [..._notifications, ...newItems];
+        _hasMoreNotifications = !isLast;
+        _currentPage = page + 1;
         _isLoading = false;
+        _isLoadingMore = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _notifications = const [];
-        _visibleNotificationsLimit = _pageSize;
+        if (page == 0) _notifications = const [];
         _isLoading = false;
+        _isLoadingMore = false;
       });
       AppSnackBar.show(
         context,
@@ -178,7 +197,7 @@ class _NotificationPageState extends State<NotificationPage> {
         AppRoutes.orderInProgress,
         arguments: {'serviceId': notification.service.id},
       );
-      await _loadNotifications();
+      await _loadNotifications(reset: true);
       return;
     }
 
@@ -188,7 +207,7 @@ class _NotificationPageState extends State<NotificationPage> {
       );
 
       if (didOpenResolvedRoute) {
-        await _loadNotifications();
+        await _loadNotifications(reset: true);
         return;
       }
 
@@ -203,20 +222,23 @@ class _NotificationPageState extends State<NotificationPage> {
     );
 
     if (result == true) {
-      await _loadNotifications();
+      await _loadNotifications(reset: true);
     }
   }
 
   Future<bool> _openNotificationResolvedRoute(int serviceId) async {
     try {
       final token = await AuthSessionService.getValidAccessToken();
-      if (token == null) {
-        return false;
-      }
+      if (token == null) return false;
 
-      final currentUserId = await _loadCurrentUserId(token);
-      final response =
-          await ApiService.get('/service/get/$serviceId', token: token);
+      // Parallel fetch: user data + service detail
+      final userFuture = UserCache.instance.get(token);
+      final responseFuture =
+          ApiService.get('/service/get/$serviceId', token: token);
+
+      final currentUser = await userFuture;
+      final currentUserId = currentUser?.id;
+      final response = await responseFuture;
       if (response.statusCode != 200) {
         return false;
       }
@@ -291,22 +313,6 @@ class _NotificationPageState extends State<NotificationPage> {
     return null;
   }
 
-  Future<int?> _loadCurrentUserId(String token) async {
-    final response = await ApiService.get('/user/get', token: token);
-    if (response.statusCode != 200) {
-      return null;
-    }
-
-    final decoded = jsonDecode(response.body);
-    final userData = decoded is Map<String, dynamic> && decoded['user'] is Map
-        ? (decoded['user'] as Map).cast<String, dynamic>()
-        : decoded is Map<String, dynamic>
-            ? decoded
-            : const <String, dynamic>{};
-
-    return _toNullableInt(userData['id']);
-  }
-
   Map<String, dynamic> _extractServiceDetailMap(dynamic decoded) {
     if (decoded is Map<String, dynamic>) {
       for (final key in const ['service', 'serviceEntity', 'data', 'content']) {
@@ -326,13 +332,6 @@ class _NotificationPageState extends State<NotificationPage> {
     }
 
     return const <String, dynamic>{};
-  }
-
-  int? _toNullableInt(dynamic value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    if (value is String) return int.tryParse(value);
-    return null;
   }
 
   String _normalizeServiceStatus(String value) {
@@ -422,7 +421,7 @@ class _NotificationPageState extends State<NotificationPage> {
       await action();
       if (!mounted) return;
       AppSnackBar.show(context, successMessage);
-      await _loadNotifications();
+      await _loadNotifications(reset: true);
     } catch (e) {
       if (!mounted) return;
       AppSnackBar.show(
@@ -500,11 +499,11 @@ class _NotificationPageState extends State<NotificationPage> {
       );
     }
 
-    final visibleCount = _visibleNotificationCount;
+    final visibleCount = _notifications.length;
 
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: visibleCount + (_shouldShowLoadMoreButton ? 1 : 0),
+      itemCount: visibleCount + (_hasMoreNotifications || _isLoadingMore ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == visibleCount) {
           return _buildLoadMoreButton();
@@ -663,28 +662,22 @@ class _NotificationPageState extends State<NotificationPage> {
     return 'Cancelado por: $actorName ($actorRole)';
   }
 
-  int get _visibleNotificationCount {
-    return math.min(_visibleNotificationsLimit, _notifications.length);
-  }
-
-  bool get _shouldShowLoadMoreButton {
-    return _visibleNotificationCount < _notifications.length;
-  }
-
-  void _loadMoreNotifications() {
-    if (!_shouldShowLoadMoreButton) {
-      return;
-    }
-
-    setState(() {
-      _visibleNotificationsLimit = math.min(
-        _visibleNotificationsLimit + _pageSize,
-        _notifications.length,
-      );
-    });
+  Future<void> _loadMoreNotifications() async {
+    if (!_hasMoreNotifications || _isLoadingMore) return;
+    await _loadNotifications();
   }
 
   Widget _buildLoadMoreButton() {
+    if (_isLoadingMore) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.amareloClaro),
+          ),
+        ),
+      );
+    }
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       width: double.infinity,

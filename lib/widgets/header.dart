@@ -1,9 +1,7 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/api/api_service.dart';
 import '../../core/services/auth_session_service.dart';
+import '../../core/services/user_cache.dart';
 import 'wallet_modal.dart';
 
 class Header extends StatefulWidget implements PreferredSizeWidget {
@@ -34,34 +32,18 @@ class _HeaderState extends State<Header> {
   Future<void> _fetchUserData() async {
     try {
       final String? token = await AuthSessionService.getValidAccessToken();
-
       if (token == null) {
-        setState(() {
-          _isLoading = false;
-          _coinCount = 0;
-        });
+        if (mounted) setState(() { _isLoading = false; _coinCount = 0; });
         return;
       }
-
-      final response = await ApiService.get('/user/get', token: token);
-
-      if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
-        setState(() {
-          _coinCount = (jsonData is Map ? jsonData['timeChronos'] : null) ?? 0;
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _isLoading = false;
-          _coinCount = 0;
-        });
-      }
-    } catch (_) {
+      final user = await UserCache.instance.get(token);
+      if (!mounted) return;
       setState(() {
+        _coinCount = user?.timeChronos ?? 0;
         _isLoading = false;
-        _coinCount = 0;
       });
+    } catch (_) {
+      if (mounted) setState(() { _isLoading = false; _coinCount = 0; });
     }
   }
 
