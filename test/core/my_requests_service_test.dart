@@ -13,7 +13,8 @@ void main() {
   });
 
   group('Funcionalidade: carregamento de meus pedidos', () {
-    test('busca todas as paginas retornadas pela API', () async {
+    test('loadCounts retorna contagens por grupo a partir do endpoint dedicado',
+        () async {
       SharedPreferences.setMockInitialValues({
         'auth_token': _buildJwt({
           'id': 1,
@@ -24,76 +25,46 @@ void main() {
 
       ApiService.setClientForTesting(
         MockClient((request) async {
-          if (request.url.path.endsWith('/user/get')) {
+          if (request.url.path.endsWith('/service/my-services/counts')) {
             return http.Response(
               jsonEncode({
-                'id': 1,
-                'name': 'Ana',
-                'email': 'ana@example.com',
+                'createdByMe': {
+                  'CRIADO': 2,
+                  'ACEITO': 0,
+                  'EM_ANDAMENTO': 1,
+                  'CONCLUIDO': 3,
+                  'CANCELADO': 0,
+                  'AGUARDANDO_CONFIRMACAO': 0,
+                },
+                'acceptedFromOthers': {
+                  'CRIADO': 0,
+                  'ACEITO': 1,
+                  'EM_ANDAMENTO': 0,
+                  'CONCLUIDO': 2,
+                  'CANCELADO': 0,
+                  'AGUARDANDO_CONFIRMACAO': 0,
+                },
               }),
               200,
               headers: {'content-type': 'application/json'},
             );
           }
 
-          if (request.url.path.endsWith('/service/get/all')) {
-            final page = int.parse(request.url.queryParameters['page'] ?? '0');
-            final size = int.parse(request.url.queryParameters['size'] ?? '0');
-
-            expect(size, 2);
-
-            if (page == 0) {
-              return http.Response(
-                jsonEncode({
-                  'content': [
-                    _serviceJson(id: 101, creatorId: 1, status: 'CRIADO'),
-                    _serviceJson(
-                        id: 102, creatorId: 2, acceptedId: 1, status: 'ACEITO'),
-                  ],
-                  'page': 0,
-                  'totalPages': 2,
-                  'totalElements': 3,
-                }),
-                200,
-                headers: {'content-type': 'application/json'},
-              );
-            }
-
-            if (page == 1) {
-              return http.Response(
-                jsonEncode({
-                  'content': [
-                    _serviceJson(id: 103, creatorId: 1, status: 'CONCLUIDO'),
-                  ],
-                  'page': 1,
-                  'totalPages': 2,
-                  'totalElements': 3,
-                }),
-                200,
-                headers: {'content-type': 'application/json'},
-              );
-            }
-          }
-
           return http.Response('not found', 404);
         }),
       );
 
-      final result = await MyRequestsService().loadMyRequests(pageSize: 2);
+      final counts = await MyRequestsService().loadCounts();
 
-      expect(result.currentUser.id, 1);
-      expect(result.services.map((item) => item.service.id).toSet(), {
-        101,
-        102,
-        103,
-      });
-      expect(result.stats.pagesFetched, 2);
-      expect(result.stats.rawItemsFetched, 3);
-      expect(result.stats.uniqueServicesFetched, 3);
-      expect(result.stats.totalElements, 3);
+      expect(counts.createdByMe['CRIADO'], 2);
+      expect(counts.createdByMe['EM_ANDAMENTO'], 1);
+      expect(counts.createdByMe['CONCLUIDO'], 3);
+      expect(counts.acceptedFromOthers['ACEITO'], 1);
+      expect(counts.acceptedFromOthers['CONCLUIDO'], 2);
     });
 
-    test('usa o token como fallback quando /user/get falha', () async {
+    test('loadCurrentUser usa o token como fallback quando /user/get falha',
+        () async {
       SharedPreferences.setMockInitialValues({
         'auth_token': _buildJwt({
           'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier':
@@ -109,33 +80,18 @@ void main() {
             return http.Response('erro', 500);
           }
 
-          if (request.url.path.endsWith('/service/get/all')) {
-            return http.Response(
-              jsonEncode({
-                'content': <Map<String, dynamic>>[],
-                'page': 0,
-                'totalPages': 1,
-                'totalElements': 0,
-              }),
-              200,
-              headers: {'content-type': 'application/json'},
-            );
-          }
-
           return http.Response('not found', 404);
         }),
       );
 
-      final result = await MyRequestsService().loadMyRequests(pageSize: 2);
+      final user = await MyRequestsService().loadCurrentUser();
 
-      expect(result.currentUser.id, 7);
-      expect(result.currentUser.email, 'fallback@example.com');
-      expect(result.currentUser.name, 'Usuario Fallback');
-      expect(result.services, isEmpty);
-      expect(result.stats.pagesFetched, 1);
+      expect(user.id, 7);
+      expect(user.email, 'fallback@example.com');
+      expect(user.name, 'Usuario Fallback');
     });
 
-    test('busca uma pagina de pedidos por status sob demanda', () async {
+    test('loadStatusPage busca pedidos filtrados por role e status', () async {
       SharedPreferences.setMockInitialValues({
         'auth_token': _buildJwt({
           'id': 1,
@@ -146,7 +102,9 @@ void main() {
 
       ApiService.setClientForTesting(
         MockClient((request) async {
-          if (request.url.path.endsWith('/service/get/all/CRIADO')) {
+          if (request.url.path.endsWith('/service/my-services')) {
+            expect(request.url.queryParameters['role'], 'created');
+            expect(request.url.queryParameters['status'], 'CRIADO');
             expect(request.url.queryParameters['page'], '2');
             expect(request.url.queryParameters['size'], '10');
 
@@ -169,6 +127,7 @@ void main() {
       );
 
       final result = await MyRequestsService().loadStatusPage(
+        role: 'created',
         status: 'CRIADO',
         page: 2,
         pageSize: 10,
