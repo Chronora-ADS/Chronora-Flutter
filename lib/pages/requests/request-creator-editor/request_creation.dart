@@ -198,13 +198,12 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       0,
       fileName.lastIndexOf('.'),
     );
-    final maxNameLength =
-        (maxWidth *
-                maxPercentage /
-                textPainter.width *
-                nameWithoutExtension.length *
-                0.6)
-            .floor();
+    final maxNameLength = (maxWidth *
+            maxPercentage /
+            textPainter.width *
+            nameWithoutExtension.length *
+            0.6)
+        .floor();
 
     if (maxNameLength <= 3) {
       return '...$extension';
@@ -235,11 +234,8 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   }
 
   String _resolveSelectedImageMimeType() {
-    final extension = (_imageFileName ?? '')
-        .split('.')
-        .last
-        .trim()
-        .toLowerCase();
+    final extension =
+        (_imageFileName ?? '').split('.').last.trim().toLowerCase();
 
     switch (extension) {
       case 'jpg':
@@ -259,9 +255,9 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   Future<void> _createRequest() async {
     final canContinue =
         await PendingServiceCancellationObligations.ensureCanContinue(
-          context,
-          actionLabel: 'criar pedido',
-        );
+      context,
+      actionLabel: 'criar pedido',
+    );
     if (!canContinue || !mounted) {
       return;
     }
@@ -1010,6 +1006,24 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       ),
       child: DropdownButtonFormField<String>(
         initialValue: _selectedModality,
+        style: const TextStyle(color: Color(0xFF0B0C0C)),
+        dropdownColor: const Color(0xFFE9EAEC),
+        iconEnabledColor: const Color(0xFF0B0C0C),
+        hint: const Text(
+          'Modalidade',
+          style: TextStyle(color: Color(0xFF0B0C0C)),
+        ),
+        selectedItemBuilder: (context) => ModalityOptions.labels
+            .map(
+              (modality) => Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  modality,
+                  style: const TextStyle(color: Color(0xFF0B0C0C)),
+                ),
+              ),
+            )
+            .toList(),
         validator: (value) => value == null ? 'Selecione uma modalidade' : null,
         decoration: InputDecoration(
           hintText: 'Modalidade',
@@ -1035,8 +1049,13 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         ),
         items: ModalityOptions.labels
             .map(
-              (modality) =>
-                  DropdownMenuItem(value: modality, child: Text(modality)),
+              (modality) => DropdownMenuItem(
+                value: modality,
+                child: Text(
+                  modality,
+                  style: const TextStyle(color: Color(0xFF0B0C0C)),
+                ),
+              ),
             )
             .toList(),
         onChanged: (value) {
@@ -1067,6 +1086,24 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           ),
           child: DropdownButtonFormField<ServiceTrackingType>(
             initialValue: _selectedTrackingType,
+            style: const TextStyle(color: Color(0xFF0B0C0C)),
+            dropdownColor: const Color(0xFFE9EAEC),
+            iconEnabledColor: const Color(0xFF0B0C0C),
+            hint: const Text(
+              'Como o progresso será medido?',
+              style: TextStyle(color: Color(0xFF0B0C0C)),
+            ),
+            selectedItemBuilder: (context) => ServiceTrackingType.values
+                .map(
+                  (trackingType) => Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      trackingType.label,
+                      style: const TextStyle(color: Color(0xFF0B0C0C)),
+                    ),
+                  ),
+                )
+                .toList(),
             validator: (value) =>
                 value == null ? 'Selecione como o progresso será medido' : null,
             decoration: InputDecoration(
@@ -1095,7 +1132,10 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
                 .map(
                   (trackingType) => DropdownMenuItem(
                     value: trackingType,
-                    child: Text(trackingType.label),
+                    child: Text(
+                      trackingType.label,
+                      style: const TextStyle(color: Color(0xFF0B0C0C)),
+                    ),
                   ),
                 )
                 .toList(),
@@ -1131,6 +1171,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
               minLines: 2,
               maxLines: 4,
               maxLength: 500,
+              style: const TextStyle(color: Color(0xFF0B0C0C)),
               validator: (value) {
                 if (!_shouldShowCustomTrackingMilestone) {
                   return null;
@@ -1182,6 +1223,24 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       ),
       child: DropdownButtonFormField<String>(
         initialValue: _selectedTrackingMilestone,
+        style: const TextStyle(color: Color(0xFF0B0C0C)),
+        dropdownColor: const Color(0xFFE9EAEC),
+        iconEnabledColor: const Color(0xFF0B0C0C),
+        hint: const Text(
+          'Selecione um marco de progresso',
+          style: TextStyle(color: Color(0xFF0B0C0C)),
+        ),
+        selectedItemBuilder: (context) => options
+            .map(
+              (option) => Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  option,
+                  style: const TextStyle(color: Color(0xFF0B0C0C)),
+                ),
+              ),
+            )
+            .toList(),
         validator: (value) =>
             value == null ? 'Selecione um marco de progresso' : null,
         decoration: InputDecoration(
@@ -1208,7 +1267,13 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         ),
         items: options
             .map(
-              (option) => DropdownMenuItem(value: option, child: Text(option)),
+              (option) => DropdownMenuItem(
+                value: option,
+                child: Text(
+                  option,
+                  style: const TextStyle(color: Color(0xFF0B0C0C)),
+                ),
+              ),
             )
             .toList(),
         onChanged: (value) {
@@ -1270,9 +1335,9 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
                           height: 24,
                           errorBuilder: (context, error, stackTrace) =>
                               const Icon(
-                                Icons.add_photo_alternate,
-                                color: Color(0xFFC29503),
-                              ),
+                            Icons.add_photo_alternate,
+                            color: Color(0xFFC29503),
+                          ),
                         ),
                 ),
               ],

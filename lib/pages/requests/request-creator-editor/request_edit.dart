@@ -517,13 +517,12 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       0,
       fileName.lastIndexOf('.'),
     );
-    final maxNameLength =
-        (maxWidth *
-                maxPercentage /
-                textPainter.width *
-                nameWithoutExtension.length *
-                0.6)
-            .floor();
+    final maxNameLength = (maxWidth *
+            maxPercentage /
+            textPainter.width *
+            nameWithoutExtension.length *
+            0.6)
+        .floor();
 
     if (maxNameLength <= 3) {
       return '...$extension';
@@ -743,9 +742,8 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         // Alguns backends esperam "categories" (List<String>), outros "categoryEntities"
         // (lista de objetos). Enviamos ambos para manter compatibilidade.
         'categories': _categoriesTags,
-        'categoryEntities': _categoriesTags
-            .map((name) => {'name': name})
-            .toList(),
+        'categoryEntities':
+            _categoriesTags.map((name) => {'name': name}).toList(),
         if (base64Image != null) 'serviceImage': base64Image,
       };
 
@@ -1200,6 +1198,24 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       child: DropdownButtonFormField<String>(
         key: ValueKey(_selectedModality),
         initialValue: _selectedModality,
+        style: const TextStyle(color: Color(0xFF0B0C0C)),
+        dropdownColor: const Color(0xFFE9EAEC),
+        iconEnabledColor: const Color(0xFF0B0C0C),
+        hint: const Text(
+          'Modalidade',
+          style: TextStyle(color: Color(0xFF0B0C0C)),
+        ),
+        selectedItemBuilder: (context) => ModalityOptions.labels
+            .map(
+              (modality) => Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  modality,
+                  style: const TextStyle(color: Color(0xFF0B0C0C)),
+                ),
+              ),
+            )
+            .toList(),
         validator: (value) => value == null ? 'Selecione uma modalidade' : null,
         decoration: InputDecoration(
           hintText: 'Modalidade',
@@ -1225,8 +1241,13 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         ),
         items: ModalityOptions.labels
             .map(
-              (modality) =>
-                  DropdownMenuItem(value: modality, child: Text(modality)),
+              (modality) => DropdownMenuItem(
+                value: modality,
+                child: Text(
+                  modality,
+                  style: const TextStyle(color: Color(0xFF0B0C0C)),
+                ),
+              ),
             )
             .toList(),
         onChanged: (value) {
@@ -1257,6 +1278,24 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           ),
           child: DropdownButtonFormField<ServiceTrackingType>(
             initialValue: _selectedTrackingType,
+            style: const TextStyle(color: Color(0xFF0B0C0C)),
+            dropdownColor: const Color(0xFFE9EAEC),
+            iconEnabledColor: const Color(0xFF0B0C0C),
+            hint: const Text(
+              'Como o progresso será medido?',
+              style: TextStyle(color: Color(0xFF0B0C0C)),
+            ),
+            selectedItemBuilder: (context) => ServiceTrackingType.values
+                .map(
+                  (trackingType) => Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      trackingType.label,
+                      style: const TextStyle(color: Color(0xFF0B0C0C)),
+                    ),
+                  ),
+                )
+                .toList(),
             validator: (value) =>
                 value == null ? 'Selecione como o progresso será medido' : null,
             decoration: InputDecoration(
@@ -1285,7 +1324,10 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
                 .map(
                   (trackingType) => DropdownMenuItem(
                     value: trackingType,
-                    child: Text(trackingType.label),
+                    child: Text(
+                      trackingType.label,
+                      style: const TextStyle(color: Color(0xFF0B0C0C)),
+                    ),
                   ),
                 )
                 .toList(),
@@ -1321,6 +1363,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
               minLines: 2,
               maxLines: 4,
               maxLength: 500,
+              style: const TextStyle(color: Color(0xFF0B0C0C)),
               validator: (value) {
                 if (!_shouldShowCustomTrackingMilestone) {
                   return null;
@@ -1374,6 +1417,24 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       ),
       child: DropdownButtonFormField<String>(
         initialValue: _selectedTrackingMilestone,
+        style: const TextStyle(color: Color(0xFF0B0C0C)),
+        dropdownColor: const Color(0xFFE9EAEC),
+        iconEnabledColor: const Color(0xFF0B0C0C),
+        hint: const Text(
+          'Selecione um marco de progresso',
+          style: TextStyle(color: Color(0xFF0B0C0C)),
+        ),
+        selectedItemBuilder: (context) => options
+            .map(
+              (option) => Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  option,
+                  style: const TextStyle(color: Color(0xFF0B0C0C)),
+                ),
+              ),
+            )
+            .toList(),
         validator: (value) =>
             value == null ? 'Selecione um marco de progresso' : null,
         decoration: InputDecoration(
@@ -1400,7 +1461,13 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         ),
         items: options
             .map(
-              (option) => DropdownMenuItem(value: option, child: Text(option)),
+              (option) => DropdownMenuItem(
+                value: option,
+                child: Text(
+                  option,
+                  style: const TextStyle(color: Color(0xFF0B0C0C)),
+                ),
+              ),
             )
             .toList(),
         onChanged: (value) {
@@ -1462,9 +1529,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
                           height: 24,
                           errorBuilder: (context, error, stackTrace) =>
                               const Icon(
-                                Icons.add_photo_alternate,
-                                color: Color(0xFFC29503),
-                              ),
+                            Icons.add_photo_alternate,
+                            color: Color(0xFFC29503),
+                          ),
                         ),
                 ),
               ],
