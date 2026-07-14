@@ -3,6 +3,7 @@ export 'user_creator.dart';
 
 import 'category_entity.dart';
 import 'user_creator.dart';
+import 'service_tracking_type.dart';
 
 class Service {
   final int id;
@@ -18,6 +19,8 @@ class Service {
   final String status;
   final bool ratedByCreator;
   final bool ratedByProvider;
+  final ServiceTrackingType trackingType;
+  final String? trackingDescription;
 
   Service({
     required this.id,
@@ -33,6 +36,8 @@ class Service {
     required this.status,
     this.ratedByCreator = false,
     this.ratedByProvider = false,
+    this.trackingType = ServiceTrackingType.time,
+    this.trackingDescription,
   });
 
   String get serviceImageUrl => serviceImage;
@@ -65,6 +70,8 @@ class Service {
       status: (json['status'] ?? 'CRIADO').toString(),
       ratedByCreator: json['ratedByCreator'] == true,
       ratedByProvider: json['ratedByProvider'] == true,
+      trackingType: ServiceTrackingType.fromApi(json['trackingType']),
+      trackingDescription: json['trackingDescription']?.toString(),
     );
   }
 

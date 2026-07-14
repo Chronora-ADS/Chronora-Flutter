@@ -12,6 +12,7 @@ import 'package:chronora/core/constants/app_routes.dart';
 import 'package:chronora/core/constants/modality_options.dart';
 import 'package:chronora/core/models/service_detail_model.dart';
 import 'package:chronora/core/models/main_page_requests_model.dart';
+import 'package:chronora/core/models/service_tracking_type.dart';
 import 'package:chronora/core/services/auth_session_service.dart';
 import 'package:chronora/core/utils/app_snackbar.dart';
 
@@ -19,11 +20,7 @@ class RequestEditingPage extends StatefulWidget {
   final Service? service;
   final int? serviceId;
 
-  const RequestEditingPage({
-    super.key,
-    this.service,
-    this.serviceId,
-  });
+  const RequestEditingPage({super.key, this.service, this.serviceId});
 
   @override
   State<RequestEditingPage> createState() => _RequestEditingPageState();
@@ -31,6 +28,23 @@ class RequestEditingPage extends StatefulWidget {
 
 class _RequestEditingPageState extends State<RequestEditingPage> {
   static const int _maxCategories = 10;
+  static const String _customTrackingMilestoneOption = 'Marco diferente';
+  static const Map<ServiceTrackingType, List<String>> _trackingMilestones = {
+    ServiceTrackingType.time: [
+      '10% por hora',
+      '20% a cada 2 horas',
+      '25% a cada etapa de tempo',
+      '50% na metade do prazo',
+      _customTrackingMilestoneOption,
+    ],
+    ServiceTrackingType.custom: [
+      '25% por etapa entregue',
+      '20% por item concluído',
+      '50% na primeira versão aprovada',
+      '100% após validação final',
+      _customTrackingMilestoneOption,
+    ],
+  };
 
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
@@ -39,7 +53,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
   final TextEditingController _deadlineController = TextEditingController();
   final TextEditingController _categoriesController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _customTrackingMilestoneController =
+      TextEditingController();
   String? _selectedModality;
+  ServiceTrackingType? _selectedTrackingType;
+  String? _selectedTrackingMilestone;
 
   late List<String> _categoriesTags;
 
@@ -74,6 +92,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         '${service.deadline.month.toString().padLeft(2, '0')}/'
         '${service.deadline.year}';
     _selectedModality = _normalizeModality(service.modality);
+    _applyTrackingSelection(service.trackingType, service.trackingDescription);
 
     // Se tiver imagem, mantem apenas a referencia visual do arquivo atual.
     if (service.serviceImage.isNotEmpty) {
@@ -125,6 +144,10 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           .where((name) => name.isNotEmpty)
           .toList();
       _selectedModality = _normalizeModality(serviceDetail.modality);
+      _applyTrackingSelection(
+        serviceDetail.trackingType,
+        serviceDetail.trackingDescription,
+      );
       if (serviceDetail.serviceImage != null &&
           serviceDetail.serviceImage!.isNotEmpty) {
         _imageFileName = _extractImageFileName(serviceDetail.serviceImage!);
@@ -293,8 +316,10 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       throw Exception('Usuário não autenticado. Faça login novamente.');
     }
 
-    final response =
-        await ApiService.get('/service/get/$serviceId', token: token);
+    final response = await ApiService.get(
+      '/service/get/$serviceId',
+      token: token,
+    );
     if (response.statusCode != 200) {
       throw Exception(
         ApiService.extractErrorMessage(
@@ -369,6 +394,63 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     AppSnackBar.show(context, message, isError: isError);
   }
 
+  void _applyTrackingSelection(
+    ServiceTrackingType trackingType,
+    String? trackingDescription,
+  ) {
+    _selectedTrackingType = trackingType;
+
+    if (trackingType == ServiceTrackingType.completion) {
+      _selectedTrackingMilestone = null;
+      _customTrackingMilestoneController.clear();
+      return;
+    }
+
+    final description = trackingDescription?.trim();
+    if (description == null || description.isEmpty) {
+      _selectedTrackingMilestone = null;
+      _customTrackingMilestoneController.clear();
+      return;
+    }
+
+    final options = _trackingMilestones[trackingType] ?? const [];
+    if (options.contains(description)) {
+      _selectedTrackingMilestone = description;
+      _customTrackingMilestoneController.clear();
+      return;
+    }
+
+    _selectedTrackingMilestone = _customTrackingMilestoneOption;
+    _customTrackingMilestoneController.text = description;
+  }
+
+  bool get _shouldShowTrackingMilestones {
+    return _selectedTrackingType != null &&
+        _selectedTrackingType != ServiceTrackingType.completion;
+  }
+
+  bool get _shouldShowCustomTrackingMilestone {
+    return _selectedTrackingMilestone == _customTrackingMilestoneOption;
+  }
+
+  String? _resolvedTrackingDescription() {
+    if (!_shouldShowTrackingMilestones) {
+      return null;
+    }
+
+    final selectedMilestone = _selectedTrackingMilestone?.trim();
+    if (selectedMilestone == null || selectedMilestone.isEmpty) {
+      return null;
+    }
+
+    if (selectedMilestone == _customTrackingMilestoneOption) {
+      final customMilestone = _customTrackingMilestoneController.text.trim();
+      return customMilestone.isEmpty ? null : customMilestone;
+    }
+
+    return selectedMilestone;
+  }
+
   void _stopLoading() {
     if (!mounted || _isRedirectingAcceptedRequest) return;
     setState(() {
@@ -384,6 +466,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     _deadlineController.dispose();
     _categoriesController.dispose();
     _searchController.dispose();
+    _customTrackingMilestoneController.dispose();
     super.dispose();
   }
 
@@ -430,14 +513,17 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     }
 
     final extension = fileName.split('.').last;
-    final nameWithoutExtension =
-        fileName.substring(0, fileName.lastIndexOf('.'));
-    final maxNameLength = (maxWidth *
-            maxPercentage /
-            textPainter.width *
-            nameWithoutExtension.length *
-            0.6)
-        .floor();
+    final nameWithoutExtension = fileName.substring(
+      0,
+      fileName.lastIndexOf('.'),
+    );
+    final maxNameLength =
+        (maxWidth *
+                maxPercentage /
+                textPainter.width *
+                nameWithoutExtension.length *
+                0.6)
+            .floor();
 
     if (maxNameLength <= 3) {
       return '...$extension';
@@ -470,8 +556,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_categoriesTags.isEmpty) {
-      AppSnackBar.show(context, 'Adicione pelo menos uma categoria',
-          isError: true);
+      AppSnackBar.show(
+        context,
+        'Adicione pelo menos uma categoria',
+        isError: true,
+      );
       return;
     }
 
@@ -482,6 +571,25 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
     if (_selectedModality == null) {
       AppSnackBar.show(context, 'Selecione uma modalidade', isError: true);
+      return;
+    }
+
+    if (_selectedTrackingType == null) {
+      AppSnackBar.show(
+        context,
+        'Selecione como o progresso será medido',
+        isError: true,
+      );
+      return;
+    }
+
+    final trackingDescription = _resolvedTrackingDescription();
+    if (_shouldShowTrackingMilestones && trackingDescription == null) {
+      AppSnackBar.show(
+        context,
+        'Selecione ou descreva um marco de progresso',
+        isError: true,
+      );
       return;
     }
 
@@ -501,8 +609,10 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
       if (token == null) {
         AppSnackBar.show(
-            context, 'Usuário não autenticado. Faça login novamente.',
-            isError: true);
+          context,
+          'Usuário não autenticado. Faça login novamente.',
+          isError: true,
+        );
         setState(() {
           _isLoading = false;
         });
@@ -529,8 +639,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
       final deadlineParts = deadlineText.split('/');
       if (deadlineParts.length != 3) {
-        AppSnackBar.show(context, 'Formato de data inválido. Use DD/MM/YYYY',
-            isError: true);
+        AppSnackBar.show(
+          context,
+          'Formato de data inválido. Use DD/MM/YYYY',
+          isError: true,
+        );
         setState(() {
           _isLoading = false;
         });
@@ -545,8 +658,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
 
         final date = DateTime.parse('$year-$month-$day');
         if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
-          AppSnackBar.show(context, 'A data não pode ser no passado',
-              isError: true);
+          AppSnackBar.show(
+            context,
+            'A data não pode ser no passado',
+            isError: true,
+          );
           setState(() {
             _isLoading = false;
           });
@@ -565,8 +681,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       // Validação do tempo em Chronos
       final chronosText = _chronosController.text.trim();
       if (chronosText.isEmpty) {
-        AppSnackBar.show(context, 'Tempo em Chronos é obrigatório',
-            isError: true);
+        AppSnackBar.show(
+          context,
+          'Tempo em Chronos é obrigatório',
+          isError: true,
+        );
         setState(() {
           _isLoading = false;
         });
@@ -577,24 +696,33 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       try {
         timeChronos = int.parse(chronosText);
         if (timeChronos <= 0) {
-          AppSnackBar.show(context, 'Tempo em Chronos deve ser maior que zero',
-              isError: true);
+          AppSnackBar.show(
+            context,
+            'Tempo em Chronos deve ser maior que zero',
+            isError: true,
+          );
           setState(() {
             _isLoading = false;
           });
           return;
         }
         if (timeChronos > 100) {
-          AppSnackBar.show(context, 'Tempo em Chronos deve ser no máximo 100',
-              isError: true);
+          AppSnackBar.show(
+            context,
+            'Tempo em Chronos deve ser no máximo 100',
+            isError: true,
+          );
           setState(() {
             _isLoading = false;
           });
           return;
         }
       } catch (e) {
-        AppSnackBar.show(context, 'Tempo em Chronos deve ser um número válido',
-            isError: true);
+        AppSnackBar.show(
+          context,
+          'Tempo em Chronos deve ser um número válido',
+          isError: true,
+        );
         setState(() {
           _isLoading = false;
         });
@@ -609,11 +737,15 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         'timeChronos': timeChronos,
         'modality': ModalityOptions.toBackendValue(_selectedModality!),
         'deadline': formattedDeadline,
+        'trackingType': _selectedTrackingType!.apiValue,
+        if (trackingDescription != null)
+          'trackingDescription': trackingDescription,
         // Alguns backends esperam "categories" (List<String>), outros "categoryEntities"
         // (lista de objetos). Enviamos ambos para manter compatibilidade.
         'categories': _categoriesTags,
-        'categoryEntities':
-            _categoriesTags.map((name) => {'name': name}).toList(),
+        'categoryEntities': _categoriesTags
+            .map((name) => {'name': name})
+            .toList(),
         if (base64Image != null) 'serviceImage': base64Image,
       };
 
@@ -633,6 +765,9 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         setState(() {
           _categoriesTags.clear();
           _selectedModality = null;
+          _selectedTrackingType = null;
+          _selectedTrackingMilestone = null;
+          _customTrackingMilestoneController.clear();
           _selectedImage = null;
           _imageFileName = null;
           _imageBytes = null;
@@ -729,9 +864,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         controller: _searchController,
         decoration: InputDecoration(
           hintText: 'Pintura de parede, aula de inglês...',
-          hintStyle: TextStyle(
-            color: Colors.black.withValues(alpha: 0.7),
-          ),
+          hintStyle: TextStyle(color: Colors.black.withValues(alpha: 0.7)),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(15),
@@ -792,8 +925,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
     return null;
   }
 
-  Widget _buildFormField(String placeholder, TextEditingController controller,
-      {String? Function(String?)? validator}) {
+  Widget _buildFormField(
+    String placeholder,
+    TextEditingController controller, {
+    String? Function(String?)? validator,
+  }) {
     return Container(
       height: 46,
       decoration: BoxDecoration(
@@ -813,9 +949,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         style: const TextStyle(color: Color(0xFF0B0C0C)),
         decoration: InputDecoration(
           hintText: placeholder,
-          hintStyle: TextStyle(
-            color: Colors.black.withValues(alpha: 0.7),
-          ),
+          hintStyle: TextStyle(color: Colors.black.withValues(alpha: 0.7)),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
@@ -853,11 +987,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         style: const TextStyle(color: Color(0xFF0B0C0C)),
         decoration: InputDecoration(
           hintText: 'Descrição',
-          hintStyle: TextStyle(
-            color: Colors.black.withValues(alpha: 0.7),
+          hintStyle: TextStyle(color: Colors.black.withValues(alpha: 0.7)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
           ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide.none,
@@ -919,9 +1053,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         style: const TextStyle(color: Color(0xFF0B0C0C)),
         decoration: InputDecoration(
           hintText: placeholder,
-          hintStyle: TextStyle(
-            color: Colors.black.withValues(alpha: 0.7),
-          ),
+          hintStyle: TextStyle(color: Colors.black.withValues(alpha: 0.7)),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
@@ -968,11 +1100,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       height: 24,
       color: Colors.white,
       errorBuilder: (context, error, stackTrace) {
-        return const Icon(
-          Icons.category,
-          color: Colors.white,
-          size: 24,
-        );
+        return const Icon(Icons.category, color: Colors.white, size: 24);
       },
     );
   }
@@ -999,11 +1127,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           const SizedBox(width: 6),
           GestureDetector(
             onTap: () => _removeCategory(tagText),
-            child: const Icon(
-              Icons.close,
-              color: Colors.white,
-              size: 16,
-            ),
+            child: const Icon(Icons.close, color: Colors.white, size: 16),
           ),
         ],
       ),
@@ -1032,11 +1156,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
             style: const TextStyle(color: Color(0xFF0B0C0C)),
             decoration: InputDecoration(
               hintText: 'Categoria(s) - Pressione Enter para adicionar',
-              hintStyle: TextStyle(
-                color: Colors.black.withValues(alpha: 0.7),
+              hintStyle: TextStyle(color: Colors.black.withValues(alpha: 0.7)),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
               ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide.none,
@@ -1079,9 +1203,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         validator: (value) => value == null ? 'Selecione uma modalidade' : null,
         decoration: InputDecoration(
           hintText: 'Modalidade',
-          hintStyle: TextStyle(
-            color: Colors.black.withValues(alpha: 0.7),
-          ),
+          hintStyle: TextStyle(color: Colors.black.withValues(alpha: 0.7)),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
@@ -1102,14 +1224,191 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           errorStyle: const TextStyle(fontSize: 12, height: 0.1),
         ),
         items: ModalityOptions.labels
-            .map((modality) => DropdownMenuItem(
-                  value: modality,
-                  child: Text(modality),
-                ))
+            .map(
+              (modality) =>
+                  DropdownMenuItem(value: modality, child: Text(modality)),
+            )
             .toList(),
         onChanged: (value) {
           setState(() {
             _selectedModality = value;
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildTrackingTypeFields() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: 46,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE9EAEC),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withValues(alpha: 0.3),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: DropdownButtonFormField<ServiceTrackingType>(
+            initialValue: _selectedTrackingType,
+            validator: (value) =>
+                value == null ? 'Selecione como o progresso será medido' : null,
+            decoration: InputDecoration(
+              hintText: 'Como o progresso será medido?',
+              hintStyle: TextStyle(color: Colors.black.withValues(alpha: 0.7)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
+              filled: true,
+              fillColor: const Color(0xFFE9EAEC),
+              suffixIcon: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Image.asset(
+                  'assets/img/down-arrow.png',
+                  width: 24,
+                  height: 24,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.arrow_drop_down, size: 24),
+                ),
+              ),
+              errorStyle: const TextStyle(fontSize: 12, height: 0.1),
+            ),
+            items: ServiceTrackingType.values
+                .map(
+                  (trackingType) => DropdownMenuItem(
+                    value: trackingType,
+                    child: Text(trackingType.label),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              setState(() {
+                _selectedTrackingType = value;
+                _selectedTrackingMilestone = null;
+                _customTrackingMilestoneController.clear();
+              });
+            },
+          ),
+        ),
+        if (_shouldShowTrackingMilestones) ...[
+          const SizedBox(height: 12),
+          _buildTrackingMilestoneDropdown(),
+        ],
+        if (_shouldShowCustomTrackingMilestone) ...[
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFE9EAEC),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: TextFormField(
+              controller: _customTrackingMilestoneController,
+              minLines: 2,
+              maxLines: 4,
+              maxLength: 500,
+              validator: (value) {
+                if (!_shouldShowCustomTrackingMilestone) {
+                  return null;
+                }
+                if (value == null || value.trim().isEmpty) {
+                  return 'Descreva o marco de progresso';
+                }
+                if (value.trim().length > 500) {
+                  return 'Use no máximo 500 caracteres';
+                }
+                return null;
+              },
+              decoration: InputDecoration(
+                hintText: 'Descreva como deseja medir este marco',
+                hintStyle: TextStyle(
+                  color: Colors.black.withValues(alpha: 0.7),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: const Color(0xFFE9EAEC),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildTrackingMilestoneDropdown() {
+    final options = _trackingMilestones[_selectedTrackingType] ?? const [];
+
+    return Container(
+      height: 46,
+      decoration: BoxDecoration(
+        color: const Color(0xFFE9EAEC),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.3),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: DropdownButtonFormField<String>(
+        initialValue: _selectedTrackingMilestone,
+        validator: (value) =>
+            value == null ? 'Selecione um marco de progresso' : null,
+        decoration: InputDecoration(
+          hintText: 'Selecione um marco de progresso',
+          hintStyle: TextStyle(color: Colors.black.withValues(alpha: 0.7)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: const Color(0xFFE9EAEC),
+          suffixIcon: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Image.asset(
+              'assets/img/down-arrow.png',
+              width: 24,
+              height: 24,
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.arrow_drop_down, size: 24),
+            ),
+          ),
+          errorStyle: const TextStyle(fontSize: 12, height: 0.1),
+        ),
+        items: options
+            .map(
+              (option) => DropdownMenuItem(value: option, child: Text(option)),
+            )
+            .toList(),
+        onChanged: (value) {
+          setState(() {
+            _selectedTrackingMilestone = value;
+            if (value != _customTrackingMilestoneOption) {
+              _customTrackingMilestoneController.clear();
+            }
           });
         },
       ),
@@ -1129,10 +1428,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           child: Container(
             height: 46,
             decoration: BoxDecoration(
-              border: Border.all(
-                color: const Color(0xFFC29503),
-                width: 2,
-              ),
+              border: Border.all(color: const Color(0xFFC29503), width: 2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -1165,8 +1461,10 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
                           width: 24,
                           height: 24,
                           errorBuilder: (context, error, stackTrace) =>
-                              const Icon(Icons.add_photo_alternate,
-                                  color: Color(0xFFC29503)),
+                              const Icon(
+                                Icons.add_photo_alternate,
+                                color: Color(0xFFC29503),
+                              ),
                         ),
                 ),
               ],
@@ -1185,10 +1483,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           child: Container(
             height: 46,
             decoration: BoxDecoration(
-              border: Border.all(
-                color: const Color(0xFFC29503),
-                width: 2,
-              ),
+              border: Border.all(color: const Color(0xFFC29503), width: 2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: TextButton(
@@ -1251,26 +1546,31 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
             const Center(
               child: Text(
                 'Edição do pedido',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 25),
-            _buildFormField('Título', _titleController,
-                validator: _requiredValidator),
+            _buildFormField(
+              'Título',
+              _titleController,
+              validator: _requiredValidator,
+            ),
             const SizedBox(height: 15),
             _buildDescriptionField(),
             const SizedBox(height: 15),
-            _buildFormField('Tempo em Chronos', _chronosController,
-                validator: _chronosValidator),
+            _buildFormField(
+              'Tempo em Chronos',
+              _chronosController,
+              validator: _chronosValidator,
+            ),
             const SizedBox(height: 15),
             _buildDateField('Prazo'),
             const SizedBox(height: 15),
             _buildCategoriesField(),
             const SizedBox(height: 15),
             _buildModalityDropdown(),
+            const SizedBox(height: 15),
+            _buildTrackingTypeFields(),
             const SizedBox(height: 25),
             _buildImageButton(),
             const SizedBox(height: 30),
@@ -1303,10 +1603,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
               SizedBox(height: 20),
               Text(
                 'Preparando formulário...',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: Colors.white, fontSize: 16),
               ),
             ],
           ),
@@ -1324,18 +1621,11 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
-                  Icons.error_outline,
-                  color: Colors.red,
-                  size: 60,
-                ),
+                const Icon(Icons.error_outline, color: Colors.red, size: 60),
                 const SizedBox(height: 20),
                 Text(
                   _errorMessage!,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
@@ -1365,9 +1655,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           // Main content
           Column(
             children: [
-              Header(
-                onMenuPressed: _toggleDrawer,
-              ),
+              Header(onMenuPressed: _toggleDrawer),
               const SizedBox(height: 16),
               Expanded(
                 child: Padding(
@@ -1377,9 +1665,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
                       _buildSearchBar(),
                       const SizedBox(height: 60),
                       Expanded(
-                        child: SingleChildScrollView(
-                          child: _buildForm(),
-                        ),
+                        child: SingleChildScrollView(child: _buildForm()),
                       ),
                     ],
                   ),
@@ -1406,9 +1692,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
-                    child: WalletModal(
-                      onClose: _closeWallet,
-                    ),
+                    child: WalletModal(onClose: _closeWallet),
                   ),
                 ),
               ),

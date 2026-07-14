@@ -13,6 +13,7 @@ import '../../../widgets/wallet_modal.dart';
 import '../../../core/api/api_service.dart';
 import '../../../core/constants/modality_options.dart';
 import '../../../core/models/create_request_model.dart';
+import '../../../core/models/service_tracking_type.dart';
 import '../../../core/services/auth_session_service.dart';
 import '../../../core/utils/app_snackbar.dart';
 
@@ -24,6 +25,23 @@ class RequestCreationPage extends StatefulWidget {
 
 class _RequestCreationPageState extends State<RequestCreationPage> {
   static const int _maxCategories = 10;
+  static const String _customTrackingMilestoneOption = 'Marco diferente';
+  static const Map<ServiceTrackingType, List<String>> _trackingMilestones = {
+    ServiceTrackingType.time: [
+      '10% por hora',
+      '20% a cada 2 horas',
+      '25% a cada etapa de tempo',
+      '50% na metade do prazo',
+      _customTrackingMilestoneOption,
+    ],
+    ServiceTrackingType.custom: [
+      '25% por etapa entregue',
+      '20% por item concluído',
+      '50% na primeira versão aprovada',
+      '100% após validação final',
+      _customTrackingMilestoneOption,
+    ],
+  };
 
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
@@ -32,7 +50,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   final TextEditingController _deadlineController = TextEditingController();
   final TextEditingController _categoriesController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _customTrackingMilestoneController =
+      TextEditingController();
   String? _selectedModality;
+  ServiceTrackingType? _selectedTrackingType;
+  String? _selectedTrackingMilestone;
 
   late List<String> _categoriesTags;
 
@@ -58,6 +80,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     _deadlineController.dispose();
     _categoriesController.dispose();
     _searchController.dispose();
+    _customTrackingMilestoneController.dispose();
     super.dispose();
   }
 
@@ -117,6 +140,33 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     AppSnackBar.show(context, message, isError: isError);
   }
 
+  bool get _shouldShowTrackingMilestones {
+    return _selectedTrackingType != null &&
+        _selectedTrackingType != ServiceTrackingType.completion;
+  }
+
+  bool get _shouldShowCustomTrackingMilestone {
+    return _selectedTrackingMilestone == _customTrackingMilestoneOption;
+  }
+
+  String? _resolvedTrackingDescription() {
+    if (!_shouldShowTrackingMilestones) {
+      return null;
+    }
+
+    final selectedMilestone = _selectedTrackingMilestone?.trim();
+    if (selectedMilestone == null || selectedMilestone.isEmpty) {
+      return null;
+    }
+
+    if (selectedMilestone == _customTrackingMilestoneOption) {
+      final customMilestone = _customTrackingMilestoneController.text.trim();
+      return customMilestone.isEmpty ? null : customMilestone;
+    }
+
+    return selectedMilestone;
+  }
+
   void _stopLoading() {
     if (!mounted) return;
     setState(() {
@@ -144,14 +194,17 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     }
 
     final extension = fileName.split('.').last;
-    final nameWithoutExtension =
-        fileName.substring(0, fileName.lastIndexOf('.'));
-    final maxNameLength = (maxWidth *
-            maxPercentage /
-            textPainter.width *
-            nameWithoutExtension.length *
-            0.6)
-        .floor();
+    final nameWithoutExtension = fileName.substring(
+      0,
+      fileName.lastIndexOf('.'),
+    );
+    final maxNameLength =
+        (maxWidth *
+                maxPercentage /
+                textPainter.width *
+                nameWithoutExtension.length *
+                0.6)
+            .floor();
 
     if (maxNameLength <= 3) {
       return '...$extension';
@@ -182,8 +235,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   }
 
   String _resolveSelectedImageMimeType() {
-    final extension =
-        (_imageFileName ?? '').split('.').last.trim().toLowerCase();
+    final extension = (_imageFileName ?? '')
+        .split('.')
+        .last
+        .trim()
+        .toLowerCase();
 
     switch (extension) {
       case 'jpg':
@@ -203,9 +259,9 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
   Future<void> _createRequest() async {
     final canContinue =
         await PendingServiceCancellationObligations.ensureCanContinue(
-      context,
-      actionLabel: 'criar pedido',
-    );
+          context,
+          actionLabel: 'criar pedido',
+        );
     if (!canContinue || !mounted) {
       return;
     }
@@ -213,7 +269,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_categoriesTags.isEmpty) {
-      AppSnackBar.show(context, 'Adicione pelo menos uma categoria', isError: true);
+      AppSnackBar.show(
+        context,
+        'Adicione pelo menos uma categoria',
+        isError: true,
+      );
       return;
     }
 
@@ -223,12 +283,35 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     }
 
     if (_selectedImage == null) {
-      AppSnackBar.show(context, 'Selecione uma imagem para o pedido', isError: true);
+      AppSnackBar.show(
+        context,
+        'Selecione uma imagem para o pedido',
+        isError: true,
+      );
       return;
     }
 
     if (_selectedModality == null) {
       AppSnackBar.show(context, 'Selecione uma modalidade', isError: true);
+      return;
+    }
+
+    if (_selectedTrackingType == null) {
+      AppSnackBar.show(
+        context,
+        'Selecione como o progresso sera medido',
+        isError: true,
+      );
+      return;
+    }
+
+    final trackingDescription = _resolvedTrackingDescription();
+    if (_shouldShowTrackingMilestones && trackingDescription == null) {
+      AppSnackBar.show(
+        context,
+        'Selecione ou descreva um marco de progresso',
+        isError: true,
+      );
       return;
     }
 
@@ -241,7 +324,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       final token = await AuthSessionService.getValidAccessToken();
 
       if (token == null) {
-        AppSnackBar.show(context, 'Usuário não autenticado. Faça login novamente.', isError: true);
+        AppSnackBar.show(
+          context,
+          'Usuário não autenticado. Faça login novamente.',
+          isError: true,
+        );
         setState(() {
           _isLoading = false;
         });
@@ -254,7 +341,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         base64Image = await _convertImageToBase64();
       }
       if (base64Image == null || base64Image.isEmpty) {
-        AppSnackBar.show(context, 'Não foi possível processar a imagem do pedido', isError: true);
+        AppSnackBar.show(
+          context,
+          'Não foi possível processar a imagem do pedido',
+          isError: true,
+        );
         setState(() {
           _isLoading = false;
         });
@@ -274,7 +365,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       // Converter data do formato DD/MM/YYYY para YYYY-MM-DD
       final deadlineParts = deadlineText.split('/');
       if (deadlineParts.length != 3) {
-        AppSnackBar.show(context, 'Formato de data inválido. Use DD/MM/YYYY', isError: true);
+        AppSnackBar.show(
+          context,
+          'Formato de data inválido. Use DD/MM/YYYY',
+          isError: true,
+        );
         setState(() {
           _isLoading = false;
         });
@@ -290,7 +385,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         // Validar se é uma data válida
         final date = DateTime.parse('$year-$month-$day');
         if (date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
-          AppSnackBar.show(context, 'A data não pode ser no passado', isError: true);
+          AppSnackBar.show(
+            context,
+            'A data não pode ser no passado',
+            isError: true,
+          );
           setState(() {
             _isLoading = false;
           });
@@ -309,7 +408,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       // VALIDAÇÃO DO TEMPO EM CHRONOS
       final chronosText = _chronosController.text.trim();
       if (chronosText.isEmpty) {
-        AppSnackBar.show(context, 'Tempo em Chronos é obrigatório', isError: true);
+        AppSnackBar.show(
+          context,
+          'Tempo em Chronos é obrigatório',
+          isError: true,
+        );
         setState(() {
           _isLoading = false;
         });
@@ -320,21 +423,33 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       try {
         timeChronos = int.parse(chronosText);
         if (timeChronos <= 0) {
-          AppSnackBar.show(context, 'Tempo em Chronos deve ser maior que zero', isError: true);
+          AppSnackBar.show(
+            context,
+            'Tempo em Chronos deve ser maior que zero',
+            isError: true,
+          );
           setState(() {
             _isLoading = false;
           });
           return;
         }
         if (timeChronos > 100) {
-          AppSnackBar.show(context, 'Tempo em Chronos deve ser no máximo 100', isError: true);
+          AppSnackBar.show(
+            context,
+            'Tempo em Chronos deve ser no máximo 100',
+            isError: true,
+          );
           setState(() {
             _isLoading = false;
           });
           return;
         }
       } catch (e) {
-        AppSnackBar.show(context, 'Tempo em Chronos deve ser um número válido', isError: true);
+        AppSnackBar.show(
+          context,
+          'Tempo em Chronos deve ser um número válido',
+          isError: true,
+        );
         setState(() {
           _isLoading = false;
         });
@@ -350,6 +465,8 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         categories: _categoriesTags,
         modality: ModalityOptions.toBackendValue(_selectedModality!),
         serviceImage: base64Image,
+        trackingType: _selectedTrackingType!,
+        trackingDescription: trackingDescription,
       );
 
       final response = await ApiService.post(
@@ -367,6 +484,9 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         setState(() {
           _categoriesTags.clear();
           _selectedModality = null;
+          _selectedTrackingType = null;
+          _selectedTrackingMilestone = null;
+          _customTrackingMilestoneController.clear();
           _selectedImage = null;
           _imageFileName = null;
           _imageBytes = null;
@@ -415,9 +535,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           _buildBackgroundImages(),
           Column(
             children: [
-              Header(
-                onMenuPressed: _toggleDrawer,
-              ),
+              Header(onMenuPressed: _toggleDrawer),
               const SizedBox(height: 16),
               Expanded(
                 child: Padding(
@@ -427,9 +545,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
                       _buildSearchBar(),
                       const SizedBox(height: 60),
                       Expanded(
-                        child: SingleChildScrollView(
-                          child: _buildForm(),
-                        ),
+                        child: SingleChildScrollView(child: _buildForm()),
                       ),
                     ],
                   ),
@@ -454,9 +570,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
-                    child: WalletModal(
-                      onClose: _closeWallet,
-                    ),
+                    child: WalletModal(onClose: _closeWallet),
                   ),
                 ),
               ),
@@ -510,9 +624,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         controller: _searchController,
         decoration: InputDecoration(
           hintText: 'Pintura de parede, aula de inglês...',
-          hintStyle: TextStyle(
-            color: Colors.black.withOpacity(0.7),
-          ),
+          hintStyle: TextStyle(color: Colors.black.withOpacity(0.7)),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(15),
@@ -550,26 +662,31 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             const Center(
               child: Text(
                 'Criação do pedido',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 25),
-            _buildFormField('Título', _titleController,
-                validator: _requiredValidator),
+            _buildFormField(
+              'Título',
+              _titleController,
+              validator: _requiredValidator,
+            ),
             const SizedBox(height: 15),
             _buildDescriptionField(),
             const SizedBox(height: 15),
-            _buildFormField('Tempo em Chronos', _chronosController,
-                validator: _chronosValidator),
+            _buildFormField(
+              'Tempo em Chronos',
+              _chronosController,
+              validator: _chronosValidator,
+            ),
             const SizedBox(height: 15),
             _buildDateField('Prazo'),
             const SizedBox(height: 15),
             _buildCategoriesField(),
             const SizedBox(height: 15),
             _buildModalityDropdown(),
+            const SizedBox(height: 15),
+            _buildTrackingTypeFields(),
             const SizedBox(height: 25),
             _buildImageButton(),
             const SizedBox(height: 30),
@@ -618,8 +735,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
     return null;
   }
 
-  Widget _buildFormField(String placeholder, TextEditingController controller,
-      {String? Function(String?)? validator}) {
+  Widget _buildFormField(
+    String placeholder,
+    TextEditingController controller, {
+    String? Function(String?)? validator,
+  }) {
     return Container(
       height: 46,
       decoration: BoxDecoration(
@@ -639,9 +759,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         style: const TextStyle(color: Color(0xFF0B0C0C)),
         decoration: InputDecoration(
           hintText: placeholder,
-          hintStyle: TextStyle(
-            color: Colors.black.withOpacity(0.7),
-          ),
+          hintStyle: TextStyle(color: Colors.black.withOpacity(0.7)),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
@@ -679,11 +797,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         style: const TextStyle(color: Color(0xFF0B0C0C)),
         decoration: InputDecoration(
           hintText: 'Descrição',
-          hintStyle: TextStyle(
-            color: Colors.black.withOpacity(0.7),
+          hintStyle: TextStyle(color: Colors.black.withOpacity(0.7)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
           ),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide.none,
@@ -719,9 +837,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         style: const TextStyle(color: Color(0xFF0B0C0C)),
         decoration: InputDecoration(
           hintText: placeholder,
-          hintStyle: TextStyle(
-            color: Colors.black.withOpacity(0.7),
-          ),
+          hintStyle: TextStyle(color: Colors.black.withOpacity(0.7)),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
@@ -810,11 +926,11 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             style: const TextStyle(color: Color(0xFF0B0C0C)),
             decoration: InputDecoration(
               hintText: 'Categoria(s) - Pressione Enter para adicionar',
-              hintStyle: TextStyle(
-                color: Colors.black.withOpacity(0.7),
+              hintStyle: TextStyle(color: Colors.black.withOpacity(0.7)),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
               ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide.none,
@@ -859,11 +975,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           const SizedBox(width: 6),
           GestureDetector(
             onTap: () => _removeCategory(tagText),
-            child: const Icon(
-              Icons.close,
-              color: Colors.white,
-              size: 16,
-            ),
+            child: const Icon(Icons.close, color: Colors.white, size: 16),
           ),
         ],
       ),
@@ -877,11 +989,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       height: 24,
       color: Colors.white,
       errorBuilder: (context, error, stackTrace) {
-        return const Icon(
-          Icons.category,
-          color: Colors.white,
-          size: 24,
-        );
+        return const Icon(Icons.category, color: Colors.white, size: 24);
       },
     );
   }
@@ -905,9 +1013,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         validator: (value) => value == null ? 'Selecione uma modalidade' : null,
         decoration: InputDecoration(
           hintText: 'Modalidade',
-          hintStyle: TextStyle(
-            color: Colors.black.withOpacity(0.7),
-          ),
+          hintStyle: TextStyle(color: Colors.black.withOpacity(0.7)),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
@@ -928,14 +1034,189 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           errorStyle: const TextStyle(fontSize: 12, height: 0.1),
         ),
         items: ModalityOptions.labels
-            .map((modality) => DropdownMenuItem(
-                  value: modality,
-                  child: Text(modality),
-                ))
+            .map(
+              (modality) =>
+                  DropdownMenuItem(value: modality, child: Text(modality)),
+            )
             .toList(),
         onChanged: (value) {
           setState(() {
             _selectedModality = value;
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildTrackingTypeFields() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: 46,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE9EAEC),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.3),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: DropdownButtonFormField<ServiceTrackingType>(
+            initialValue: _selectedTrackingType,
+            validator: (value) =>
+                value == null ? 'Selecione como o progresso será medido' : null,
+            decoration: InputDecoration(
+              hintText: 'Como o progresso será medido?',
+              hintStyle: TextStyle(color: Colors.black.withOpacity(0.7)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
+              filled: true,
+              fillColor: const Color(0xFFE9EAEC),
+              suffixIcon: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Image.asset(
+                  'assets/img/down-arrow.png',
+                  width: 24,
+                  height: 24,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.arrow_drop_down, size: 24),
+                ),
+              ),
+              errorStyle: const TextStyle(fontSize: 12, height: 0.1),
+            ),
+            items: ServiceTrackingType.values
+                .map(
+                  (trackingType) => DropdownMenuItem(
+                    value: trackingType,
+                    child: Text(trackingType.label),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              setState(() {
+                _selectedTrackingType = value;
+                _selectedTrackingMilestone = null;
+                _customTrackingMilestoneController.clear();
+              });
+            },
+          ),
+        ),
+        if (_shouldShowTrackingMilestones) ...[
+          const SizedBox(height: 12),
+          _buildTrackingMilestoneDropdown(),
+        ],
+        if (_shouldShowCustomTrackingMilestone) ...[
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFE9EAEC),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.3),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: TextFormField(
+              controller: _customTrackingMilestoneController,
+              minLines: 2,
+              maxLines: 4,
+              maxLength: 500,
+              validator: (value) {
+                if (!_shouldShowCustomTrackingMilestone) {
+                  return null;
+                }
+                if (value == null || value.trim().isEmpty) {
+                  return 'Descreva o marco de progresso';
+                }
+                if (value.trim().length > 500) {
+                  return 'Use no máximo 500 caracteres';
+                }
+                return null;
+              },
+              decoration: InputDecoration(
+                hintText: 'Descreva como deseja medir este marco',
+                hintStyle: TextStyle(color: Colors.black.withOpacity(0.7)),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: const Color(0xFFE9EAEC),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildTrackingMilestoneDropdown() {
+    final options = _trackingMilestones[_selectedTrackingType] ?? const [];
+
+    return Container(
+      height: 46,
+      decoration: BoxDecoration(
+        color: const Color(0xFFE9EAEC),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: DropdownButtonFormField<String>(
+        initialValue: _selectedTrackingMilestone,
+        validator: (value) =>
+            value == null ? 'Selecione um marco de progresso' : null,
+        decoration: InputDecoration(
+          hintText: 'Selecione um marco de progresso',
+          hintStyle: TextStyle(color: Colors.black.withOpacity(0.7)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: const Color(0xFFE9EAEC),
+          suffixIcon: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Image.asset(
+              'assets/img/down-arrow.png',
+              width: 24,
+              height: 24,
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.arrow_drop_down, size: 24),
+            ),
+          ),
+          errorStyle: const TextStyle(fontSize: 12, height: 0.1),
+        ),
+        items: options
+            .map(
+              (option) => DropdownMenuItem(value: option, child: Text(option)),
+            )
+            .toList(),
+        onChanged: (value) {
+          setState(() {
+            _selectedTrackingMilestone = value;
+            if (value != _customTrackingMilestoneOption) {
+              _customTrackingMilestoneController.clear();
+            }
           });
         },
       ),
@@ -955,10 +1236,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           child: Container(
             height: 46,
             decoration: BoxDecoration(
-              border: Border.all(
-                color: const Color(0xFFC29503),
-                width: 2,
-              ),
+              border: Border.all(color: const Color(0xFFC29503), width: 2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -991,8 +1269,10 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
                           width: 24,
                           height: 24,
                           errorBuilder: (context, error, stackTrace) =>
-                              const Icon(Icons.add_photo_alternate,
-                                  color: Color(0xFFC29503)),
+                              const Icon(
+                                Icons.add_photo_alternate,
+                                color: Color(0xFFC29503),
+                              ),
                         ),
                 ),
               ],
@@ -1011,10 +1291,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
           child: Container(
             height: 46,
             decoration: BoxDecoration(
-              border: Border.all(
-                color: const Color(0xFFC29503),
-                width: 2,
-              ),
+              border: Border.all(color: const Color(0xFFC29503), width: 2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: TextButton(

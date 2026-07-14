@@ -1,5 +1,6 @@
 import 'category_entity.dart';
 import 'user_creator.dart';
+import 'service_tracking_type.dart';
 
 class ServiceDetailModel {
   final int? id;
@@ -15,6 +16,8 @@ class ServiceDetailModel {
   final String postedAt;
   final int verificationCodeCallCount;
   final AcceptedRequestInfo? acceptedRequestInfo;
+  final ServiceTrackingType trackingType;
+  final String? trackingDescription;
 
   ServiceDetailModel({
     this.id,
@@ -30,6 +33,8 @@ class ServiceDetailModel {
     this.postedAt = '',
     this.verificationCodeCallCount = 0,
     this.acceptedRequestInfo,
+    this.trackingType = ServiceTrackingType.time,
+    this.trackingDescription,
   });
 
   String? get serviceImageUrl => serviceImage;
@@ -61,6 +66,8 @@ class ServiceDetailModel {
             json['startCallCount'],
       ),
       acceptedRequestInfo: AcceptedRequestInfo.fromJson(json),
+      trackingType: ServiceTrackingType.fromApi(json['trackingType']),
+      trackingDescription: json['trackingDescription']?.toString(),
     );
   }
 
@@ -123,6 +130,9 @@ class ServiceDetailModel {
       if (postedAt.isNotEmpty) 'postedAt': postedAt,
       'verificationCodeCallCount': verificationCodeCallCount,
       if (acceptedRequestInfo != null) ...acceptedRequestInfo!.toJson(),
+      'trackingType': trackingType.apiValue,
+      if (trackingDescription != null)
+        'trackingDescription': trackingDescription,
     };
   }
 }
@@ -152,32 +162,23 @@ class AcceptedRequestInfo {
         ? <String, dynamic>{...nestedInfo.cast<String, dynamic>(), ...json}
         : json;
     final acceptedUserJson = _extractAcceptedUserJson(source);
-    final acceptedAt = _readFirstString(
-      source,
-      const [
-        'acceptedAt',
-        'accepted_at',
-        'aceitoEm',
-        'acceptedDate',
-      ],
-    );
-    final authenticationCode = _readFirstString(
-      source,
-      const [
-        'authenticationCode',
-        'verificationCode',
-        'startAuthenticationCode',
-        'codigoAutenticacao',
-      ],
-    );
-    final expiresAt = _readFirstString(
-      source,
-      const [
-        'expiresAt',
-        'verificationCodeExpiresAt',
-        'authenticationCodeExpiresAt',
-      ],
-    );
+    final acceptedAt = _readFirstString(source, const [
+      'acceptedAt',
+      'accepted_at',
+      'aceitoEm',
+      'acceptedDate',
+    ]);
+    final authenticationCode = _readFirstString(source, const [
+      'authenticationCode',
+      'verificationCode',
+      'startAuthenticationCode',
+      'codigoAutenticacao',
+    ]);
+    final expiresAt = _readFirstString(source, const [
+      'expiresAt',
+      'verificationCodeExpiresAt',
+      'authenticationCodeExpiresAt',
+    ]);
 
     if (acceptedUserJson == null &&
         (acceptedAt == null || acceptedAt.isEmpty) &&
@@ -227,27 +228,27 @@ class AcceptedRequestInfo {
       }
     }
 
-    final acceptedUserId = _readFirstInt(
-      json,
-      const ['acceptedUserId', 'acceptedById', 'providerAcceptedId'],
-    );
-    final acceptedUserName = _readFirstString(
-      json,
-      const ['acceptedUserName', 'acceptedByName', 'providerAcceptedName'],
-    );
-    final acceptedUserPhone = _readFirstInt(
-      json,
-      const ['acceptedUserPhone', 'acceptedByPhone', 'providerAcceptedPhone'],
-    );
-    final acceptedUserRating = _readFirstDouble(
-      json,
-      const [
-        'acceptedUserRating',
-        'acceptedByRating',
-        'providerAcceptedRating',
-        'acceptedRating',
-      ],
-    );
+    final acceptedUserId = _readFirstInt(json, const [
+      'acceptedUserId',
+      'acceptedById',
+      'providerAcceptedId',
+    ]);
+    final acceptedUserName = _readFirstString(json, const [
+      'acceptedUserName',
+      'acceptedByName',
+      'providerAcceptedName',
+    ]);
+    final acceptedUserPhone = _readFirstInt(json, const [
+      'acceptedUserPhone',
+      'acceptedByPhone',
+      'providerAcceptedPhone',
+    ]);
+    final acceptedUserRating = _readFirstDouble(json, const [
+      'acceptedUserRating',
+      'acceptedByRating',
+      'providerAcceptedRating',
+      'acceptedRating',
+    ]);
 
     if (acceptedUserId == null &&
         (acceptedUserName == null || acceptedUserName.isEmpty) &&
@@ -297,7 +298,9 @@ class AcceptedRequestInfo {
   }
 
   static double? _readFirstDouble(
-      Map<String, dynamic> json, List<String> keys) {
+    Map<String, dynamic> json,
+    List<String> keys,
+  ) {
     for (final key in keys) {
       final value = json[key];
       if (value is num) {

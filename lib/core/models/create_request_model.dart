@@ -1,3 +1,5 @@
+import 'service_tracking_type.dart';
+
 class CreateRequestModel {
   final String title;
   final String description;
@@ -6,6 +8,8 @@ class CreateRequestModel {
   final List<String> categories;
   final String modality;
   final String? serviceImage;
+  final ServiceTrackingType trackingType;
+  final String? trackingDescription;
 
   CreateRequestModel({
     required this.title,
@@ -15,6 +19,8 @@ class CreateRequestModel {
     required this.categories,
     required this.modality,
     this.serviceImage,
+    required this.trackingType,
+    this.trackingDescription,
   });
 
   Map<String, dynamic> toJson() {
@@ -29,6 +35,9 @@ class CreateRequestModel {
           .toList(),
       'modality': modalityToApi(modality),
       if (serviceImage != null) 'serviceImage': serviceImage,
+      'trackingType': trackingType.apiValue,
+      if (trackingDescription?.trim().isNotEmpty ?? false)
+        'trackingDescription': trackingDescription!.trim(),
     };
   }
 
@@ -76,6 +85,8 @@ class CreateRequestModel {
           [],
       modality: json['modality'] ?? '',
       serviceImage: json['serviceImage'],
+      trackingType: ServiceTrackingType.fromApi(json['trackingType']),
+      trackingDescription: json['trackingDescription']?.toString(),
     );
   }
 }

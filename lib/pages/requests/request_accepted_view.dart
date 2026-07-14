@@ -17,6 +17,7 @@ import '../../core/services/api_service.dart';
 import '../../core/services/pending_service_cancellation_service.dart';
 import '../../core/services/user_cache.dart';
 import '../../widgets/header.dart';
+import '../../widgets/progress_tracking_card.dart';
 import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
 
@@ -142,22 +143,23 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         }
       }
 
-      final acceptedUserName =
-          (arguments['acceptedUserName'] as String?)?.trim();
+      final acceptedUserName = (arguments['acceptedUserName'] as String?)
+          ?.trim();
       final acceptedUserPhone = arguments['acceptedUserPhone'];
       final acceptedUserRating = arguments['acceptedUserRating'];
       final audience = arguments['audience'];
       final isRequesterView = arguments['isRequesterView'] == true;
       final authenticationCode =
           (arguments['authenticationCode'] as String?)?.trim() ??
-              (arguments['startAuthenticationCode'] as String?)?.trim();
+          (arguments['startAuthenticationCode'] as String?)?.trim();
       final authenticationCodeExpiresAt =
           (arguments['authenticationCodeExpiresAt'] as String?)?.trim() ??
-              (arguments['verificationCodeExpiresAt'] as String?)?.trim() ??
-              (arguments['expiresAt'] as String?)?.trim();
+          (arguments['verificationCodeExpiresAt'] as String?)?.trim() ??
+          (arguments['expiresAt'] as String?)?.trim();
       final acceptedAt = arguments['acceptedAt'];
-      final verificationCodeCallCount =
-          _toNullableInt(arguments['verificationCodeCallCount']);
+      final verificationCodeCallCount = _toNullableInt(
+        arguments['verificationCodeCallCount'],
+      );
 
       if (acceptedUserName != null && acceptedUserName.isNotEmpty) {
         _acceptedUserName = acceptedUserName;
@@ -257,8 +259,10 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         return;
       }
 
-      final response =
-          await ApiService.get('/service/get/$serviceId', token: token);
+      final response = await ApiService.get(
+        '/service/get/$serviceId',
+        token: token,
+      );
       if (response.statusCode != 200) {
         return;
       }
@@ -288,7 +292,11 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         await _loadAcceptedUser();
       }
     } catch (e, st) {
-      AppLogger.error('Falha ao carregar detalhes do serviço', error: e, stackTrace: st);
+      AppLogger.error(
+        'Falha ao carregar detalhes do serviço',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -364,9 +372,16 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     if (message != null && message.isNotEmpty) {
       urlStr += '?text=${Uri.encodeComponent(message)}';
     }
-    if (!await launchUrl(Uri.parse(urlStr), mode: LaunchMode.externalApplication)) {
+    if (!await launchUrl(
+      Uri.parse(urlStr),
+      mode: LaunchMode.externalApplication,
+    )) {
       if (!mounted) return;
-      AppSnackBar.show(context, 'Não foi possível abrir o WhatsApp', isError: true);
+      AppSnackBar.show(
+        context,
+        'Não foi possível abrir o WhatsApp',
+        isError: true,
+      );
     }
   }
 
@@ -428,7 +443,11 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         _acceptedUserRating = user.rating ?? _acceptedUserRating;
       });
     } catch (e, st) {
-      AppLogger.error('Falha ao carregar dados do prestador aceito', error: e, stackTrace: st);
+      AppLogger.error(
+        'Falha ao carregar dados do prestador aceito',
+        error: e,
+        stackTrace: st,
+      );
     }
   }
 
@@ -443,7 +462,11 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         _requesterUserRating = user.rating ?? _requesterUserRating;
       });
     } catch (e, st) {
-      AppLogger.error('Falha ao carregar dados do solicitante', error: e, stackTrace: st);
+      AppLogger.error(
+        'Falha ao carregar dados do solicitante',
+        error: e,
+        stackTrace: st,
+      );
     }
   }
 
@@ -695,7 +718,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       _startAcceptedRequestSync();
 
       AppSnackBar.show(
-          context, 'Segunda chamada iniciada. Um novo código foi gerado.');
+        context,
+        'Segunda chamada iniciada. Um novo código foi gerado.',
+      );
     } catch (error) {
       if (!mounted) return;
 
@@ -746,15 +771,21 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         return null;
       }
 
-      final response =
-          await ApiService.get('/service/get/$serviceId', token: token);
+      final response = await ApiService.get(
+        '/service/get/$serviceId',
+        token: token,
+      );
       if (response.statusCode != 200) {
         return null;
       }
 
       return _parseServiceDetailFromResponse(response.body);
     } catch (e, st) {
-      AppLogger.error('Falha ao buscar snapshot do serviço', error: e, stackTrace: st);
+      AppLogger.error(
+        'Falha ao buscar snapshot do serviço',
+        error: e,
+        stackTrace: st,
+      );
       return null;
     }
   }
@@ -848,13 +879,10 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       );
       await PendingServiceCancellationStore.upsert(pendingJustification);
 
-      await _leaveAcceptedView(
-        null,
-        {
-          'pendingServiceCancellationJustification':
-              pendingJustification.toJson(),
-        },
-      );
+      await _leaveAcceptedView(null, {
+        'pendingServiceCancellationJustification': pendingJustification
+            .toJson(),
+      });
     } catch (error) {
       if (!mounted) return;
       AppSnackBar.show(
@@ -877,7 +905,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
   }
 
   PendingServiceCancellationJustification
-      _buildPendingCancellationJustification(int serviceId) {
+  _buildPendingCancellationJustification(int serviceId) {
     final detail = _resolvedServiceDetail;
     return PendingServiceCancellationJustification(
       serviceId: serviceId,
@@ -889,9 +917,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
 
   String _friendlyErrorMessage(Object error, {required String fallback}) {
     final rawMessage = error.toString().replaceFirst(
-          RegExp(r'^Exception:\s*'),
-          '',
-        );
+      RegExp(r'^Exception:\s*'),
+      '',
+    );
     return ApiService.extractErrorMessage(rawMessage, fallback: fallback);
   }
 
@@ -913,8 +941,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
             authenticationCodeExpiresAt: _authenticationCodeExpiresAt,
             onSuccess: (startedServiceId) async {
               _serviceId ??= startedServiceId;
-              final latestDetail =
-                  await _fetchLatestServiceDetailSnapshot(startedServiceId);
+              final latestDetail = await _fetchLatestServiceDetailSnapshot(
+                startedServiceId,
+              );
               final detailForNavigation =
                   latestDetail ?? _resolvedServiceDetail;
               if (mounted && latestDetail != null) {
@@ -982,8 +1011,10 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         return;
       }
 
-      final response =
-          await ApiService.get('/service/get/$serviceId', token: token);
+      final response = await ApiService.get(
+        '/service/get/$serviceId',
+        token: token,
+      );
       if (response.statusCode != 200) {
         return;
       }
@@ -1021,9 +1052,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       final latestAcceptedInfo = latestDetail.acceptedRequestInfo;
       final hasActiveAcceptedRequest =
           latestAcceptedInfo?.hasAcceptedUser == true &&
-              (latestAcceptedInfo?.authenticationCode?.trim().isNotEmpty ??
-                  false) &&
-              (latestAcceptedInfo?.expiresAt?.trim().isNotEmpty ?? false);
+          (latestAcceptedInfo?.authenticationCode?.trim().isNotEmpty ??
+              false) &&
+          (latestAcceptedInfo?.expiresAt?.trim().isNotEmpty ?? false);
 
       if (!hasActiveAcceptedRequest) {
         final wasReopened = normalizedStatus == 'CRIADO';
@@ -1053,7 +1084,11 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         await _handleAuthenticationCodeExpired();
       }
     } catch (e, st) {
-      AppLogger.error('Falha ao sincronizar estado do pedido aceito', error: e, stackTrace: st);
+      AppLogger.error(
+        'Falha ao sincronizar estado do pedido aceito',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       _isSyncing = false;
     }
@@ -1079,8 +1114,11 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     if (!mounted) return;
 
     if (leaveMessage != null) {
-      AppSnackBar.show(context, leaveMessage.text,
-          isError: leaveMessage.isError);
+      AppSnackBar.show(
+        context,
+        leaveMessage.text,
+        isError: leaveMessage.isError,
+      );
     }
 
     Navigator.pushNamedAndRemoveUntil(
@@ -1176,12 +1214,17 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       children: [
         Column(
           children: [
-            KeyedSubtree(
-              key: _requestCardKey,
-              child: _buildRequestCard(),
-            ),
+            KeyedSubtree(key: _requestCardKey, child: _buildRequestCard()),
             const SizedBox(height: 16),
             _buildPosterCard(),
+            if (_resolvedServiceDetail != null) ...[
+              const SizedBox(height: 12),
+              ProgressTrackingCard(
+                trackingType: _resolvedServiceDetail!.trackingType,
+                trackingDescription:
+                    _resolvedServiceDetail!.trackingDescription,
+              ),
+            ],
             if (_isRequesterView) ...[
               const SizedBox(height: 12),
               _buildAcceptedProviderCard(),
@@ -1527,11 +1570,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
                 const SizedBox(height: 4),
                 Text(
                   _formatPhoneNumber(
-                      acceptedUser?.phoneNumber ?? _acceptedUserPhone),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.preto,
+                    acceptedUser?.phoneNumber ?? _acceptedUserPhone,
                   ),
+                  style: const TextStyle(fontSize: 14, color: AppColors.preto),
                 ),
               ],
             ),
@@ -1582,17 +1623,10 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
           Expanded(
             child: Text(
               'Código de autenticação de início',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.preto,
-              ),
+              style: TextStyle(fontSize: 14, color: AppColors.preto),
             ),
           ),
-          Icon(
-            Icons.help,
-            size: 18,
-            color: AppColors.preto,
-          ),
+          Icon(Icons.help, size: 18, color: AppColors.preto),
         ],
       ),
       child: Padding(
@@ -1624,11 +1658,12 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
               !_hasAuthenticationCodeExpiration
                   ? 'Tempo indisponível no momento.'
                   : _isAuthenticationCodeExpired
-                      ? 'Tempo restante: 00:00'
-                      : 'Tempo restante: $_formattedAuthenticationCodeCountdown',
+                  ? 'Tempo restante: 00:00'
+                  : 'Tempo restante: $_formattedAuthenticationCodeCountdown',
               style: TextStyle(
                 fontSize: 15,
-                color: !_hasAuthenticationCodeExpiration ||
+                color:
+                    !_hasAuthenticationCodeExpiration ||
                         _isAuthenticationCodeExpired
                     ? AppColors.vermelho
                     : AppColors.preto,
@@ -1685,10 +1720,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         ),
         child: const Text(
           'Iniciar pedido',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-          ),
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -1713,10 +1745,7 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
         ),
         child: Text(
           _isCancellingService ? 'Cancelando serviço...' : 'Cancelar serviço',
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-          ),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -1742,11 +1771,8 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
       child: Image.asset(
         'assets/img/Paintbrush.png',
         fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => const Icon(
-          Icons.image,
-          color: AppColors.cinza,
-          size: 40,
-        ),
+        errorBuilder: (_, __, ___) =>
+            const Icon(Icons.image, color: AppColors.cinza, size: 40),
       ),
     );
   }
@@ -1785,8 +1811,9 @@ class _RequestAcceptedViewState extends State<RequestAcceptedView> {
     if (phoneNumber == null) return 'Telefone indisponível';
     final digits = phoneNumber.toString().replaceAll(RegExp(r'\D'), '');
     if (digits.length < 10) return digits;
-    final normalized =
-        digits.length > 11 ? digits.substring(digits.length - 11) : digits;
+    final normalized = digits.length > 11
+        ? digits.substring(digits.length - 11)
+        : digits;
     final ddd = normalized.substring(0, 2);
     final prefix = normalized.substring(2, 7);
     final suffix = normalized.substring(7);
@@ -1922,10 +1949,7 @@ class _InfoCard extends StatelessWidget {
           headerWidget ??
               Text(
                 header,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.preto,
-                ),
+                style: const TextStyle(fontSize: 14, color: AppColors.preto),
               ),
           const SizedBox(height: 4),
           child,
@@ -1938,9 +1962,7 @@ class _InfoCard extends StatelessWidget {
 class _TimeExpiredActionDialog extends StatefulWidget {
   final Duration decisionTimeout;
 
-  const _TimeExpiredActionDialog({
-    required this.decisionTimeout,
-  });
+  const _TimeExpiredActionDialog({required this.decisionTimeout});
 
   @override
   State<_TimeExpiredActionDialog> createState() =>
@@ -2035,10 +2057,7 @@ class _TimeExpiredActionDialogState extends State<_TimeExpiredActionDialog> {
           decoration: BoxDecoration(
             color: AppColors.branco,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: AppColors.amareloUmPoucoEscuro,
-              width: 2,
-            ),
+            border: Border.all(color: AppColors.amareloUmPoucoEscuro, width: 2),
             boxShadow: const [
               BoxShadow(
                 color: Colors.black54,
@@ -2078,12 +2097,12 @@ class _TimeExpiredActionDialogState extends State<_TimeExpiredActionDialog> {
               ),
               const SizedBox(height: 14),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
-                  color: AppColors.amareloUmPoucoEscuro.withValues(
-                    alpha: 0.12,
-                  ),
+                  color: AppColors.amareloUmPoucoEscuro.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: AppColors.amareloUmPoucoEscuro.withValues(
@@ -2119,9 +2138,7 @@ class _TimeExpiredActionDialogState extends State<_TimeExpiredActionDialog> {
                   final cancelButton = OutlinedButton(
                     onPressed: _didSelectAction
                         ? null
-                        : () => _selectAction(
-                              _ExpiredCodeAction.cancelService,
-                            ),
+                        : () => _selectAction(_ExpiredCodeAction.cancelService),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.vermelho,
                       side: const BorderSide(
@@ -2142,9 +2159,7 @@ class _TimeExpiredActionDialogState extends State<_TimeExpiredActionDialog> {
                   final secondCallButton = ElevatedButton(
                     onPressed: _didSelectAction
                         ? null
-                        : () => _selectAction(
-                              _ExpiredCodeAction.secondCall,
-                            ),
+                        : () => _selectAction(_ExpiredCodeAction.secondCall),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.amareloUmPoucoEscuro,
                       foregroundColor: AppColors.branco,
@@ -2206,10 +2221,7 @@ class _CancelServiceConfirmationDialog extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.branco,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: AppColors.vermelho,
-              width: 2,
-            ),
+            border: Border.all(color: AppColors.vermelho, width: 2),
             boxShadow: const [
               BoxShadow(
                 color: Colors.black54,
@@ -2343,8 +2355,9 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
   bool get _isExpired => _remainingTime.inSeconds <= 0;
 
   String get _formattedCountdown {
-    final safeSeconds =
-        _remainingTime.inSeconds < 0 ? 0 : _remainingTime.inSeconds;
+    final safeSeconds = _remainingTime.inSeconds < 0
+        ? 0
+        : _remainingTime.inSeconds;
     final minutes = (safeSeconds ~/ 60).toString().padLeft(2, '0');
     final seconds = (safeSeconds % 60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
@@ -2503,10 +2516,7 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
           decoration: BoxDecoration(
             color: AppColors.branco,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: AppColors.amareloUmPoucoEscuro,
-              width: 2,
-            ),
+            border: Border.all(color: AppColors.amareloUmPoucoEscuro, width: 2),
             boxShadow: const [
               BoxShadow(
                 color: Colors.black54,
@@ -2575,8 +2585,9 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
                       counterText: '',
                       filled: true,
                       fillColor: Colors.white,
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 14),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: const BorderSide(color: AppColors.cinza),

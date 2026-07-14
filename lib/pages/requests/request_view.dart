@@ -13,6 +13,7 @@ import '../../core/services/auth_session_service.dart';
 import '../../core/services/service_deadline_controller.dart';
 import '../../widgets/header.dart';
 import '../../widgets/pending_service_cancellation_obligations.dart';
+import '../../widgets/progress_tracking_card.dart';
 import '../../widgets/service_image.dart';
 import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
@@ -22,11 +23,7 @@ class RequestView extends StatefulWidget {
   final int? serviceId;
   final Service? service;
 
-  const RequestView({
-    super.key,
-    this.serviceId,
-    this.service,
-  });
+  const RequestView({super.key, this.serviceId, this.service});
 
   @override
   State<RequestView> createState() => _RequestViewState();
@@ -122,8 +119,10 @@ class _RequestViewState extends State<RequestView> {
 
       // Kick off both requests in parallel
       final userFuture = UserCache.instance.get(token);
-      final responseFuture =
-          ApiService.get('/service/get/$serviceId', token: token);
+      final responseFuture = ApiService.get(
+        '/service/get/$serviceId',
+        token: token,
+      );
 
       final currentUser = await userFuture;
       final response = await responseFuture;
@@ -242,8 +241,11 @@ class _RequestViewState extends State<RequestView> {
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      AppSnackBar.show(context, e.toString().replaceFirst('Exception: ', ''),
-          isError: true);
+      AppSnackBar.show(
+        context,
+        e.toString().replaceFirst('Exception: ', ''),
+        isError: true,
+      );
     }
   }
 
@@ -252,9 +254,11 @@ class _RequestViewState extends State<RequestView> {
     if (detail?.id == null) return;
 
     final now = DateTime.now();
-    final tomorrow = DateTime(now.year, now.month, now.day).add(
-      const Duration(days: 1),
-    );
+    final tomorrow = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).add(const Duration(days: 1));
     final lastDate = tomorrow.add(const Duration(days: 365));
 
     DateTime? currentDeadline;
@@ -265,8 +269,9 @@ class _RequestViewState extends State<RequestView> {
 
     var initialDate = tomorrow;
     if (currentDeadline != null && currentDeadline.isAfter(tomorrow)) {
-      initialDate =
-          currentDeadline.isAfter(lastDate) ? lastDate : currentDeadline;
+      initialDate = currentDeadline.isAfter(lastDate)
+          ? lastDate
+          : currentDeadline;
     }
 
     final selectedDate = await showDatePicker(
@@ -316,9 +321,9 @@ class _RequestViewState extends State<RequestView> {
   Future<void> _acceptRequest() async {
     final canContinue =
         await PendingServiceCancellationObligations.ensureCanContinue(
-      context,
-      actionLabel: 'aceitar pedido',
-    );
+          context,
+          actionLabel: 'aceitar pedido',
+        );
     if (!canContinue || !mounted) {
       return;
     }
@@ -359,7 +364,8 @@ class _RequestViewState extends State<RequestView> {
         );
       }
 
-      final acceptedDetail = _parseServiceDetailFromBody(response.body) ??
+      final acceptedDetail =
+          _parseServiceDetailFromBody(response.body) ??
           await _fetchServiceDetailSnapshot(serviceId, token) ??
           latestDetail ??
           detail;
@@ -383,8 +389,11 @@ class _RequestViewState extends State<RequestView> {
       setState(() {
         _isLoading = false;
       });
-      AppSnackBar.show(context, _buildAcceptRequestErrorMessage(e),
-          isError: true);
+      AppSnackBar.show(
+        context,
+        _buildAcceptRequestErrorMessage(e),
+        isError: true,
+      );
     }
   }
 
@@ -392,8 +401,10 @@ class _RequestViewState extends State<RequestView> {
     int serviceId,
     String token,
   ) async {
-    final response =
-        await ApiService.get('/service/get/$serviceId', token: token);
+    final response = await ApiService.get(
+      '/service/get/$serviceId',
+      token: token,
+    );
     if (response.statusCode != 200) {
       return null;
     }
@@ -441,8 +452,11 @@ class _RequestViewState extends State<RequestView> {
     final acceptedInfo = _acceptedRequestInfo ?? detail?.acceptedRequestInfo;
 
     if (detail == null || acceptedInfo?.hasAcceptedUser != true) {
-      AppSnackBar.show(context, 'O pedido ainda não foi aceito.',
-          isError: true);
+      AppSnackBar.show(
+        context,
+        'O pedido ainda não foi aceito.',
+        isError: true,
+      );
       return;
     }
 
@@ -711,6 +725,11 @@ class _RequestViewState extends State<RequestView> {
                 )
               : const SizedBox(width: double.infinity),
         ),
+        const SizedBox(height: 12),
+        ProgressTrackingCard(
+          trackingType: detail.trackingType,
+          trackingDescription: detail.trackingDescription,
+        ),
         if (detail.categoryEntities.isNotEmpty) ...[
           const SizedBox(height: 5),
           _buildCategoryList(detail),
@@ -915,10 +934,7 @@ class _RequestViewState extends State<RequestView> {
       ),
       child: Text(
         text,
-        style: const TextStyle(
-          color: AppColors.preto,
-          fontSize: 16,
-        ),
+        style: const TextStyle(color: AppColors.preto, fontSize: 16),
       ),
     );
   }
@@ -997,11 +1013,7 @@ class _RequestViewState extends State<RequestView> {
           style: const TextStyle(fontSize: 16, color: AppColors.preto),
         ),
         const SizedBox(width: 3),
-        const Icon(
-          Icons.star,
-          color: AppColors.preto,
-          size: 19,
-        ),
+        const Icon(Icons.star, color: AppColors.preto, size: 19),
       ],
     );
   }
@@ -1080,8 +1092,9 @@ class _RequestViewState extends State<RequestView> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed:
-                  canOpenAcceptedRequest ? _openRequesterAcceptedPreview : null,
+              onPressed: canOpenAcceptedRequest
+                  ? _openRequesterAcceptedPreview
+                  : null,
               style: OutlinedButton.styleFrom(
                 backgroundColor: canOpenAcceptedRequest
                     ? AppColors.amareloClaro
@@ -1101,10 +1114,7 @@ class _RequestViewState extends State<RequestView> {
               ),
               child: const Text(
                 'Ver pedido aceito',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -1261,8 +1271,9 @@ class _RequestViewState extends State<RequestView> {
       return digits;
     }
 
-    final normalized =
-        digits.length > 11 ? digits.substring(digits.length - 11) : digits;
+    final normalized = digits.length > 11
+        ? digits.substring(digits.length - 11)
+        : digits;
     final ddd = normalized.substring(0, 2);
     final prefix = normalized.substring(2, 7);
     final suffix = normalized.substring(7);
@@ -1318,10 +1329,7 @@ class _InfoCard extends StatelessWidget {
         children: [
           Text(
             header,
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppColors.preto,
-            ),
+            style: const TextStyle(fontSize: 14, color: AppColors.preto),
           ),
           const SizedBox(height: 4),
           child,
@@ -1406,4 +1414,3 @@ class _RequestSummary extends StatelessWidget {
     );
   }
 }
-
