@@ -1084,6 +1084,13 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
           color: _formTextColor,
           fontSize: 16,
         ),
+        hint: const Text(
+          'Modalidade',
+          style: TextStyle(
+            color: _formTextColor,
+            fontSize: 16,
+          ),
+        ),
         validator: (value) => value == null ? 'Selecione uma modalidade' : null,
         decoration: InputDecoration(
           hintText: 'Modalidade',

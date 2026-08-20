@@ -903,6 +903,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         ],
       ),
       child: DropdownButtonFormField<String>(
+        key: ValueKey(_selectedModality),
         initialValue: _selectedModality,
         dropdownColor: const Color(0xFFE9EAEC),
         iconEnabledColor: _formTextColor,
@@ -910,6 +911,13 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         style: const TextStyle(
           color: _formTextColor,
           fontSize: 16,
+        ),
+        hint: const Text(
+          'Modalidade',
+          style: TextStyle(
+            color: _formTextColor,
+            fontSize: 16,
+          ),
         ),
         validator: (value) => value == null ? 'Selecione uma modalidade' : null,
         decoration: InputDecoration(
