@@ -31,6 +31,7 @@ class RequestEditingPage extends StatefulWidget {
 
 class _RequestEditingPageState extends State<RequestEditingPage> {
   static const int _maxCategories = 10;
+  static const Color _formTextColor = Color(0xFF0B0C0C);
 
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
@@ -1076,11 +1077,18 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
       child: DropdownButtonFormField<String>(
         key: ValueKey(_selectedModality),
         initialValue: _selectedModality,
+        dropdownColor: const Color(0xFFE9EAEC),
+        iconEnabledColor: _formTextColor,
+        iconDisabledColor: _formTextColor,
+        style: const TextStyle(
+          color: _formTextColor,
+          fontSize: 16,
+        ),
         validator: (value) => value == null ? 'Selecione uma modalidade' : null,
         decoration: InputDecoration(
           hintText: 'Modalidade',
-          hintStyle: TextStyle(
-            color: Colors.black.withValues(alpha: 0.7),
+          hintStyle: const TextStyle(
+            color: _formTextColor,
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           border: OutlineInputBorder(
@@ -1104,7 +1112,10 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
         items: ModalityOptions.labels
             .map((modality) => DropdownMenuItem(
                   value: modality,
-                  child: Text(modality),
+                  child: Text(
+                    modality,
+                    style: const TextStyle(color: _formTextColor),
+                  ),
                 ))
             .toList(),
         onChanged: (value) {
@@ -1252,6 +1263,7 @@ class _RequestEditingPageState extends State<RequestEditingPage> {
               child: Text(
                 'Edição do pedido',
                 style: TextStyle(
+                  color: _formTextColor,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),

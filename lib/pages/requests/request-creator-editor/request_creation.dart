@@ -24,6 +24,7 @@ class RequestCreationPage extends StatefulWidget {
 
 class _RequestCreationPageState extends State<RequestCreationPage> {
   static const int _maxCategories = 10;
+  static const Color _formTextColor = Color(0xFF0B0C0C);
 
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
@@ -551,6 +552,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
               child: Text(
                 'Criação do pedido',
                 style: TextStyle(
+                  color: _formTextColor,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -902,11 +904,18 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       ),
       child: DropdownButtonFormField<String>(
         initialValue: _selectedModality,
+        dropdownColor: const Color(0xFFE9EAEC),
+        iconEnabledColor: _formTextColor,
+        iconDisabledColor: _formTextColor,
+        style: const TextStyle(
+          color: _formTextColor,
+          fontSize: 16,
+        ),
         validator: (value) => value == null ? 'Selecione uma modalidade' : null,
         decoration: InputDecoration(
           hintText: 'Modalidade',
-          hintStyle: TextStyle(
-            color: Colors.black.withOpacity(0.7),
+          hintStyle: const TextStyle(
+            color: _formTextColor,
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           border: OutlineInputBorder(
@@ -930,7 +939,10 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         items: ModalityOptions.labels
             .map((modality) => DropdownMenuItem(
                   value: modality,
-                  child: Text(modality),
+                  child: Text(
+                    modality,
+                    style: const TextStyle(color: _formTextColor),
+                  ),
                 ))
             .toList(),
         onChanged: (value) {
