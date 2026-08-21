@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/chronos_wallet_service.dart';
 import '../../core/utils/app_snackbar.dart';
+import '../../core/utils/validators.dart';
 import '../../widgets/header.dart';
 import '../../widgets/animated_side_menu_overlay.dart';
 import '../../widgets/wallet_modal.dart';
@@ -382,22 +383,7 @@ class _PixSellPageState extends State<PixSellPage> {
     );
   }
 
-  bool _validatePixKey(String key) {
-    if (key.isEmpty) return false;
-
-    final emailRegex = RegExp(r"^[\w-.]+@[\w-]+\.[a-zA-Z]{2,}");
-    if (emailRegex.hasMatch(key)) return true;
-
-    final digitsOnly = key.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digitsOnly.length == 11) return true;
-
-    if (digitsOnly.length >= 10 && digitsOnly.length <= 13) return true;
-
-    final randomKey = RegExp(r'^[a-zA-Z0-9_-]{8,64}$');
-    if (randomKey.hasMatch(key)) return true;
-
-    return false;
-  }
+  bool _validatePixKey(String key) => Validators.isPixKey(key);
 
   @override
   Widget build(BuildContext context) {

@@ -12,6 +12,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_routes.dart';
 import '../../core/utils/auth_error_messages.dart';
 import '../../core/utils/app_snackbar.dart';
+import '../../core/utils/validators.dart';
 import '../../widgets/auth_text_field.dart';
 import '../../widgets/backgrounds/background_auth_widget.dart';
 
@@ -151,16 +152,6 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
   String? _validateName(String? value) {
     if (value == null || value.isEmpty) {
       return 'Nome é obrigatório';
-    }
-    return null;
-  }
-
-  String? _validateEmail(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'E-mail é obrigatório';
-    }
-    if (!value.contains('@')) {
-      return 'E-mail inválido';
     }
     return null;
   }
@@ -309,7 +300,7 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
                     hintText: 'E-mail',
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    validator: _validateEmail,
+                    validator: Validators.email,
                     textInputAction: TextInputAction.next,
                     focusNode: _emailFocus,
                     onFieldSubmitted: (_) {
