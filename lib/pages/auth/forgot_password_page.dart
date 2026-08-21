@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../core/api/api_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/app_snackbar.dart';
+import '../../core/utils/validators.dart';
 import '../../widgets/auth_text_field.dart';
 import '../../widgets/backgrounds/background_auth_widget.dart';
 
@@ -25,12 +26,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   void dispose() {
     _emailController.dispose();
     super.dispose();
-  }
-
-  String? _validateEmail(String? value) {
-    if (value == null || value.trim().isEmpty) return 'E-mail é obrigatório';
-    if (!value.contains('@')) return 'E-mail inválido';
-    return null;
   }
 
   Future<void> _sendReset() async {
@@ -117,7 +112,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     hintText: 'E-mail',
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    validator: _validateEmail,
+                    validator: Validators.email,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _isLoading ? null : _sendReset(),
                   ),
