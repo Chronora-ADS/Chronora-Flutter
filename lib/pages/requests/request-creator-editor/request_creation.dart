@@ -509,6 +509,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
       ),
       child: TextFormField(
         controller: _searchController,
+        style: const TextStyle(color: _formTextColor),
         decoration: InputDecoration(
           hintText: 'Pintura de parede, aula de inglês...',
           hintStyle: TextStyle(
@@ -681,6 +682,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
         style: const TextStyle(color: Color(0xFF0B0C0C)),
         decoration: InputDecoration(
           hintText: 'Descrição',
+          counterStyle: const TextStyle(color: _formTextColor),
           hintStyle: TextStyle(
             color: Colors.black.withOpacity(0.7),
           ),
@@ -812,6 +814,7 @@ class _RequestCreationPageState extends State<RequestCreationPage> {
             style: const TextStyle(color: Color(0xFF0B0C0C)),
             decoration: InputDecoration(
               hintText: 'Categoria(s) - Pressione Enter para adicionar',
+              counterStyle: const TextStyle(color: _formTextColor),
               hintStyle: TextStyle(
                 color: Colors.black.withOpacity(0.7),
               ),

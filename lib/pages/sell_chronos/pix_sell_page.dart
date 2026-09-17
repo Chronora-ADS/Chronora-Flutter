@@ -109,6 +109,7 @@ class _PixSellPageState extends State<PixSellPage> {
         color: const Color(0xFFE9EAEC),
       ),
       child: TextFormField(
+        style: const TextStyle(color: Color(0xFF0B0C0C)),
         decoration: InputDecoration(
           hintText: 'Pintura de parede, aula de inglês...',
           hintStyle: TextStyle(
@@ -151,6 +152,7 @@ class _PixSellPageState extends State<PixSellPage> {
             child: Text(
               'Vender Chronos',
               style: TextStyle(
+                color: Color(0xFF0B0C0C),
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),

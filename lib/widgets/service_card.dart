@@ -149,6 +149,7 @@ class ServiceCard extends StatelessWidget {
                         child: Text(
                           service.title,
                           style: const TextStyle(
+                            color: AppColors.preto,
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
@@ -159,7 +160,7 @@ class ServiceCard extends StatelessWidget {
                       if (onEdit != null)
                         IconButton(
                           onPressed: onEdit,
-                          icon: const Icon(Icons.edit),
+                          icon: const Icon(Icons.edit, color: AppColors.preto),
                           iconSize: 20,
                         ),
                     ],
@@ -167,7 +168,7 @@ class ServiceCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     'Postado por ${service.userCreator.name}',
-                    style: const TextStyle(fontSize: 14),
+                    style: const TextStyle(fontSize: 14, color: AppColors.preto),
                   ),
                   const SizedBox(height: 8),
                   Row(
@@ -176,7 +177,10 @@ class ServiceCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(
                         '${service.timeChronos} chronos',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.preto,
+                        ),
                       ),
                     ],
                   ),
@@ -206,6 +210,7 @@ class ServiceCard extends StatelessWidget {
                               Text(
                                 category.name,
                                 style: const TextStyle(
+                                  color: AppColors.preto,
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                 ),

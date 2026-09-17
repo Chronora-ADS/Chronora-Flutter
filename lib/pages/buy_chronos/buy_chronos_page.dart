@@ -511,6 +511,7 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
         color: const Color(0xFFE9EAEC),
       ),
       child: TextFormField(
+        style: const TextStyle(color: Color(0xFF0B0C0C)),
         decoration: InputDecoration(
           hintText: 'Pintura de parede, aula de inglês...',
           hintStyle: TextStyle(
@@ -651,6 +652,7 @@ class _BuyChronosPageState extends State<BuyChronosPage> {
             child: Text(
               'Comprar Chronos',
               style: TextStyle(
+                color: AppColors.preto,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),

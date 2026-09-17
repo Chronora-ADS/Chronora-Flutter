@@ -2572,6 +2572,7 @@ class _StartRequestDialogState extends State<_StartRequestDialog> {
                     ],
                     decoration: InputDecoration(
                       hintText: '0000',
+                      hintStyle: const TextStyle(color: AppColors.textoPlaceholder),
                       counterText: '',
                       filled: true,
                       fillColor: Colors.white,

@@ -144,7 +144,8 @@ class _ProfilePageState extends State<ProfilePage> {
           children: [
             ListTile(
               leading: const Icon(Icons.camera_alt_outlined, color: AppColors.amareloUmPoucoEscuro),
-              title: const Text('Tirar foto'),
+              title: const Text('Tirar foto',
+                  style: TextStyle(color: AppColors.preto)),
               onTap: () {
                 Navigator.pop(context);
                 _pickProfileImageFromCamera();
@@ -152,7 +153,8 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined, color: AppColors.amareloUmPoucoEscuro),
-              title: const Text('Escolher da galeria'),
+              title: const Text('Escolher da galeria',
+                  style: TextStyle(color: AppColors.preto)),
               onTap: () {
                 Navigator.pop(context);
                 _pickProfileImageFromGallery();

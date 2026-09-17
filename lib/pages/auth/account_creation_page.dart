@@ -100,7 +100,8 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
           children: [
             ListTile(
               leading: const Icon(Icons.camera_alt_outlined, color: AppColors.amareloUmPoucoEscuro),
-              title: const Text('Tirar foto'),
+              title: const Text('Tirar foto',
+                  style: TextStyle(color: AppColors.preto)),
               onTap: () {
                 Navigator.pop(context);
                 _pickFromCamera();
@@ -108,7 +109,8 @@ class _AccountCreationPageState extends State<AccountCreationPage> {
             ),
             ListTile(
               leading: const Icon(Icons.folder_outlined, color: AppColors.amareloUmPoucoEscuro),
-              title: const Text('Escolher da galeria'),
+              title: const Text('Escolher da galeria',
+                  style: TextStyle(color: AppColors.preto)),
               onTap: () {
                 Navigator.pop(context);
                 _pickFromGallery();

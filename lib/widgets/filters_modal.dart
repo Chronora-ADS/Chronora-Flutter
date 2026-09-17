@@ -140,7 +140,7 @@ class _FiltersModalState extends State<FiltersModal> {
               ),
               IconButton(
                 onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close, size: 28),
+                icon: const Icon(Icons.close, size: 28, color: AppColors.preto),
               ),
             ],
           ),
@@ -188,6 +188,9 @@ class _FiltersModalState extends State<FiltersModal> {
                     'Avaliação de usuário',
                     DropdownButtonFormField<String>(
                       initialValue: avaliacaoValue,
+                      style: const TextStyle(color: AppColors.preto, fontSize: 16),
+                      dropdownColor: AppColors.branco,
+                      iconEnabledColor: AppColors.preto,
                       items: const [
                         DropdownMenuItem(
                           value: ServiceFilters.allRatings,
@@ -241,7 +244,7 @@ class _FiltersModalState extends State<FiltersModal> {
                         ),
                         Text(
                           _formatTempoLabel(tempoValue),
-                          style: const TextStyle(fontSize: 14),
+                          style: const TextStyle(fontSize: 14, color: AppColors.preto),
                         ),
                       ],
                     ),
@@ -256,10 +259,12 @@ class _FiltersModalState extends State<FiltersModal> {
                           height: 46,
                           child: TextField(
                             controller: _categoriaController,
+                            style: const TextStyle(color: AppColors.preto),
                             onSubmitted: _addCategory,
                             textAlignVertical: TextAlignVertical.center,
                             decoration: InputDecoration(
                               hintText: 'Digite e pressione Enter',
+                              hintStyle: const TextStyle(color: AppColors.textoPlaceholder),
                               isDense: true,
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 16,
@@ -345,6 +350,9 @@ class _FiltersModalState extends State<FiltersModal> {
                     'Ordenação',
                     DropdownButtonFormField<String>(
                       initialValue: ordenacaoValue,
+                      style: const TextStyle(color: AppColors.preto, fontSize: 16),
+                      dropdownColor: AppColors.branco,
+                      iconEnabledColor: AppColors.preto,
                       items: const [
                         DropdownMenuItem(
                           value: ServiceFilters.sortMostRecent,
@@ -436,15 +444,14 @@ class _FiltersModalState extends State<FiltersModal> {
 
     return TextField(
       controller: _prazoController,
+      style: const TextStyle(color: AppColors.preto),
       keyboardType: TextInputType.number,
       inputFormatters: const [_DateTextInputFormatter()],
       onChanged: _handleDeadlineTextChanged,
       textAlignVertical: TextAlignVertical.center,
       decoration: InputDecoration(
         hintText: 'dd/mm/aaaa',
-        hintStyle: TextStyle(
-          color: AppColors.amareloUmPoucoEscuro.withValues(alpha: 0.6),
-        ),
+        hintStyle: const TextStyle(color: AppColors.textoPlaceholder),
         errorText: _deadlineErrorText,
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(
@@ -510,9 +517,7 @@ class _FiltersModalState extends State<FiltersModal> {
       child: Text(
         label,
         style: TextStyle(
-          color: selected
-              ? AppColors.preto
-              : AppColors.amareloUmPoucoEscuro.withValues(alpha: 0.6),
+          color: AppColors.preto,
           fontWeight: selected ? FontWeight.bold : FontWeight.normal,
         ),
       ),

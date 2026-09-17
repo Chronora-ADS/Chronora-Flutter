@@ -83,6 +83,7 @@ class _SellSuccessPageState extends State<SellSuccessPage> {
         color: const Color(0xFFE9EAEC),
       ),
       child: TextFormField(
+        style: const TextStyle(color: Color(0xFF0B0C0C)),
         decoration: InputDecoration(
           hintText: 'Pintura de parede, aula de inglês...',
           hintStyle: TextStyle(

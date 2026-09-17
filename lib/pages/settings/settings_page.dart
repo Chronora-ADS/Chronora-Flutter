@@ -109,7 +109,7 @@ class _SettingsPageState extends State<SettingsPage> {
             title: 'Versão',
             trailing: const Text(
               '1.0.0',
-              style: TextStyle(color: AppColors.cinza, fontSize: 14),
+              style: TextStyle(color: AppColors.textoPlaceholder, fontSize: 14),
             ),
           ),
           _buildDivider(),

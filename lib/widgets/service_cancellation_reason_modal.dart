@@ -215,6 +215,7 @@ class _ServiceCancellationReasonModalState
                           style: const TextStyle(color: Color(0xFF0B0C0C)),
                           decoration: InputDecoration(
                             hintText: 'Descreva o ocorrido...',
+                            hintStyle: const TextStyle(color: AppColors.textoPlaceholder),
                             counterText: '',
                             filled: true,
                             fillColor: Colors.white,

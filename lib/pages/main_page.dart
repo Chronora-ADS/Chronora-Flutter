@@ -433,6 +433,7 @@ class _MainPageState extends State<MainPage> {
                           margin: const EdgeInsets.only(bottom: 16),
                           child: TextField(
                             controller: _searchController,
+                            style: const TextStyle(color: AppColors.preto),
                             textInputAction: TextInputAction.search,
                             onSubmitted: _submitSearch,
                             decoration: InputDecoration(
