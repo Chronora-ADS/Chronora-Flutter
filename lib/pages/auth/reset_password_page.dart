@@ -157,6 +157,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           const Text(
             'Nova senha',
             style: TextStyle(
+              color: AppColors.preto,
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
@@ -165,6 +166,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           const Text(
             'Crie uma nova senha para acessar sua conta.',
             textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.preto),
           ),
           const SizedBox(height: 20),
           AuthTextField(
@@ -211,6 +213,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         const Text(
           'Link inválido',
           style: TextStyle(
+            color: AppColors.preto,
             fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
@@ -219,6 +222,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         const Text(
           'Solicite um novo link de recuperação de senha.',
           textAlign: TextAlign.center,
+          style: TextStyle(color: AppColors.preto),
         ),
         const SizedBox(height: 20),
         SizedBox(

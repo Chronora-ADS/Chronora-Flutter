@@ -98,6 +98,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   const Text(
                     'Recuperar senha',
                     style: TextStyle(
+                      color: AppColors.preto,
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
@@ -106,6 +107,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   const Text(
                     'Informe seu e-mail para receber instruções.',
                     textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.preto),
                   ),
                   const SizedBox(height: 20),
                   AuthTextField(
